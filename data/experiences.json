@@ -1,0 +1,22 @@
+[
+  {
+    "experience_id": "exp-deterministic-loop",
+    "source_task": "seed",
+    "target_device": "agnostic",
+    "task_signature": [
+      "autoresearch",
+      "deterministic-eval",
+      "results-logging"
+    ],
+    "failure_pattern": "free-form judging produced unstable keep/discard decisions",
+    "successful_strategy": "pin a fixed five-minute budget, parse run.log deterministically, and append results.tsv without committing it",
+    "tool_trace_summary": "README/program.md -> baseline run -> grep val_bpb and peak_vram_mb -> results.tsv",
+    "delta_J": 0.19,
+    "reusable_rules": [
+      "deterministic_eval",
+      "results_logging",
+      "fixed_budget"
+    ],
+    "supporting_memory_ids": []
+  }
+]

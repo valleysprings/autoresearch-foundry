@@ -1,0 +1,12 @@
+[project]
+name = "autoresearch-with-experience-replay"
+version = "0.1.0"
+description = "Local-first autoresearch flywheel with deterministic experience replay."
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["app"]

@@ -1,0 +1,3 @@
+interface:
+  display_name: "Agent Flywheel Prototype"
+  short_description: "Scaffold a no-GPU local multi-agent demo with evaluation and experience write-back."

@@ -1,0 +1,370 @@
+:root {
+  --bg: #f5efe3;
+  --ink: #16202d;
+  --muted: #55606f;
+  --panel: rgba(255, 251, 244, 0.84);
+  --panel-strong: rgba(255, 247, 235, 0.92);
+  --line: rgba(22, 32, 45, 0.12);
+  --accent: #c65c34;
+  --teal: #0f6b68;
+  --shadow: 0 28px 60px rgba(58, 42, 20, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(198, 92, 52, 0.18), transparent 32%),
+    radial-gradient(circle at 85% 10%, rgba(15, 107, 104, 0.16), transparent 28%),
+    linear-gradient(180deg, #f7f1e5 0%, #efe5d5 100%);
+  color: var(--ink);
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+}
+
+.backdrop {
+  position: fixed;
+  border-radius: 999px;
+  filter: blur(20px);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.backdrop-a {
+  width: 22rem;
+  height: 22rem;
+  left: -5rem;
+  top: 6rem;
+  background: rgba(198, 92, 52, 0.18);
+}
+
+.backdrop-b {
+  width: 18rem;
+  height: 18rem;
+  right: 2rem;
+  top: 18rem;
+  background: rgba(15, 107, 104, 0.15);
+}
+
+.shell {
+  position: relative;
+  z-index: 1;
+  width: min(1200px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 32px 0 56px;
+  display: grid;
+  gap: 18px;
+}
+
+.loading-panel,
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  backdrop-filter: blur(18px);
+  box-shadow: var(--shadow);
+}
+
+.loading-panel {
+  padding: 48px 32px;
+  margin-top: 24px;
+}
+
+.hero {
+  padding: 30px;
+  display: grid;
+  gap: 24px;
+}
+
+.hero-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.hero-copy {
+  max-width: 760px;
+}
+
+.eyebrow,
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: rgba(22, 32, 45, 0.06);
+  color: var(--muted);
+}
+
+.hero h1,
+.section-title,
+.task-title {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.hero h1 {
+  margin-top: 14px;
+  font-size: clamp(2.4rem, 5vw, 4.6rem);
+  line-height: 0.95;
+}
+
+.hero p,
+.muted,
+.body-text {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.hero-stats,
+.run-grid,
+.candidate-grid,
+.roadmap,
+.reference-grid,
+.metric-row,
+.score-strip,
+.baseline-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.hero-stats,
+.reference-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.stat-card,
+.mini-card,
+.candidate-card,
+.task-block,
+.score-card {
+  background: var(--panel-strong);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 18px;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.flywheel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.flywheel-step {
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(198, 92, 52, 0.12), rgba(15, 107, 104, 0.12));
+  border: 1px solid rgba(22, 32, 45, 0.08);
+  font-size: 0.92rem;
+}
+
+.roadmap {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.roadmap-card {
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 251, 244, 0.72);
+  border: 1px solid var(--line);
+}
+
+.roadmap-card strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.run-section {
+  padding: 22px;
+  animation: slide-up 520ms ease both;
+}
+
+.run-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.task-title {
+  font-size: 1.8rem;
+}
+
+.run-grid {
+  grid-template-columns: 1.1fr 1.1fr 0.9fr;
+}
+
+.candidate-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.candidate-card.winner {
+  border-color: rgba(15, 107, 104, 0.38);
+  box-shadow: inset 0 0 0 1px rgba(15, 107, 104, 0.14);
+}
+
+.pill-row,
+.patch-list,
+.artifact-list,
+.memory-list,
+.check-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  margin: 12px 0 0;
+  list-style: none;
+}
+
+.pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(22, 32, 45, 0.06);
+  font-size: 0.83rem;
+}
+
+.pill.good {
+  background: rgba(15, 107, 104, 0.12);
+  color: var(--teal);
+}
+
+.pill.warn {
+  background: rgba(198, 92, 52, 0.12);
+  color: var(--accent);
+}
+
+.metric-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.metric {
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.metric-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.metric-value {
+  margin-top: 4px;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.score-strip {
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  margin-top: 16px;
+}
+
+.score-card strong {
+  display: block;
+  font-size: 1.4rem;
+}
+
+.reference-grid .mini-card span,
+.roadmap-card span,
+.small {
+  color: var(--muted);
+}
+
+.baseline-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-top: 14px;
+}
+
+.section-title {
+  font-size: 1.45rem;
+}
+
+.check-list li,
+.patch-list li,
+.artifact-list li,
+.memory-list li {
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(22, 32, 45, 0.06);
+}
+
+.patch-list,
+.artifact-list,
+.memory-list,
+.check-list {
+  display: grid;
+  gap: 8px;
+}
+
+.winner-banner {
+  color: var(--teal);
+  font-weight: 700;
+}
+
+.footer-note {
+  padding: 18px 22px 0;
+  color: var(--muted);
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 900px) {
+  .run-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero {
+    padding: 24px;
+  }
+
+  .hero h1 {
+    font-size: 2.8rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .shell {
+    width: min(100% - 20px, 1200px);
+    padding-top: 18px;
+  }
+
+  .hero,
+  .run-section {
+    padding: 18px;
+  }
+
+  .metric-row {
+    grid-template-columns: 1fr;
+  }
+}

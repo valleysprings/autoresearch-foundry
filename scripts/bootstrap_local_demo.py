@@ -1,0 +1,65 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import textwrap
+from pathlib import Path
+
+FILES = {
+    "README.md": """# Agent Flywheel Demo\n\nA local-first multi-agent prototype that organizes validated experience units.\n\n## Run\n\n```bash\npython app/demo_run.py\ncd ui && python -m http.server 8000\n```\n\nThen open `http://localhost:8000` and inspect the generated `runs/latest_run.json`.\n\n## Core loop\n\n1. Load a task and retrieve prior experiences.\n2. Generate candidate solutions from small specialist agents.\n3. Score candidates with a deterministic evaluator.\n4. Select the winner.\n5. Write a new experience unit only if `delta_J > epsilon`.\n""",
+    "docs/framework.md": """# Framework note\n\nThis platform organizes **validated experience units** rather than chat transcripts.\n\nLet task `x` retrieve memory `M_k(x)`. Each agent proposes candidate `c_i`. The evaluator ranks candidates by\n\n`J(c; x) = alpha * success + beta * test_pass - gamma * cost - lambda * steps`\n\nThe winner is\n\n`c* = argmax_i J(c_i; x)`\n\nWrite-back rule:\n\n`if J(c*; x) - J(base; x) > epsilon, then M <- M union {e}`\n\nwhere `e = (task_signature, failure_pattern, successful_strategy, tool_trace_summary, delta_J)`.\n""",
+    "docs/demo.md": """# Demo script\n\n## What to say\n\n1. The platform organizes reusable experience, not agent chat.\n2. Agents compete under a shared evaluator.\n3. Only validated improvement is written back into memory.\n4. The second task benefits from the first run's experience.\n\n## What to click\n\n- Show the task card.\n- Show retrieved experiences.\n- Compare candidate cards.\n- Show the evaluator score table.\n- Show the newly written experience unit.\n""",
+    "paper/outline.md": """# A local flywheel for multi-agent experience consolidation\n\n## Abstract\n\nWe present a local-first multi-agent prototype that organizes validated experience units rather than conversation. The system retrieves prior experience, generates competing candidates, ranks them with a deterministic evaluator, and writes back only improvements above a threshold. This yields a compact flywheel that is cheap to run on macOS and exposes a clear mechanism for coordination, selection, and reuse.\n\n## Sections\n\n1. Problem setup\n2. Design objective\n3. Method\n4. Demo implementation\n5. Qualitative results\n6. Ablations\n7. Failure cases\n8. Conclusion\n""",
+    "data/tasks.json": json.dumps([
+        {
+            "id": "task-1",
+            "title": "normalize invoice ids",
+            "description": "convert mixed invoice identifiers to canonical format INV-XXXX with zero padding",
+            "task_signature": ["text-cleaning", "regex-formatting", "deterministic"],
+            "ground_truth_hint": "format should match ^INV-\\d{4}$"
+        },
+        {
+            "id": "task-2",
+            "title": "normalize order ids",
+            "description": "convert mixed order identifiers to canonical format ORD-XXXX with zero padding",
+            "task_signature": ["text-cleaning", "regex-formatting", "deterministic"],
+            "ground_truth_hint": "format should match ^ORD-\\d{4}$"
+        }
+    ], indent=2),
+    "data/experiences.json": json.dumps([
+        {
+            "task_signature": ["text-cleaning", "regex-formatting"],
+            "failure_pattern": "string replacement without zero padding",
+            "successful_strategy": "extract digits, zero pad to width 4, add prefix",
+            "tool_trace_summary": "python regex and format",
+            "delta_J": 0.18
+        }
+    ], indent=2),
+    "app/memory_store.py": """import json\nfrom pathlib import Path\nfrom typing import List, Dict, Any\n\n\nclass MemoryStore:\n    def __init__(self, path: Path):\n        self.path = path\n\n    def load(self) -> List[Dict[str, Any]]:\n        if not self.path.exists():\n            return []\n        return json.loads(self.path.read_text())\n\n    def retrieve(self, task_signature: List[str], top_k: int = 3) -> List[Dict[str, Any]]:\n        memories = self.load()\n        scored = []\n        target = set(task_signature)\n        for item in memories:\n            overlap = len(target & set(item.get('task_signature', [])))\n            scored.append((overlap, item))\n        scored.sort(key=lambda x: x[0], reverse=True)\n        return [item for score, item in scored[:top_k] if score > 0]\n\n    def append(self, experience: Dict[str, Any]) -> None:\n        memories = self.load()\n        memories.append(experience)\n        self.path.write_text(json.dumps(memories, indent=2))\n""",
+    "app/evaluator.py": """import re\nfrom typing import Dict, Any\n\n\ndef evaluate(candidate: Dict[str, Any], task: Dict[str, Any]) -> Dict[str, Any]:\n    output = candidate['output']\n    prefix = 'INV' if 'invoice' in task['title'] else 'ORD'\n    pattern = rf'^{prefix}-\\d{{4}}$'\n    success = 1.0 if re.match(pattern, output) else 0.0\n    test_pass = success\n    cost = float(candidate.get('cost', 0.0))\n    steps = float(candidate.get('steps', 1.0))\n    alpha, beta, gamma, lam = 1.0, 1.0, 0.15, 0.05\n    score = alpha * success + beta * test_pass - gamma * cost - lam * steps\n    return {\n        'success': success,\n        'test_pass': test_pass,\n        'cost': cost,\n        'steps': steps,\n        'J': round(score, 4),\n    }\n""",
+    "app/engine.py": """from typing import Dict, Any, List\n\nfrom evaluator import evaluate\n\n\ndef planner(task: Dict[str, Any], memories: List[Dict[str, Any]]) -> Dict[str, Any]:\n    return {\n        'task_id': task['id'],\n        'plan': [\n            'retrieve similar experiences',\n            'generate candidate normalizers',\n            'score with deterministic regex-based evaluator',\n            'write back only if delta_J exceeds epsilon',\n        ],\n        'memory_count': len(memories),\n    }\n\n\ndef solver_candidates(task: Dict[str, Any], memories: List[Dict[str, Any]]) -> List[Dict[str, Any]]:\n    title = task['title']\n    raw = '12'\n    if 'invoice' in title:\n        return [\n            {'agent': 'solver-a', 'strategy': 'prefix only', 'output': 'INV-12', 'cost': 1.2, 'steps': 2},\n            {'agent': 'solver-b', 'strategy': 'extract digits and zero pad', 'output': 'INV-0012', 'cost': 1.5, 'steps': 3},\n            {'agent': 'solver-c', 'strategy': 'copy prior pattern from memory', 'output': 'INV-0012', 'cost': 0.8, 'steps': 2},\n        ]\n    return [\n        {'agent': 'solver-a', 'strategy': 'prefix only', 'output': 'ORD-12', 'cost': 1.2, 'steps': 2},\n        {'agent': 'solver-b', 'strategy': 'extract digits and zero pad', 'output': 'ORD-0012', 'cost': 1.5, 'steps': 3},\n        {'agent': 'solver-c', 'strategy': 'copy prior pattern from memory', 'output': 'ORD-0012', 'cost': 0.8, 'steps': 2},\n    ]\n\n\ndef run_task(task: Dict[str, Any], memories: List[Dict[str, Any]], epsilon: float = 0.05) -> Dict[str, Any]:\n    plan = planner(task, memories)\n    candidates = solver_candidates(task, memories)\n    scored = []\n    for candidate in candidates:\n        metrics = evaluate(candidate, task)\n        scored.append({**candidate, 'metrics': metrics})\n    scored.sort(key=lambda x: x['metrics']['J'], reverse=True)\n    winner = scored[0]\n    baseline = scored[-1]\n    delta_j = round(winner['metrics']['J'] - baseline['metrics']['J'], 4)\n    should_write = delta_j > epsilon\n    new_experience = None\n    if should_write:\n        new_experience = {\n            'task_signature': task['task_signature'],\n            'failure_pattern': 'missing zero padding in identifier normalization',\n            'successful_strategy': winner['strategy'],\n            'tool_trace_summary': f"selected {winner['agent']} with output {winner['output']}",\n            'delta_J': delta_j,\n        }\n    return {\n        'task': task,\n        'plan': plan,\n        'retrieved_memories': memories,\n        'candidates': scored,\n        'winner': winner,\n        'baseline': baseline,\n        'delta_J': delta_j,\n        'should_write_memory': should_write,\n        'new_experience': new_experience,\n    }\n""",
+    "app/demo_run.py": """import json\nfrom pathlib import Path\n\nfrom engine import run_task\nfrom memory_store import MemoryStore\n\nROOT = Path(__file__).resolve().parents[1]\nDATA = ROOT / 'data'\nRUNS = ROOT / 'runs'\n\n\ndef main() -> None:\n    tasks = json.loads((DATA / 'tasks.json').read_text())\n    RUNS.mkdir(exist_ok=True)\n    store = MemoryStore(DATA / 'experiences.json')\n\n    all_runs = []\n    for task in tasks:\n        memories = store.retrieve(task['task_signature'], top_k=3)\n        result = run_task(task, memories)\n        if result['should_write_memory'] and result['new_experience'] is not None:\n            store.append(result['new_experience'])\n        all_runs.append(result)\n\n    payload = {\n        'summary': {\n            'num_tasks': len(all_runs),\n            'memory_size_after_run': len(store.load()),\n        },\n        'runs': all_runs,\n    }\n    out = RUNS / 'latest_run.json'\n    out.write_text(json.dumps(payload, indent=2))\n    print(f'wrote {out}')\n\n\nif __name__ == '__main__':\n    main()\n""",
+    "ui/index.html": """<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Agent Flywheel Demo</title>\n  <link rel=\"stylesheet\" href=\"style.css\" />\n</head>\n<body>\n  <header>\n    <h1>Agent Flywheel Demo</h1>\n    <p>Task -> candidates -> deterministic evaluation -> selection -> experience write-back</p>\n  </header>\n  <main id=\"app\">Loading run artifact...</main>\n  <script src=\"app.js\"></script>\n</body>\n</html>\n""",
+    "ui/style.css": """body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background: #f5f7fb; color: #18212f; }\nheader { padding: 24px 32px; background: white; border-bottom: 1px solid #dbe3ef; }\nmain { padding: 24px 32px; display: grid; gap: 20px; }\n.card { background: white; border: 1px solid #dbe3ef; border-radius: 14px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }\n.cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }\n.badge { display: inline-block; padding: 4px 8px; border-radius: 999px; font-size: 12px; }\n.win { background: #e8f7e8; }\n.lose { background: #eef2f8; }\npre { white-space: pre-wrap; word-break: break-word; background: #f7f9fc; padding: 12px; border-radius: 10px; }\nsmall { color: #536173; }\n""",
+    "ui/app.js": """async function main() {\n  const root = document.getElementById('app');\n  const res = await fetch('../runs/latest_run.json');\n  const data = await res.json();\n  const summary = `<div class=\"card\"><h2>Summary</h2><p>Tasks: ${data.summary.num_tasks}</p><p>Memory size after run: ${data.summary.memory_size_after_run}</p></div>`;\n  const sections = data.runs.map(run => {\n    const candidateCards = run.candidates.map(c => `\n      <div class=\"card\">\n        <div class=\"badge ${c.agent === run.winner.agent ? 'win' : 'lose'}\">${c.agent === run.winner.agent ? 'winner' : 'candidate'}</div>\n        <h4>${c.agent}</h4>\n        <p>${c.strategy}</p>\n        <small>output</small>\n        <pre>${c.output}</pre>\n        <small>J=${c.metrics.J}, success=${c.metrics.success}, cost=${c.metrics.cost}, steps=${c.metrics.steps}</small>\n      </div>`).join('');\n    return `\n      <section class=\"card\">\n        <h2>${run.task.title}</h2>\n        <p>${run.task.description}</p>\n        <div class=\"cols\">\n          <div class=\"card\">\n            <h3>Retrieved memory</h3>\n            <pre>${JSON.stringify(run.retrieved_memories, null, 2)}</pre>\n          </div>\n          <div class=\"card\">\n            <h3>Plan</h3>\n            <pre>${JSON.stringify(run.plan, null, 2)}</pre>\n          </div>\n          <div class=\"card\">\n            <h3>Consolidation</h3>\n            <p>delta_J = ${run.delta_J}</p>\n            <p>write back = ${run.should_write_memory}</p>\n            <pre>${JSON.stringify(run.new_experience, null, 2)}</pre>\n          </div>\n        </div>\n        <h3>Candidates</h3>\n        <div class=\"cols\">${candidateCards}</div>\n      </section>`;\n  }).join('');\n  root.innerHTML = summary + sections;\n}\nmain().catch(err => {\n  document.getElementById('app').innerHTML = `<div class=\"card\"><h2>Failed to load</h2><pre>${String(err)}</pre></div>`;\n});\n""",
+}
+
+
+def write_file(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(textwrap.dedent(content))
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Bootstrap a local macOS-friendly agent flywheel demo repo.")
+    parser.add_argument("--output", required=True, help="Output directory for the generated repo")
+    args = parser.parse_args()
+
+    output = Path(args.output).resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    for rel, content in FILES.items():
+        write_file(output / rel, content)
+    print(f"Bootstrapped repo at {output}")
+
+
+if __name__ == "__main__":
+    main()

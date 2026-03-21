@@ -1,0 +1,1419 @@
+{
+  "summary": {
+    "project": "autoresearch-with-experience-replay",
+    "generated_at": "2026-03-21T14:49:58+08:00",
+    "num_tasks": 3,
+    "initial_memory_count": 1,
+    "memory_size_after_run": 4,
+    "write_backs": 3,
+    "winner_agents": {
+      "replay-synthesizer": 2,
+      "scale-bridge": 1
+    },
+    "flywheel": [
+      "task intake",
+      "experience retrieval",
+      "candidate proposal generation",
+      "deterministic evaluation",
+      "winner selection",
+      "selective write-back"
+    ]
+  },
+  "roadmap": [
+    {
+      "phase": "Local search loop",
+      "status": "implemented",
+      "detail": "macOS-first proposal selection with MPS-safe kernels and deterministic evaluation."
+    },
+    {
+      "phase": "Experience replay",
+      "status": "implemented",
+      "detail": "task-signature retrieval and delta_J-gated memory consolidation."
+    },
+    {
+      "phase": "H200 handoff",
+      "status": "demo-ready",
+      "detail": "bridge local winning strategies into cluster-ready handoff bundles."
+    }
+  ],
+  "reference_mapping": [
+    {
+      "source": "karpathy/autoresearch",
+      "takeaway": "fixed-budget experiment loop, results logging, and branchable research programs"
+    },
+    {
+      "source": "miolini/autoresearch-macos",
+      "takeaway": "Apple Silicon first constraints, MPS-safe attention choices, and small local runs"
+    },
+    {
+      "source": "algorithmicsuperintelligence/openevolve",
+      "takeaway": "candidate diversity, mutation lanes, and selection pressure over proposals"
+    }
+  ],
+  "runs": [
+    {
+      "task": {
+        "id": "local-mps-bootstrap",
+        "title": "Bootstrap a nightly autoresearch loop on Apple Silicon",
+        "description": "Turn the Karpathy-style train.py mutation loop into a reproducible local Mac job that finishes inside a five-minute budget and starts building replay memories.",
+        "task_signature": [
+          "autoresearch",
+          "mps",
+          "local-loop",
+          "deterministic-eval",
+          "experience-replay"
+        ],
+        "profile": {
+          "target_device": "mps",
+          "memory_budget_gb": 18.0,
+          "runtime_budget_min": 5.0,
+          "must_include": [
+            "deterministic_eval",
+            "replay_memory",
+            "mps_safe_attention",
+            "results_logging",
+            "selective_writeback"
+          ],
+          "needs_handoff": false
+        },
+        "baseline": {
+          "strategy": "Port the default GPU experiment loop directly onto the Mac without adapting the runner.",
+          "attention_backend": "flash-attn3",
+          "deterministic_eval": true,
+          "uses_memory": false,
+          "results_logging": false,
+          "selective_writeback": false,
+          "handoff_bundle": false,
+          "program_patch": [
+            "keep GPU-first kernels on the local device",
+            "skip explicit results logging",
+            "mutate without retrieval or write-back thresholds"
+          ],
+          "artifacts": [
+            "run.log"
+          ],
+          "expected_gain": 0.28,
+          "memory_gb": 23.0,
+          "runtime_min": 6.3,
+          "reproducibility": 0.55,
+          "complexity": 0.68,
+          "steps": 5,
+          "novelty": 0.12
+        }
+      },
+      "plan": {
+        "task_id": "local-mps-bootstrap",
+        "objective": "Turn the Karpathy-style train.py mutation loop into a reproducible local Mac job that finishes inside a five-minute budget and starts building replay memories.",
+        "selection_policy": "maximize J(candidate; x) under deterministic evaluation and budget constraints",
+        "priority_checks": [
+          "fit mps budget",
+          "keep deterministic evaluator as the source of truth",
+          "reuse retrieved experience when it improves reliability",
+          "only write memory back when delta_J clears epsilon"
+        ],
+        "active_rules": [
+          "deterministic_eval",
+          "fixed_budget",
+          "results_logging"
+        ],
+        "lanes": [
+          "local-optimizer",
+          "replay-synthesizer",
+          "evolution-scout"
+        ],
+        "memory_count": 1
+      },
+      "retrieved_memories": [
+        {
+          "experience_id": "exp-deterministic-loop",
+          "source_task": "seed",
+          "target_device": "agnostic",
+          "task_signature": [
+            "autoresearch",
+            "deterministic-eval",
+            "results-logging"
+          ],
+          "failure_pattern": "free-form judging produced unstable keep/discard decisions",
+          "successful_strategy": "pin a fixed five-minute budget, parse run.log deterministically, and append results.tsv without committing it",
+          "tool_trace_summary": "README/program.md -> baseline run -> grep val_bpb and peak_vram_mb -> results.tsv",
+          "delta_J": 0.19,
+          "reusable_rules": [
+            "deterministic_eval",
+            "results_logging",
+            "fixed_budget"
+          ],
+          "supporting_memory_ids": [],
+          "retrieval_score": 7.19
+        }
+      ],
+      "baseline": {
+        "agent": "baseline",
+        "label": "Current baseline",
+        "strategy": "Port the default GPU experiment loop directly onto the Mac without adapting the runner.",
+        "steps": 5,
+        "novelty": 0.12,
+        "supporting_memory_ids": [],
+        "proposal": {
+          "attention_backend": "flash-attn3",
+          "deterministic_eval": true,
+          "uses_memory": false,
+          "results_logging": false,
+          "selective_writeback": false,
+          "handoff_bundle": false,
+          "program_patch": [
+            "keep GPU-first kernels on the local device",
+            "skip explicit results logging",
+            "mutate without retrieval or write-back thresholds"
+          ],
+          "artifacts": [
+            "run.log"
+          ]
+        },
+        "traits": {
+          "expected_gain": 0.28,
+          "memory_gb": 23.0,
+          "runtime_min": 6.3,
+          "reproducibility": 0.55,
+          "complexity": 0.68
+        },
+        "metrics": {
+          "success": 0.0,
+          "test_pass": 0.2,
+          "budget_pass": 0.0,
+          "compatibility": 0.0,
+          "replay_alignment": 0.0,
+          "reproducibility": 0.55,
+          "scale_readiness": 0.25,
+          "expected_gain": 0.28,
+          "novelty": 0.12,
+          "cost": 1.27,
+          "complexity": 0.68,
+          "steps": 5.0,
+          "memory_gb": 23.0,
+          "runtime_min": 6.3,
+          "required_checks": {
+            "deterministic_eval": true,
+            "replay_memory": false,
+            "mps_safe_attention": false,
+            "results_logging": false,
+            "selective_writeback": false
+          },
+          "J": -0.5896
+        }
+      },
+      "candidates": [
+        {
+          "agent": "replay-synthesizer",
+          "label": "Replay-guided local loop",
+          "strategy": "Fuse the fixed-budget logging pattern with an MPS-safe kernel plan so the next experiment starts with validated priors instead of guessing.",
+          "steps": 3,
+          "novelty": 0.41,
+          "supporting_memory_ids": [
+            "exp-deterministic-loop"
+          ],
+          "proposal": {
+            "attention_backend": "sdpa",
+            "deterministic_eval": true,
+            "uses_memory": true,
+            "results_logging": true,
+            "selective_writeback": true,
+            "handoff_bundle": false,
+            "program_patch": [
+              "reuse the fixed five-minute evaluation harness",
+              "retrieve prior experience before mutating the program",
+              "export delta_J so memory growth stays selective"
+            ],
+            "artifacts": [
+              "results.tsv",
+              "run.log",
+              "replay_summary.json"
+            ]
+          },
+          "traits": {
+            "expected_gain": 0.63,
+            "memory_gb": 15.4,
+            "runtime_min": 4.3,
+            "reproducibility": 0.89,
+            "complexity": 0.39
+          },
+          "metrics": {
+            "success": 1.0,
+            "test_pass": 1.0,
+            "budget_pass": 1.0,
+            "compatibility": 1.0,
+            "replay_alignment": 1.0,
+            "reproducibility": 0.89,
+            "scale_readiness": 0.25,
+            "expected_gain": 0.63,
+            "novelty": 0.41,
+            "cost": 0.86,
+            "complexity": 0.39,
+            "steps": 3.0,
+            "memory_gb": 15.4,
+            "runtime_min": 4.3,
+            "required_checks": {
+              "deterministic_eval": true,
+              "replay_memory": true,
+              "mps_safe_attention": true,
+              "results_logging": true,
+              "selective_writeback": true
+            },
+            "J": 3.0284
+          }
+        },
+        {
+          "agent": "local-optimizer",
+          "label": "MPS-safe trim",
+          "strategy": "Replace unsupported kernels, shrink the search space, and keep the Mac loop simple enough to run every night.",
+          "steps": 4,
+          "novelty": 0.24,
+          "supporting_memory_ids": [
+            "exp-deterministic-loop"
+          ],
+          "proposal": {
+            "attention_backend": "sdpa",
+            "deterministic_eval": true,
+            "uses_memory": false,
+            "results_logging": true,
+            "selective_writeback": true,
+            "handoff_bundle": false,
+            "program_patch": [
+              "swap FlashAttention-3 for SDPA on MPS",
+              "cap sequence length at 512 for the local run",
+              "write results.tsv entries on every experiment"
+            ],
+            "artifacts": [
+              "results.tsv",
+              "run.log",
+              "program.md diff"
+            ]
+          },
+          "traits": {
+            "expected_gain": 0.52,
+            "memory_gb": 16.6,
+            "runtime_min": 4.9,
+            "reproducibility": 0.79,
+            "complexity": 0.34
+          },
+          "metrics": {
+            "success": 1.0,
+            "test_pass": 0.8,
+            "budget_pass": 1.0,
+            "compatibility": 1.0,
+            "replay_alignment": 0.0,
+            "reproducibility": 0.79,
+            "scale_readiness": 0.25,
+            "expected_gain": 0.52,
+            "novelty": 0.24,
+            "cost": 0.95,
+            "complexity": 0.34,
+            "steps": 4.0,
+            "memory_gb": 16.6,
+            "runtime_min": 4.9,
+            "required_checks": {
+              "deterministic_eval": true,
+              "replay_memory": false,
+              "mps_safe_attention": true,
+              "results_logging": true,
+              "selective_writeback": true
+            },
+            "J": 2.2966
+          }
+        },
+        {
+          "agent": "evolution-scout",
+          "label": "Aggressive mutation sweep",
+          "strategy": "Try a wider search frontier and more ambitious kernels immediately, accepting the risk that the local device will reject them.",
+          "steps": 6,
+          "novelty": 0.78,
+          "supporting_memory_ids": [],
+          "proposal": {
+            "attention_backend": "flash-attn3",
+            "deterministic_eval": false,
+            "uses_memory": false,
+            "results_logging": true,
+            "selective_writeback": false,
+            "handoff_bundle": false,
+            "program_patch": [
+              "jump straight to GPU-first kernels",
+              "raise batch size without adapting for Metal memory",
+              "skip replay conditioning to maximize novelty"
+            ],
+            "artifacts": [
+              "run.log"
+            ]
+          },
+          "traits": {
+            "expected_gain": 0.76,
+            "memory_gb": 22.0,
+            "runtime_min": 5.9,
+            "reproducibility": 0.52,
+            "complexity": 0.76
+          },
+          "metrics": {
+            "success": 0.0,
+            "test_pass": 0.2,
+            "budget_pass": 0.0,
+            "compatibility": 0.0,
+            "replay_alignment": 0.0,
+            "reproducibility": 0.52,
+            "scale_readiness": 0.25,
+            "expected_gain": 0.76,
+            "novelty": 0.78,
+            "cost": 1.2,
+            "complexity": 0.76,
+            "steps": 6.0,
+            "memory_gb": 22.0,
+            "runtime_min": 5.9,
+            "required_checks": {
+              "deterministic_eval": false,
+              "replay_memory": false,
+              "mps_safe_attention": false,
+              "results_logging": true,
+              "selective_writeback": false
+            },
+            "J": -0.0899
+          }
+        }
+      ],
+      "winner": {
+        "agent": "replay-synthesizer",
+        "label": "Replay-guided local loop",
+        "strategy": "Fuse the fixed-budget logging pattern with an MPS-safe kernel plan so the next experiment starts with validated priors instead of guessing.",
+        "steps": 3,
+        "novelty": 0.41,
+        "supporting_memory_ids": [
+          "exp-deterministic-loop"
+        ],
+        "proposal": {
+          "attention_backend": "sdpa",
+          "deterministic_eval": true,
+          "uses_memory": true,
+          "results_logging": true,
+          "selective_writeback": true,
+          "handoff_bundle": false,
+          "program_patch": [
+            "reuse the fixed five-minute evaluation harness",
+            "retrieve prior experience before mutating the program",
+            "export delta_J so memory growth stays selective"
+          ],
+          "artifacts": [
+            "results.tsv",
+            "run.log",
+            "replay_summary.json"
+          ]
+        },
+        "traits": {
+          "expected_gain": 0.63,
+          "memory_gb": 15.4,
+          "runtime_min": 4.3,
+          "reproducibility": 0.89,
+          "complexity": 0.39
+        },
+        "metrics": {
+          "success": 1.0,
+          "test_pass": 1.0,
+          "budget_pass": 1.0,
+          "compatibility": 1.0,
+          "replay_alignment": 1.0,
+          "reproducibility": 0.89,
+          "scale_readiness": 0.25,
+          "expected_gain": 0.63,
+          "novelty": 0.41,
+          "cost": 0.86,
+          "complexity": 0.39,
+          "steps": 3.0,
+          "memory_gb": 15.4,
+          "runtime_min": 4.3,
+          "required_checks": {
+            "deterministic_eval": true,
+            "replay_memory": true,
+            "mps_safe_attention": true,
+            "results_logging": true,
+            "selective_writeback": true
+          },
+          "J": 3.0284
+        }
+      },
+      "delta_J": 3.618,
+      "should_write_memory": true,
+      "selection_reason": "replay-synthesizer wins because it achieves the highest J while satisfying 5/5 required checks.",
+      "new_experience": {
+        "experience_id": "exp-local-mps-bootstrap",
+        "source_task": "local-mps-bootstrap",
+        "target_device": "mps",
+        "task_signature": [
+          "autoresearch",
+          "mps",
+          "local-loop",
+          "deterministic-eval",
+          "experience-replay"
+        ],
+        "failure_pattern": "Port the default GPU experiment loop directly onto the Mac without adapting the runner.",
+        "successful_strategy": "Fuse the fixed-budget logging pattern with an MPS-safe kernel plan so the next experiment starts with validated priors instead of guessing.",
+        "tool_trace_summary": "planner -> replay-synthesizer -> deterministic evaluator -> selective write-back",
+        "delta_J": 3.618,
+        "reusable_rules": [
+          "deterministic_eval",
+          "replay_memory",
+          "mps_safe_attention",
+          "results_logging",
+          "selective_writeback"
+        ],
+        "supporting_memory_ids": [
+          "exp-deterministic-loop"
+        ]
+      },
+      "memory_before_count": 1,
+      "memory_after_count": 2
+    },
+    {
+      "task": {
+        "id": "local-replay-tighten",
+        "title": "Use replay memory to improve the second local experiment",
+        "description": "A second local task should retrieve the first successful experience, reduce mutation churn, and make the keep/discard decision more reliable on macOS.",
+        "task_signature": [
+          "autoresearch",
+          "mps",
+          "local-loop",
+          "deterministic-eval",
+          "experience-replay",
+          "selective-writeback"
+        ],
+        "profile": {
+          "target_device": "mps",
+          "memory_budget_gb": 16.0,
+          "runtime_budget_min": 4.7,
+          "must_include": [
+            "deterministic_eval",
+            "replay_memory",
+            "mps_safe_attention",
+            "results_logging",
+            "selective_writeback"
+          ],
+          "needs_handoff": false
+        },
+        "baseline": {
+          "strategy": "Carry over the local-safe defaults but still treat each run as stateless.",
+          "attention_backend": "sdpa",
+          "deterministic_eval": true,
+          "uses_memory": false,
+          "results_logging": true,
+          "selective_writeback": false,
+          "handoff_bundle": false,
+          "program_patch": [
+            "keep the MPS-safe kernel fallback",
+            "log results but do not retrieve prior experience",
+            "accept the current baseline if it does not crash"
+          ],
+          "artifacts": [
+            "results.tsv",
+            "run.log"
+          ],
+          "expected_gain": 0.46,
+          "memory_gb": 17.4,
+          "runtime_min": 4.9,
+          "reproducibility": 0.69,
+          "complexity": 0.54,
+          "steps": 4,
+          "novelty": 0.16
+        }
+      },
+      "plan": {
+        "task_id": "local-replay-tighten",
+        "objective": "A second local task should retrieve the first successful experience, reduce mutation churn, and make the keep/discard decision more reliable on macOS.",
+        "selection_policy": "maximize J(candidate; x) under deterministic evaluation and budget constraints",
+        "priority_checks": [
+          "fit mps budget",
+          "keep deterministic evaluator as the source of truth",
+          "reuse retrieved experience when it improves reliability",
+          "only write memory back when delta_J clears epsilon"
+        ],
+        "active_rules": [
+          "deterministic_eval",
+          "fixed_budget",
+          "mps_safe_attention",
+          "replay_memory",
+          "results_logging",
+          "selective_writeback"
+        ],
+        "lanes": [
+          "local-optimizer",
+          "replay-synthesizer",
+          "evolution-scout"
+        ],
+        "memory_count": 2
+      },
+      "retrieved_memories": [
+        {
+          "experience_id": "exp-local-mps-bootstrap",
+          "source_task": "local-mps-bootstrap",
+          "target_device": "mps",
+          "task_signature": [
+            "autoresearch",
+            "mps",
+            "local-loop",
+            "deterministic-eval",
+            "experience-replay"
+          ],
+          "failure_pattern": "Port the default GPU experiment loop directly onto the Mac without adapting the runner.",
+          "successful_strategy": "Fuse the fixed-budget logging pattern with an MPS-safe kernel plan so the next experiment starts with validated priors instead of guessing.",
+          "tool_trace_summary": "planner -> replay-synthesizer -> deterministic evaluator -> selective write-back",
+          "delta_J": 3.618,
+          "reusable_rules": [
+            "deterministic_eval",
+            "replay_memory",
+            "mps_safe_attention",
+            "results_logging",
+            "selective_writeback"
+          ],
+          "supporting_memory_ids": [
+            "exp-deterministic-loop"
+          ],
+          "retrieval_score": 18.0
+        },
+        {
+          "experience_id": "exp-deterministic-loop",
+          "source_task": "seed",
+          "target_device": "agnostic",
+          "task_signature": [
+            "autoresearch",
+            "deterministic-eval",
+            "results-logging"
+          ],
+          "failure_pattern": "free-form judging produced unstable keep/discard decisions",
+          "successful_strategy": "pin a fixed five-minute budget, parse run.log deterministically, and append results.tsv without committing it",
+          "tool_trace_summary": "README/program.md -> baseline run -> grep val_bpb and peak_vram_mb -> results.tsv",
+          "delta_J": 0.19,
+          "reusable_rules": [
+            "deterministic_eval",
+            "results_logging",
+            "fixed_budget"
+          ],
+          "supporting_memory_ids": [],
+          "retrieval_score": 7.19
+        }
+      ],
+      "baseline": {
+        "agent": "baseline",
+        "label": "Current baseline",
+        "strategy": "Carry over the local-safe defaults but still treat each run as stateless.",
+        "steps": 4,
+        "novelty": 0.16,
+        "supporting_memory_ids": [],
+        "proposal": {
+          "attention_backend": "sdpa",
+          "deterministic_eval": true,
+          "uses_memory": false,
+          "results_logging": true,
+          "selective_writeback": false,
+          "handoff_bundle": false,
+          "program_patch": [
+            "keep the MPS-safe kernel fallback",
+            "log results but do not retrieve prior experience",
+            "accept the current baseline if it does not crash"
+          ],
+          "artifacts": [
+            "results.tsv",
+            "run.log"
+          ]
+        },
+        "traits": {
+          "expected_gain": 0.46,
+          "memory_gb": 17.4,
+          "runtime_min": 4.9,
+          "reproducibility": 0.69,
+          "complexity": 0.54
+        },
+        "metrics": {
+          "success": 0.0,
+          "test_pass": 0.6,
+          "budget_pass": 0.0,
+          "compatibility": 1.0,
+          "replay_alignment": 0.0,
+          "reproducibility": 0.69,
+          "scale_readiness": 0.25,
+          "expected_gain": 0.46,
+          "novelty": 0.16,
+          "cost": 1.07,
+          "complexity": 0.54,
+          "steps": 4.0,
+          "memory_gb": 17.4,
+          "runtime_min": 4.9,
+          "required_checks": {
+            "deterministic_eval": true,
+            "replay_memory": false,
+            "mps_safe_attention": true,
+            "results_logging": true,
+            "selective_writeback": false
+          },
+          "J": 0.712
+        }
+      },
+      "candidates": [
+        {
+          "agent": "replay-synthesizer",
+          "label": "Experience replay flywheel",
+          "strategy": "Start from the first winning Mac memory, reduce mutation churn, and keep only changes that improve the deterministic scoreboard.",
+          "steps": 2,
+          "novelty": 0.33,
+          "supporting_memory_ids": [
+            "exp-local-mps-bootstrap",
+            "exp-deterministic-loop"
+          ],
+          "proposal": {
+            "attention_backend": "sdpa",
+            "deterministic_eval": true,
+            "uses_memory": true,
+            "results_logging": true,
+            "selective_writeback": true,
+            "handoff_bundle": false,
+            "program_patch": [
+              "retrieve the new Mac-specific experience before proposing mutations",
+              "bias the planner toward low-step candidates on MPS",
+              "write back only when delta_J beats the baseline by a real margin"
+            ],
+            "artifacts": [
+              "results.tsv",
+              "run.log",
+              "replay_summary.json",
+              "memory_diff.json"
+            ]
+          },
+          "traits": {
+            "expected_gain": 0.71,
+            "memory_gb": 13.1,
+            "runtime_min": 3.9,
+            "reproducibility": 0.93,
+            "complexity": 0.37
+          },
+          "metrics": {
+            "success": 1.0,
+            "test_pass": 1.0,
+            "budget_pass": 1.0,
+            "compatibility": 1.0,
+            "replay_alignment": 1.0,
+            "reproducibility": 0.93,
+            "scale_readiness": 0.25,
+            "expected_gain": 0.71,
+            "novelty": 0.33,
+            "cost": 0.82,
+            "complexity": 0.37,
+            "steps": 2.0,
+            "memory_gb": 13.1,
+            "runtime_min": 3.9,
+            "required_checks": {
+              "deterministic_eval": true,
+              "replay_memory": true,
+              "mps_safe_attention": true,
+              "results_logging": true,
+              "selective_writeback": true
+            },
+            "J": 3.1228
+          }
+        },
+        {
+          "agent": "local-optimizer",
+          "label": "Lean second-pass tune",
+          "strategy": "Apply the local-safe defaults but avoid the extra replay machinery, aiming for a simpler second iteration.",
+          "steps": 3,
+          "novelty": 0.2,
+          "supporting_memory_ids": [
+            "exp-local-mps-bootstrap"
+          ],
+          "proposal": {
+            "attention_backend": "sdpa",
+            "deterministic_eval": true,
+            "uses_memory": false,
+            "results_logging": true,
+            "selective_writeback": true,
+            "handoff_bundle": false,
+            "program_patch": [
+              "keep the MPS-safe attention backend",
+              "lower the search depth for the second run",
+              "reuse the results logging schema only"
+            ],
+            "artifacts": [
+              "results.tsv",
+              "run.log"
+            ]
+          },
+          "traits": {
+            "expected_gain": 0.58,
+            "memory_gb": 14.2,
+            "runtime_min": 4.1,
+            "reproducibility": 0.82,
+            "complexity": 0.31
+          },
+          "metrics": {
+            "success": 1.0,
+            "test_pass": 0.8,
+            "budget_pass": 1.0,
+            "compatibility": 1.0,
+            "replay_alignment": 0.0,
+            "reproducibility": 0.82,
+            "scale_readiness": 0.25,
+            "expected_gain": 0.58,
+            "novelty": 0.2,
+            "cost": 0.88,
+            "complexity": 0.31,
+            "steps": 3.0,
+            "memory_gb": 14.2,
+            "runtime_min": 4.1,
+            "required_checks": {
+              "deterministic_eval": true,
+              "replay_memory": false,
+              "mps_safe_attention": true,
+              "results_logging": true,
+              "selective_writeback": true
+            },
+            "J": 2.396
+          }
+        },
+        {
+          "agent": "evolution-scout",
+          "label": "Novelty-heavy fork",
+          "strategy": "Push more aggressive mutations and a larger search frontier, even if it threatens the local budget and makes review harder.",
+          "steps": 5,
+          "novelty": 0.82,
+          "supporting_memory_ids": [
+            "exp-local-mps-bootstrap",
+            "exp-deterministic-loop"
+          ],
+          "proposal": {
+            "attention_backend": "sdpa",
+            "deterministic_eval": true,
+            "uses_memory": true,
+            "results_logging": true,
+            "selective_writeback": true,
+            "handoff_bundle": false,
+            "program_patch": [
+              "increase mutation variety for the second run",
+              "explore higher-memory kernels without widening the budget",
+              "keep replay on, but accept higher complexity"
+            ],
+            "artifacts": [
+              "results.tsv",
+              "run.log",
+              "candidate_pool.json"
+            ]
+          },
+          "traits": {
+            "expected_gain": 0.79,
+            "memory_gb": 16.8,
+            "runtime_min": 4.5,
+            "reproducibility": 0.63,
+            "complexity": 0.71
+          },
+          "metrics": {
+            "success": 0.0,
+            "test_pass": 1.0,
+            "budget_pass": 0.0,
+            "compatibility": 1.0,
+            "replay_alignment": 1.0,
+            "reproducibility": 0.63,
+            "scale_readiness": 0.25,
+            "expected_gain": 0.79,
+            "novelty": 0.82,
+            "cost": 1.0,
+            "complexity": 0.71,
+            "steps": 5.0,
+            "memory_gb": 16.8,
+            "runtime_min": 4.5,
+            "required_checks": {
+              "deterministic_eval": true,
+              "replay_memory": true,
+              "mps_safe_attention": true,
+              "results_logging": true,
+              "selective_writeback": true
+            },
+            "J": 1.763
+          }
+        }
+      ],
+      "winner": {
+        "agent": "replay-synthesizer",
+        "label": "Experience replay flywheel",
+        "strategy": "Start from the first winning Mac memory, reduce mutation churn, and keep only changes that improve the deterministic scoreboard.",
+        "steps": 2,
+        "novelty": 0.33,
+        "supporting_memory_ids": [
+          "exp-local-mps-bootstrap",
+          "exp-deterministic-loop"
+        ],
+        "proposal": {
+          "attention_backend": "sdpa",
+          "deterministic_eval": true,
+          "uses_memory": true,
+          "results_logging": true,
+          "selective_writeback": true,
+          "handoff_bundle": false,
+          "program_patch": [
+            "retrieve the new Mac-specific experience before proposing mutations",
+            "bias the planner toward low-step candidates on MPS",
+            "write back only when delta_J beats the baseline by a real margin"
+          ],
+          "artifacts": [
+            "results.tsv",
+            "run.log",
+            "replay_summary.json",
+            "memory_diff.json"
+          ]
+        },
+        "traits": {
+          "expected_gain": 0.71,
+          "memory_gb": 13.1,
+          "runtime_min": 3.9,
+          "reproducibility": 0.93,
+          "complexity": 0.37
+        },
+        "metrics": {
+          "success": 1.0,
+          "test_pass": 1.0,
+          "budget_pass": 1.0,
+          "compatibility": 1.0,
+          "replay_alignment": 1.0,
+          "reproducibility": 0.93,
+          "scale_readiness": 0.25,
+          "expected_gain": 0.71,
+          "novelty": 0.33,
+          "cost": 0.82,
+          "complexity": 0.37,
+          "steps": 2.0,
+          "memory_gb": 13.1,
+          "runtime_min": 3.9,
+          "required_checks": {
+            "deterministic_eval": true,
+            "replay_memory": true,
+            "mps_safe_attention": true,
+            "results_logging": true,
+            "selective_writeback": true
+          },
+          "J": 3.1228
+        }
+      },
+      "delta_J": 2.4108,
+      "should_write_memory": true,
+      "selection_reason": "replay-synthesizer wins because it achieves the highest J while satisfying 5/5 required checks.",
+      "new_experience": {
+        "experience_id": "exp-local-replay-tighten",
+        "source_task": "local-replay-tighten",
+        "target_device": "mps",
+        "task_signature": [
+          "autoresearch",
+          "mps",
+          "local-loop",
+          "deterministic-eval",
+          "experience-replay",
+          "selective-writeback"
+        ],
+        "failure_pattern": "Carry over the local-safe defaults but still treat each run as stateless.",
+        "successful_strategy": "Start from the first winning Mac memory, reduce mutation churn, and keep only changes that improve the deterministic scoreboard.",
+        "tool_trace_summary": "planner -> replay-synthesizer -> deterministic evaluator -> selective write-back",
+        "delta_J": 2.4108,
+        "reusable_rules": [
+          "deterministic_eval",
+          "replay_memory",
+          "mps_safe_attention",
+          "results_logging",
+          "selective_writeback"
+        ],
+        "supporting_memory_ids": [
+          "exp-local-mps-bootstrap",
+          "exp-deterministic-loop"
+        ]
+      },
+      "memory_before_count": 2,
+      "memory_after_count": 3
+    },
+    {
+      "task": {
+        "id": "h200-handoff",
+        "title": "Package the winning local pattern for an H200 training lane",
+        "description": "Bridge the local flywheel into a cluster-ready experiment package that keeps deterministic evaluation, replay memory, and explicit handoff artifacts.",
+        "task_signature": [
+          "autoresearch",
+          "h200",
+          "cluster-handoff",
+          "deterministic-eval",
+          "experience-replay",
+          "evolution"
+        ],
+        "profile": {
+          "target_device": "h200",
+          "memory_budget_gb": 80.0,
+          "runtime_budget_min": 5.0,
+          "must_include": [
+            "deterministic_eval",
+            "replay_memory",
+            "results_logging",
+            "handoff_bundle",
+            "selective_writeback"
+          ],
+          "needs_handoff": true
+        },
+        "baseline": {
+          "strategy": "Copy the local program over to the cluster and hope the scale-up path is obvious.",
+          "attention_backend": "flash-attn3",
+          "deterministic_eval": true,
+          "uses_memory": false,
+          "results_logging": true,
+          "selective_writeback": false,
+          "handoff_bundle": false,
+          "program_patch": [
+            "move the local loop to H200 without a handoff package",
+            "keep results logging but skip replay retrieval",
+            "treat scale-up as an operational detail"
+          ],
+          "artifacts": [
+            "results.tsv",
+            "run.log"
+          ],
+          "expected_gain": 0.54,
+          "memory_gb": 72.0,
+          "runtime_min": 5.4,
+          "reproducibility": 0.62,
+          "complexity": 0.57,
+          "steps": 5,
+          "novelty": 0.19
+        }
+      },
+      "plan": {
+        "task_id": "h200-handoff",
+        "objective": "Bridge the local flywheel into a cluster-ready experiment package that keeps deterministic evaluation, replay memory, and explicit handoff artifacts.",
+        "selection_policy": "maximize J(candidate; x) under deterministic evaluation and budget constraints",
+        "priority_checks": [
+          "fit h200 budget",
+          "keep deterministic evaluator as the source of truth",
+          "reuse retrieved experience when it improves reliability",
+          "only write memory back when delta_J clears epsilon"
+        ],
+        "active_rules": [
+          "deterministic_eval",
+          "fixed_budget",
+          "mps_safe_attention",
+          "replay_memory",
+          "results_logging",
+          "selective_writeback"
+        ],
+        "lanes": [
+          "replay-synthesizer",
+          "scale-bridge",
+          "evolution-scout"
+        ],
+        "memory_count": 3
+      },
+      "retrieved_memories": [
+        {
+          "experience_id": "exp-local-mps-bootstrap",
+          "source_task": "local-mps-bootstrap",
+          "target_device": "mps",
+          "task_signature": [
+            "autoresearch",
+            "mps",
+            "local-loop",
+            "deterministic-eval",
+            "experience-replay"
+          ],
+          "failure_pattern": "Port the default GPU experiment loop directly onto the Mac without adapting the runner.",
+          "successful_strategy": "Fuse the fixed-budget logging pattern with an MPS-safe kernel plan so the next experiment starts with validated priors instead of guessing.",
+          "tool_trace_summary": "planner -> replay-synthesizer -> deterministic evaluator -> selective write-back",
+          "delta_J": 3.618,
+          "reusable_rules": [
+            "deterministic_eval",
+            "replay_memory",
+            "mps_safe_attention",
+            "results_logging",
+            "selective_writeback"
+          ],
+          "supporting_memory_ids": [
+            "exp-deterministic-loop"
+          ],
+          "retrieval_score": 10.0
+        },
+        {
+          "experience_id": "exp-local-replay-tighten",
+          "source_task": "local-replay-tighten",
+          "target_device": "mps",
+          "task_signature": [
+            "autoresearch",
+            "mps",
+            "local-loop",
+            "deterministic-eval",
+            "experience-replay",
+            "selective-writeback"
+          ],
+          "failure_pattern": "Carry over the local-safe defaults but still treat each run as stateless.",
+          "successful_strategy": "Start from the first winning Mac memory, reduce mutation churn, and keep only changes that improve the deterministic scoreboard.",
+          "tool_trace_summary": "planner -> replay-synthesizer -> deterministic evaluator -> selective write-back",
+          "delta_J": 2.4108,
+          "reusable_rules": [
+            "deterministic_eval",
+            "replay_memory",
+            "mps_safe_attention",
+            "results_logging",
+            "selective_writeback"
+          ],
+          "supporting_memory_ids": [
+            "exp-local-mps-bootstrap",
+            "exp-deterministic-loop"
+          ],
+          "retrieval_score": 10.0
+        },
+        {
+          "experience_id": "exp-deterministic-loop",
+          "source_task": "seed",
+          "target_device": "agnostic",
+          "task_signature": [
+            "autoresearch",
+            "deterministic-eval",
+            "results-logging"
+          ],
+          "failure_pattern": "free-form judging produced unstable keep/discard decisions",
+          "successful_strategy": "pin a fixed five-minute budget, parse run.log deterministically, and append results.tsv without committing it",
+          "tool_trace_summary": "README/program.md -> baseline run -> grep val_bpb and peak_vram_mb -> results.tsv",
+          "delta_J": 0.19,
+          "reusable_rules": [
+            "deterministic_eval",
+            "results_logging",
+            "fixed_budget"
+          ],
+          "supporting_memory_ids": [],
+          "retrieval_score": 7.19
+        }
+      ],
+      "baseline": {
+        "agent": "baseline",
+        "label": "Current baseline",
+        "strategy": "Copy the local program over to the cluster and hope the scale-up path is obvious.",
+        "steps": 5,
+        "novelty": 0.19,
+        "supporting_memory_ids": [],
+        "proposal": {
+          "attention_backend": "flash-attn3",
+          "deterministic_eval": true,
+          "uses_memory": false,
+          "results_logging": true,
+          "selective_writeback": false,
+          "handoff_bundle": false,
+          "program_patch": [
+            "move the local loop to H200 without a handoff package",
+            "keep results logging but skip replay retrieval",
+            "treat scale-up as an operational detail"
+          ],
+          "artifacts": [
+            "results.tsv",
+            "run.log"
+          ]
+        },
+        "traits": {
+          "expected_gain": 0.54,
+          "memory_gb": 72.0,
+          "runtime_min": 5.4,
+          "reproducibility": 0.62,
+          "complexity": 0.57
+        },
+        "metrics": {
+          "success": 0.0,
+          "test_pass": 0.4,
+          "budget_pass": 0.0,
+          "compatibility": 1.0,
+          "replay_alignment": 0.0,
+          "reproducibility": 0.62,
+          "scale_readiness": 0.25,
+          "expected_gain": 0.54,
+          "novelty": 0.19,
+          "cost": 0.99,
+          "complexity": 0.57,
+          "steps": 5.0,
+          "memory_gb": 72.0,
+          "runtime_min": 5.4,
+          "required_checks": {
+            "deterministic_eval": true,
+            "replay_memory": false,
+            "results_logging": true,
+            "handoff_bundle": false,
+            "selective_writeback": false
+          },
+          "J": 0.583
+        }
+      },
+      "candidates": [
+        {
+          "agent": "scale-bridge",
+          "label": "Local-to-H200 handoff",
+          "strategy": "Package the winning local pattern into a cluster-ready experiment bundle, swap in H200-capable kernels, and preserve the same deterministic keep/discard policy.",
+          "steps": 4,
+          "novelty": 0.51,
+          "supporting_memory_ids": [
+            "exp-local-mps-bootstrap",
+            "exp-local-replay-tighten",
+            "exp-deterministic-loop"
+          ],
+          "proposal": {
+            "attention_backend": "flash-attn3",
+            "deterministic_eval": true,
+            "uses_memory": true,
+            "results_logging": true,
+            "selective_writeback": true,
+            "handoff_bundle": true,
+            "program_patch": [
+              "export the validated local strategy as a cluster handoff bundle",
+              "switch to FlashAttention-3 only on the H200 lane",
+              "keep replay memory and results.tsv compatible across devices"
+            ],
+            "artifacts": [
+              "results.tsv",
+              "run.log",
+              "handoff_bundle.tar",
+              "cluster_plan.yaml"
+            ]
+          },
+          "traits": {
+            "expected_gain": 0.83,
+            "memory_gb": 76.0,
+            "runtime_min": 4.7,
+            "reproducibility": 0.9,
+            "complexity": 0.48
+          },
+          "metrics": {
+            "success": 1.0,
+            "test_pass": 1.0,
+            "budget_pass": 1.0,
+            "compatibility": 1.0,
+            "replay_alignment": 1.0,
+            "reproducibility": 0.9,
+            "scale_readiness": 1.0,
+            "expected_gain": 0.83,
+            "novelty": 0.51,
+            "cost": 0.95,
+            "complexity": 0.48,
+            "steps": 4.0,
+            "memory_gb": 76.0,
+            "runtime_min": 4.7,
+            "required_checks": {
+              "deterministic_eval": true,
+              "replay_memory": true,
+              "results_logging": true,
+              "handoff_bundle": true,
+              "selective_writeback": true
+            },
+            "J": 3.333
+          }
+        },
+        {
+          "agent": "replay-synthesizer",
+          "label": "Conservative cluster bridge",
+          "strategy": "Carry the local replay policy forward, but stay close to the Mac setup and avoid changing the runtime envelope too much.",
+          "steps": 4,
+          "novelty": 0.29,
+          "supporting_memory_ids": [
+            "exp-local-mps-bootstrap",
+            "exp-local-replay-tighten",
+            "exp-deterministic-loop"
+          ],
+          "proposal": {
+            "attention_backend": "sdpa",
+            "deterministic_eval": true,
+            "uses_memory": true,
+            "results_logging": true,
+            "selective_writeback": true,
+            "handoff_bundle": false,
+            "program_patch": [
+              "reuse the local replay recipe on the cluster",
+              "keep the evaluator and results logging fixed",
+              "avoid packaging a full handoff bundle yet"
+            ],
+            "artifacts": [
+              "results.tsv",
+              "run.log",
+              "replay_summary.json"
+            ]
+          },
+          "traits": {
+            "expected_gain": 0.66,
+            "memory_gb": 54.0,
+            "runtime_min": 4.8,
+            "reproducibility": 0.91,
+            "complexity": 0.35
+          },
+          "metrics": {
+            "success": 1.0,
+            "test_pass": 0.8,
+            "budget_pass": 1.0,
+            "compatibility": 1.0,
+            "replay_alignment": 1.0,
+            "reproducibility": 0.91,
+            "scale_readiness": 0.25,
+            "expected_gain": 0.66,
+            "novelty": 0.29,
+            "cost": 0.82,
+            "complexity": 0.35,
+            "steps": 4.0,
+            "memory_gb": 54.0,
+            "runtime_min": 4.8,
+            "required_checks": {
+              "deterministic_eval": true,
+              "replay_memory": true,
+              "results_logging": true,
+              "handoff_bundle": false,
+              "selective_writeback": true
+            },
+            "J": 2.8735
+          }
+        },
+        {
+          "agent": "evolution-scout",
+          "label": "Max-novelty cluster leap",
+          "strategy": "Aim for the biggest jump on H200 by increasing mutation breadth and heavier kernels immediately, even if the experiment becomes harder to trust.",
+          "steps": 6,
+          "novelty": 0.88,
+          "supporting_memory_ids": [],
+          "proposal": {
+            "attention_backend": "flash-attn3",
+            "deterministic_eval": false,
+            "uses_memory": false,
+            "results_logging": false,
+            "selective_writeback": false,
+            "handoff_bundle": true,
+            "program_patch": [
+              "expand the mutation frontier aggressively",
+              "skip replay conditioning and deterministic gating",
+              "optimize only for upside on the H200 lane"
+            ],
+            "artifacts": [
+              "cluster_plan.yaml"
+            ]
+          },
+          "traits": {
+            "expected_gain": 0.92,
+            "memory_gb": 82.0,
+            "runtime_min": 5.3,
+            "reproducibility": 0.74,
+            "complexity": 0.83
+          },
+          "metrics": {
+            "success": 0.0,
+            "test_pass": 0.2,
+            "budget_pass": 0.0,
+            "compatibility": 1.0,
+            "replay_alignment": 0.0,
+            "reproducibility": 0.74,
+            "scale_readiness": 1.0,
+            "expected_gain": 0.92,
+            "novelty": 0.88,
+            "cost": 1.04,
+            "complexity": 0.83,
+            "steps": 6.0,
+            "memory_gb": 82.0,
+            "runtime_min": 5.3,
+            "required_checks": {
+              "deterministic_eval": false,
+              "replay_memory": false,
+              "results_logging": false,
+              "handoff_bundle": true,
+              "selective_writeback": false
+            },
+            "J": 0.9905
+          }
+        }
+      ],
+      "winner": {
+        "agent": "scale-bridge",
+        "label": "Local-to-H200 handoff",
+        "strategy": "Package the winning local pattern into a cluster-ready experiment bundle, swap in H200-capable kernels, and preserve the same deterministic keep/discard policy.",
+        "steps": 4,
+        "novelty": 0.51,
+        "supporting_memory_ids": [
+          "exp-local-mps-bootstrap",
+          "exp-local-replay-tighten",
+          "exp-deterministic-loop"
+        ],
+        "proposal": {
+          "attention_backend": "flash-attn3",
+          "deterministic_eval": true,
+          "uses_memory": true,
+          "results_logging": true,
+          "selective_writeback": true,
+          "handoff_bundle": true,
+          "program_patch": [
+            "export the validated local strategy as a cluster handoff bundle",
+            "switch to FlashAttention-3 only on the H200 lane",
+            "keep replay memory and results.tsv compatible across devices"
+          ],
+          "artifacts": [
+            "results.tsv",
+            "run.log",
+            "handoff_bundle.tar",
+            "cluster_plan.yaml"
+          ]
+        },
+        "traits": {
+          "expected_gain": 0.83,
+          "memory_gb": 76.0,
+          "runtime_min": 4.7,
+          "reproducibility": 0.9,
+          "complexity": 0.48
+        },
+        "metrics": {
+          "success": 1.0,
+          "test_pass": 1.0,
+          "budget_pass": 1.0,
+          "compatibility": 1.0,
+          "replay_alignment": 1.0,
+          "reproducibility": 0.9,
+          "scale_readiness": 1.0,
+          "expected_gain": 0.83,
+          "novelty": 0.51,
+          "cost": 0.95,
+          "complexity": 0.48,
+          "steps": 4.0,
+          "memory_gb": 76.0,
+          "runtime_min": 4.7,
+          "required_checks": {
+            "deterministic_eval": true,
+            "replay_memory": true,
+            "results_logging": true,
+            "handoff_bundle": true,
+            "selective_writeback": true
+          },
+          "J": 3.333
+        }
+      },
+      "delta_J": 2.75,
+      "should_write_memory": true,
+      "selection_reason": "scale-bridge wins because it achieves the highest J while satisfying 5/5 required checks.",
+      "new_experience": {
+        "experience_id": "exp-h200-handoff",
+        "source_task": "h200-handoff",
+        "target_device": "h200",
+        "task_signature": [
+          "autoresearch",
+          "h200",
+          "cluster-handoff",
+          "deterministic-eval",
+          "experience-replay",
+          "evolution"
+        ],
+        "failure_pattern": "Copy the local program over to the cluster and hope the scale-up path is obvious.",
+        "successful_strategy": "Package the winning local pattern into a cluster-ready experiment bundle, swap in H200-capable kernels, and preserve the same deterministic keep/discard policy.",
+        "tool_trace_summary": "planner -> scale-bridge -> deterministic evaluator -> selective write-back",
+        "delta_J": 2.75,
+        "reusable_rules": [
+          "deterministic_eval",
+          "replay_memory",
+          "results_logging",
+          "handoff_bundle",
+          "selective_writeback"
+        ],
+        "supporting_memory_ids": [
+          "exp-local-mps-bootstrap",
+          "exp-local-replay-tighten",
+          "exp-deterministic-loop"
+        ]
+      },
+      "memory_before_count": 3,
+      "memory_after_count": 4
+    }
+  ]
+}

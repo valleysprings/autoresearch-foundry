@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.DS_Store
+external/
+runs/working_memory.json
