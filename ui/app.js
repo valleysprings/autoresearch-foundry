@@ -7,147 +7,124 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
-function renderChips(items, className = 'pill') {
-  return items.map(item => `<span class="${className}">${escapeHtml(item)}</span>`).join('');
-}
-
-function renderKeyValueMetrics(metrics) {
-  const entries = [
-    ['J', metrics.J],
-    ['Expected gain', metrics.expected_gain],
-    ['Replay', metrics.replay_alignment],
-    ['Repro', metrics.reproducibility],
-    ['Memory GB', metrics.memory_gb],
-    ['Runtime min', metrics.runtime_min],
-  ];
-
-  return entries.map(([label, value]) => `
+function metric(label, value) {
+  return `
     <div class="metric">
       <div class="metric-label">${escapeHtml(label)}</div>
       <div class="metric-value">${escapeHtml(value)}</div>
     </div>
-  `).join('');
+  `;
 }
 
-function renderChecks(checks) {
-  return Object.entries(checks).map(([rule, passed]) => `
-    <li>${escapeHtml(rule)}: <strong>${passed ? 'pass' : 'miss'}</strong></li>
-  `).join('');
-}
-
-function renderMemory(memories) {
-  if (!memories.length) {
-    return '<p class="muted">No matching experience retrieved for this task.</p>';
-  }
-
+function renderSummary(summary) {
   return `
-    <ul class="memory-list">
-      ${memories.map(memory => `
-        <li>
-          <strong>${escapeHtml(memory.experience_id)}</strong><br />
-          <span class="small">${escapeHtml(memory.successful_strategy)}</span><br />
-          <span class="small">score ${escapeHtml(memory.retrieval_score)} · delta_J ${escapeHtml(memory.delta_J)}</span>
-        </li>
-      `).join('')}
-    </ul>
+    <section class="panel">
+      <div class="summary-grid">
+        <article class="summary-card">
+          <div class="small">tasks in current run</div>
+          <div class="summary-value">${escapeHtml(summary.num_tasks)}</div>
+        </article>
+        <article class="summary-card">
+          <div class="small">memory growth</div>
+          <div class="summary-value">${escapeHtml(summary.initial_memory_count)} -> ${escapeHtml(summary.memory_size_after_run)}</div>
+        </article>
+        <article class="summary-card">
+          <div class="small">write backs</div>
+          <div class="summary-value">${escapeHtml(summary.write_backs)}</div>
+        </article>
+      </div>
+    </section>
+  `;
+}
+
+function renderTaskCatalog(taskCatalog, activeTaskId) {
+  return `
+    <section class="panel">
+      <div class="eyebrow">tasks</div>
+      <h2>Runnable local tasks</h2>
+      <p class="muted">Each task loads a real baseline Python function, evaluates candidate mutations, and writes memory only if the winner actually beats the baseline.</p>
+      <div class="task-list">
+        ${taskCatalog.map(task => `
+          <article class="task-card">
+            <button class="task-button ${task.id === activeTaskId ? 'active' : ''}" data-task="${escapeHtml(task.id)}">Run ${escapeHtml(task.id)}</button>
+            <h3>${escapeHtml(task.title)}</h3>
+            <p class="muted">${escapeHtml(task.description)}</p>
+            <div class="small">${escapeHtml(task.baseline_path)}</div>
+          </article>
+        `).join('')}
+      </div>
+    </section>
   `;
 }
 
 function renderCandidate(candidate, winnerAgent) {
   const isWinner = candidate.agent === winnerAgent;
-  const supportIds = candidate.supporting_memory_ids.length
-    ? renderChips(candidate.supporting_memory_ids, 'pill good')
-    : '<span class="pill warn">no replay support</span>';
+  const benchmarkValue = candidate.metrics.benchmark_ms === null ? 'n/a' : `${candidate.metrics.benchmark_ms} ms`;
+  const speedupValue = candidate.metrics.speedup_vs_baseline === 0 ? 'n/a' : `${candidate.metrics.speedup_vs_baseline}x`;
+  const memoryBadge = candidate.supporting_memory_ids.length
+    ? `<span class="pill good">memory: ${escapeHtml(candidate.supporting_memory_ids.join(', '))}</span>`
+    : `<span class="pill warn">no memory support</span>`;
 
   return `
     <article class="candidate-card ${isWinner ? 'winner' : ''}">
-      <div class="chip">${isWinner ? 'winner' : 'candidate'} · ${escapeHtml(candidate.agent)}</div>
+      <div class="pill ${isWinner ? 'good' : ''}">${isWinner ? 'winner' : 'candidate'} · ${escapeHtml(candidate.agent)}</div>
       <h3>${escapeHtml(candidate.label)}</h3>
-      <p class="body-text">${escapeHtml(candidate.strategy)}</p>
-      <div class="metric-row">
-        ${renderKeyValueMetrics(candidate.metrics)}
+      <p class="muted">${escapeHtml(candidate.strategy)}</p>
+      <div class="metric-grid">
+        ${metric('J', candidate.metrics.J)}
+        ${metric('benchmark', benchmarkValue)}
+        ${metric('speedup', speedupValue)}
+        ${metric('tests', `${candidate.metrics.passed_tests}/${candidate.metrics.total_tests}`)}
+        ${metric('stability', candidate.metrics.stability)}
+        ${metric('lines', candidate.metrics.line_count)}
       </div>
-      <div class="score-strip">
-        <div class="score-card"><span class="small">compatibility</span><strong>${escapeHtml(candidate.metrics.compatibility)}</strong></div>
-        <div class="score-card"><span class="small">budget</span><strong>${escapeHtml(candidate.metrics.budget_pass)}</strong></div>
-        <div class="score-card"><span class="small">test pass</span><strong>${escapeHtml(candidate.metrics.test_pass)}</strong></div>
-      </div>
-      <h4>Program patch</h4>
-      <ul class="patch-list">
-        ${candidate.proposal.program_patch.map(line => `<li>${escapeHtml(line)}</li>`).join('')}
+      <div class="toolbar">${memoryBadge}</div>
+      <ul class="list">
+        ${candidate.notes.map(note => `<li>${escapeHtml(note)}</li>`).join('')}
       </ul>
-      <h4>Artifacts</h4>
-      <ul class="artifact-list">
-        ${candidate.proposal.artifacts.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
-      </ul>
-      <h4>Replay support</h4>
-      <div class="pill-row">${supportIds}</div>
-      <h4>Required checks</h4>
-      <ul class="check-list">
-        ${renderChecks(candidate.metrics.required_checks)}
-      </ul>
+      <pre class="code-block"><code>${escapeHtml(candidate.code)}</code></pre>
     </article>
   `;
 }
 
-function renderRun(run, index) {
+function renderRun(run) {
+  const baselineBenchmark = run.baseline.metrics.benchmark_ms === null ? 'n/a' : `${run.baseline.metrics.benchmark_ms} ms`;
   return `
-    <section class="panel run-section">
-      <div class="run-header">
-        <div>
-          <div class="eyebrow">task ${index + 1} · ${escapeHtml(run.task.profile.target_device)}</div>
-          <h2 class="task-title">${escapeHtml(run.task.title)}</h2>
-          <p class="body-text">${escapeHtml(run.task.description)}</p>
-        </div>
-        <div>
-          <div class="winner-banner">${escapeHtml(run.winner.agent)} selected</div>
-          <div class="small">delta_J ${escapeHtml(run.delta_J)} · memory ${escapeHtml(run.memory_before_count)} -> ${escapeHtml(run.memory_after_count)}</div>
-        </div>
+    <section class="panel stack">
+      <div>
+        <div class="eyebrow">${escapeHtml(run.task.id)}</div>
+        <h2>${escapeHtml(run.task.title)}</h2>
+        <p class="muted">${escapeHtml(run.task.description)}</p>
       </div>
 
       <div class="run-grid">
-        <article class="task-block">
-          <h3 class="section-title">Retrieved Experience</h3>
-          <p class="muted">${escapeHtml(run.plan.selection_policy)}</p>
-          ${renderMemory(run.retrieved_memories)}
-        </article>
-
-        <article class="task-block">
-          <h3 class="section-title">Planner</h3>
-          <p class="body-text">${escapeHtml(run.plan.objective)}</p>
-          <div class="pill-row">${renderChips(run.plan.active_rules.length ? run.plan.active_rules : ['no active rules yet'])}</div>
-          <ul class="patch-list">
-            ${run.plan.priority_checks.map(line => `<li>${escapeHtml(line)}</li>`).join('')}
-          </ul>
-        </article>
-
-        <article class="task-block">
-          <h3 class="section-title">Baseline vs Write-back</h3>
-          <p class="muted">${escapeHtml(run.selection_reason)}</p>
-          <div class="baseline-grid">
-            <div class="score-card">
-              <span class="small">baseline J</span>
-              <strong>${escapeHtml(run.baseline.metrics.J)}</strong>
-            </div>
-            <div class="score-card">
-              <span class="small">winner J</span>
-              <strong>${escapeHtml(run.winner.metrics.J)}</strong>
-            </div>
-            <div class="score-card">
-              <span class="small">write back</span>
-              <strong>${escapeHtml(run.should_write_memory)}</strong>
-            </div>
+        <article class="code-card">
+          <h3>Baseline</h3>
+          <p class="muted">${escapeHtml(run.task.baseline_path)}</p>
+          <div class="metric-grid">
+            ${metric('baseline J', run.baseline.metrics.J)}
+            ${metric('benchmark', baselineBenchmark)}
+            ${metric('tests', `${run.baseline.metrics.passed_tests}/${run.baseline.metrics.total_tests}`)}
           </div>
-          <h4>New experience</h4>
-          ${
-            run.new_experience
-              ? `<ul class="memory-list">
-                  <li><strong>${escapeHtml(run.new_experience.experience_id)}</strong><br /><span class="small">${escapeHtml(run.new_experience.successful_strategy)}</span></li>
-                  <li>failure pattern: ${escapeHtml(run.new_experience.failure_pattern)}</li>
-                  <li>rules: ${escapeHtml(run.new_experience.reusable_rules.join(', '))}</li>
-                </ul>`
-              : '<p class="muted">No new experience was added for this task.</p>'
-          }
+          <pre class="code-block"><code>${escapeHtml(run.baseline.code)}</code></pre>
+        </article>
+
+        <article class="code-card">
+          <h3>Selection</h3>
+          <p>${escapeHtml(run.selection_reason)}</p>
+          <div class="metric-grid">
+            ${metric('delta_J', run.delta_J)}
+            ${metric('memory', `${run.memory_before_count} -> ${run.memory_after_count}`)}
+            ${metric('write back', run.should_write_memory)}
+          </div>
+          <h3 style="margin-top:16px;">Retrieved memory</h3>
+          <ul class="list">
+            ${run.retrieved_memories.map(memory => `
+              <li>
+                <strong>${escapeHtml(memory.experience_id)}</strong>: ${escapeHtml(memory.successful_strategy)}
+              </li>
+            `).join('') || '<li>No retrieved memory.</li>'}
+          </ul>
         </article>
       </div>
 
@@ -158,103 +135,91 @@ function renderRun(run, index) {
   `;
 }
 
-function renderApp(data) {
-  const winnerMix = Object.entries(data.summary.winner_agents)
-    .map(([agent, count]) => `<span class="pill good">${escapeHtml(agent)} × ${escapeHtml(count)}</span>`)
-    .join('');
-
+function renderApp(data, activeTaskId) {
   return `
-    <section class="panel hero">
-      <div class="hero-top">
-        <div class="hero-copy">
-          <div class="eyebrow">local-first autoresearch flywheel</div>
-          <h1>macOS research loops that write back only validated experience.</h1>
-          <p>
-            This demo merges the fixed-budget experiment style of autoresearch, the Apple Silicon constraints
-            of the macOS fork, and OpenEvolve-style proposal competition into one deterministic local prototype.
-          </p>
+    <section class="panel">
+      <div class="header-grid">
+        <div>
+          <div class="eyebrow">real local runner</div>
+          <h1>Task definitions that actually execute.</h1>
+          <p class="muted">This page is no longer a blueprint. It runs concrete Python optimization tasks on your Mac, benchmarks the candidates, and stores the winning strategy as reusable experience.</p>
+          <div class="toolbar">
+            <button class="action-button primary" id="run-sequence">Run full sequence</button>
+            <span class="small">generated at ${escapeHtml(data.summary.generated_at)}</span>
+          </div>
         </div>
-        <div class="mini-card">
-          <div class="small">generated</div>
-          <strong>${escapeHtml(data.summary.generated_at)}</strong>
+        <div class="summary-card">
+          <div class="small">flywheel</div>
+          <ul class="list">
+            ${data.summary.flywheel.map(step => `<li>${escapeHtml(step)}</li>`).join('')}
+          </ul>
         </div>
-      </div>
-
-      <div class="hero-stats">
-        <div class="stat-card">
-          <div class="small">tasks</div>
-          <div class="stat-value">${escapeHtml(data.summary.num_tasks)}</div>
-        </div>
-        <div class="stat-card">
-          <div class="small">memory growth</div>
-          <div class="stat-value">${escapeHtml(data.summary.initial_memory_count)} -> ${escapeHtml(data.summary.memory_size_after_run)}</div>
-        </div>
-        <div class="stat-card">
-          <div class="small">write-backs</div>
-          <div class="stat-value">${escapeHtml(data.summary.write_backs)}</div>
-        </div>
-      </div>
-
-      <div>
-        <div class="small">flywheel</div>
-        <div class="flywheel">
-          ${data.summary.flywheel.map(step => `<div class="flywheel-step">${escapeHtml(step)}</div>`).join('')}
-        </div>
-      </div>
-
-      <div>
-        <div class="small">winner mix</div>
-        <div class="pill-row">${winnerMix}</div>
       </div>
     </section>
 
-    <section class="panel run-section">
-      <h2 class="section-title">Roadmap</h2>
-      <div class="roadmap">
-        ${data.roadmap.map(item => `
-          <article class="roadmap-card">
-            <span class="eyebrow">${escapeHtml(item.status)}</span>
-            <strong>${escapeHtml(item.phase)}</strong>
-            <span>${escapeHtml(item.detail)}</span>
-          </article>
-        `).join('')}
-      </div>
-    </section>
-
-    <section class="panel run-section">
-      <h2 class="section-title">Reference Mapping</h2>
-      <div class="reference-grid">
-        ${data.reference_mapping.map(item => `
-          <article class="mini-card">
-            <strong>${escapeHtml(item.source)}</strong>
-            <span>${escapeHtml(item.takeaway)}</span>
-          </article>
-        `).join('')}
-      </div>
-    </section>
-
+    ${renderSummary(data.summary)}
+    ${renderTaskCatalog(data.task_catalog, activeTaskId)}
     ${data.runs.map(renderRun).join('')}
-
-    <p class="footer-note">The frontend is intentionally read-only. The backend generates the latest run artifact and the UI renders the flywheel for review.</p>
   `;
+}
+
+async function fetchJson(url, options) {
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    throw new Error(`request failed with status ${response.status}`);
+  }
+  return response.json();
+}
+
+async function loadTask(taskId) {
+  return fetchJson(`/api/latest-run?task_id=${encodeURIComponent(taskId)}`);
+}
+
+async function runTask(taskId) {
+  return fetchJson(`/api/run-task?task_id=${encodeURIComponent(taskId)}`, { method: 'POST' });
+}
+
+async function runSequence() {
+  return fetchJson('/api/run-sequence', { method: 'POST' });
 }
 
 async function main() {
   const root = document.getElementById('app');
-  const res = await fetch('/api/latest-run');
-  if (!res.ok) {
-    throw new Error(`Request failed with status ${res.status}`);
+  let activeTaskId = 'contains-duplicates';
+  let data = await loadTask(activeTaskId);
+
+  async function repaint(nextData) {
+    data = nextData;
+    root.innerHTML = renderApp(data, activeTaskId);
+
+    const taskButtons = root.querySelectorAll('[data-task]');
+    for (const button of taskButtons) {
+      button.addEventListener('click', async () => {
+        activeTaskId = button.getAttribute('data-task');
+        root.innerHTML = '<section class="loading-panel"><p class="eyebrow">running</p><h1>Executing selected task...</h1></section>';
+        repaint(await runTask(activeTaskId));
+      });
+    }
+
+    const sequenceButton = root.querySelector('#run-sequence');
+    if (sequenceButton) {
+      sequenceButton.addEventListener('click', async () => {
+        root.innerHTML = '<section class="loading-panel"><p class="eyebrow">running</p><h1>Executing full sequence...</h1></section>';
+        activeTaskId = '';
+        repaint(await runSequence());
+      });
+    }
   }
-  const data = await res.json();
-  root.innerHTML = renderApp(data);
+
+  await repaint(data);
 }
 
 main().catch(error => {
   document.getElementById('app').innerHTML = `
-    <section class="panel loading-panel">
+    <section class="loading-panel">
       <p class="eyebrow">load failure</p>
-      <h1>Failed to load the latest flywheel artifact.</h1>
-      <p class="body-text">${escapeHtml(error)}</p>
+      <h1>Failed to load the task runner.</h1>
+      <p class="muted">${escapeHtml(error)}</p>
     </section>
   `;
 });

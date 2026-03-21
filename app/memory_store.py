@@ -25,25 +25,24 @@ class MemoryStore:
 
     def retrieve(
         self,
+        *,
         task_signature: list[str],
-        target_device: str,
+        family: str,
         top_k: int = 3,
     ) -> list[dict[str, Any]]:
         scored: list[tuple[float, dict[str, Any]]] = []
         target = set(task_signature)
-
         for item in self.load():
             overlap = len(target & set(item.get("task_signature", [])))
-            device = item.get("target_device", "agnostic")
-            device_bonus = 2.0 if device == target_device else 1.0 if device == "agnostic" else 0.0
+            family_name = item.get("family", "agnostic")
+            family_bonus = 2.0 if family_name == family else 1.0 if family_name == "agnostic" else 0.0
             impact_bonus = min(float(item.get("delta_J", 0.0)), 1.0)
-            score = overlap * 3.0 + device_bonus + impact_bonus
+            score = overlap * 3.0 + family_bonus + impact_bonus
             if score <= 0:
                 continue
             enriched = dict(item)
             enriched["retrieval_score"] = round(score, 3)
             scored.append((score, enriched))
-
         scored.sort(key=lambda pair: (pair[0], pair[1].get("delta_J", 0.0)), reverse=True)
         return [item for _, item in scored[:top_k]]
 

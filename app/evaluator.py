@@ -1,90 +1,146 @@
 from __future__ import annotations
 
+import statistics
+import time
 from typing import Any
 
 
-DEVICE_BACKENDS = {
-    "mps": {"sdpa", "metal-sdpa"},
-    "h200": {"sdpa", "flash-attn3"},
-    "cpu": {"sdpa"},
-}
+def _compile_function(code: str, function_name: str):
+    namespace: dict[str, Any] = {}
+    exec(compile(code, f"<{function_name}>", "exec"), namespace)
+    function = namespace.get(function_name)
+    if not callable(function):
+        raise ValueError(f"{function_name} was not defined by the candidate")
+    return function
 
 
-def _supports(rule: str, candidate: dict[str, Any], task: dict[str, Any]) -> bool:
-    proposal = candidate["proposal"]
-    target_device = task["profile"]["target_device"]
+def _benchmark_args(kind: str) -> tuple[Any, ...]:
+    if kind == "contains_duplicates":
+        values = list(range(1200))
+        return (values,)
+    if kind == "first_repeated_value":
+        values = list(range(1400))
+        values[1120] = values[240]
+        return (values,)
+    if kind == "has_overlap":
+        left = list(range(400))
+        right = list(range(2400, 3600))
+        right[960] = 215
+        return (left, right)
+    raise ValueError(f"Unknown benchmark kind: {kind}")
 
-    checks = {
-        "deterministic_eval": proposal.get("deterministic_eval", False),
-        "replay_memory": proposal.get("uses_memory", False),
-        "mps_safe_attention": proposal.get("attention_backend") in DEVICE_BACKENDS["mps"],
-        "results_logging": proposal.get("results_logging", False),
-        "handoff_bundle": proposal.get("handoff_bundle", False),
-        "selective_writeback": proposal.get("selective_writeback", False),
-        "device_compatible": proposal.get("attention_backend") in DEVICE_BACKENDS.get(target_device, {"sdpa"}),
-    }
-    return bool(checks.get(rule, False))
+
+def _run_tests(function, tests: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    results = []
+    for test in tests:
+        args = test["args"]
+        actual = function(*args)
+        results.append(
+            {
+                "name": test["name"],
+                "expected": test["expected"],
+                "actual": actual,
+                "passed": actual == test["expected"],
+            }
+        )
+    return results
 
 
-def evaluate(candidate: dict[str, Any], task: dict[str, Any]) -> dict[str, Any]:
-    profile = task["profile"]
-    traits = candidate["traits"]
-    proposal = candidate["proposal"]
+def evaluate_program(
+    *,
+    code: str,
+    function_name: str,
+    tests: list[dict[str, Any]],
+    benchmark: dict[str, Any],
+    baseline_ms: float | None,
+    complexity: float,
+    memory_applied: bool,
+) -> dict[str, Any]:
+    try:
+        function = _compile_function(code, function_name)
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "status": "error",
+            "correctness": 0.0,
+            "passed_tests": 0,
+            "total_tests": len(tests),
+            "benchmark_ms": None,
+            "benchmark_samples_ms": [],
+            "speedup_vs_baseline": 0.0,
+            "stability": 0.0,
+            "complexity": round(complexity, 2),
+            "line_count": _line_count(code),
+            "error": str(exc),
+            "J": -1.0,
+        }
 
-    memory_budget = float(profile["memory_budget_gb"])
-    runtime_budget = float(profile["runtime_budget_min"])
-    required_rules = profile.get("must_include", [])
+    test_results = _run_tests(function, tests)
+    passed_tests = sum(1 for item in test_results if item["passed"])
+    total_tests = len(test_results)
+    correctness = 1.0 if passed_tests == total_tests else 0.0
 
-    compatibility = proposal.get("attention_backend") in DEVICE_BACKENDS.get(profile["target_device"], {"sdpa"})
-    budget_pass = traits["memory_gb"] <= memory_budget and traits["runtime_min"] <= runtime_budget
-    required_checks = {rule: _supports(rule, candidate, task) for rule in required_rules}
-    must_include_score = (
-        sum(1.0 for passed in required_checks.values() if passed) / len(required_checks)
-        if required_checks
+    if not correctness:
+        return {
+            "status": "fail",
+            "correctness": correctness,
+            "passed_tests": passed_tests,
+            "total_tests": total_tests,
+            "benchmark_ms": None,
+            "benchmark_samples_ms": [],
+            "speedup_vs_baseline": 0.0,
+            "stability": 0.0,
+            "complexity": round(complexity, 2),
+            "line_count": _line_count(code),
+            "test_results": test_results,
+            "error": None,
+            "J": round(0.45 - 0.25 * complexity, 4),
+        }
+
+    samples = []
+    benchmark_args = _benchmark_args(benchmark["kind"])
+    repeats = int(benchmark.get("repeats", 10))
+    for _ in range(3):
+        start = time.perf_counter()
+        for _ in range(repeats):
+            function(*benchmark_args)
+        elapsed_ms = (time.perf_counter() - start) * 1000.0
+        samples.append(elapsed_ms)
+
+    benchmark_ms = statistics.median(samples)
+    speedup = (
+        baseline_ms / benchmark_ms
+        if baseline_ms is not None and benchmark_ms > 0
         else 1.0
     )
-
-    replay_alignment = 1.0 if proposal.get("uses_memory") and candidate.get("supporting_memory_ids") else 0.0
-    scale_readiness = 1.0 if proposal.get("handoff_bundle") else 0.25
-    expected_gain = float(traits["expected_gain"])
-    reproducibility = float(traits["reproducibility"])
-    novelty = float(candidate.get("novelty", 0.0))
-    complexity = float(traits["complexity"])
-    steps = float(candidate.get("steps", 1.0))
-    cost = ((traits["memory_gb"] / memory_budget) + (traits["runtime_min"] / runtime_budget)) / 2.0
-    unsupported_penalty = 0.0 if compatibility else 1.0
-    step_penalty = steps / 10.0
-
-    success = 1.0 if budget_pass and compatibility and proposal.get("deterministic_eval") else 0.0
+    stability = min(samples) / max(samples) if max(samples) > 0 else 1.0
+    line_count = _line_count(code)
+    speed_score = min(speedup, 8.0) / 8.0
+    memory_bonus = 1.0 if memory_applied else 0.0
     score = (
-        1.20 * success
-        + 0.90 * must_include_score
-        + 0.80 * expected_gain
-        + 0.45 * reproducibility
-        + 0.35 * replay_alignment
-        + 0.25 * scale_readiness
-        + 0.20 * novelty
-        - 0.40 * cost
-        - 0.25 * complexity
-        - 0.10 * step_penalty
-        - 0.60 * unsupported_penalty
+        1.20 * correctness
+        + 0.95 * speed_score
+        + 0.20 * memory_bonus
+        + 0.15 * stability
+        - 0.18 * complexity
+        - 0.05 * (line_count / 10.0)
     )
 
     return {
-        "success": round(success, 2),
-        "test_pass": round(must_include_score, 2),
-        "budget_pass": round(1.0 if budget_pass else 0.0, 2),
-        "compatibility": round(1.0 if compatibility else 0.0, 2),
-        "replay_alignment": round(replay_alignment, 2),
-        "reproducibility": round(reproducibility, 2),
-        "scale_readiness": round(scale_readiness, 2),
-        "expected_gain": round(expected_gain, 2),
-        "novelty": round(novelty, 2),
-        "cost": round(cost, 2),
+        "status": "pass",
+        "correctness": correctness,
+        "passed_tests": passed_tests,
+        "total_tests": total_tests,
+        "benchmark_ms": round(benchmark_ms, 3),
+        "benchmark_samples_ms": [round(sample, 3) for sample in samples],
+        "speedup_vs_baseline": round(speedup, 3),
+        "stability": round(stability, 3),
         "complexity": round(complexity, 2),
-        "steps": round(steps, 2),
-        "memory_gb": round(float(traits["memory_gb"]), 2),
-        "runtime_min": round(float(traits["runtime_min"]), 2),
-        "required_checks": required_checks,
+        "line_count": line_count,
+        "test_results": test_results,
+        "error": None,
         "J": round(score, 4),
     }
+
+
+def _line_count(code: str) -> int:
+    return sum(1 for line in code.splitlines() if line.strip())

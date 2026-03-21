@@ -2,23 +2,35 @@
 
 A local-first autoresearch flywheel that borrows the fixed-budget experiment loop from `karpathy/autoresearch`, the Apple Silicon execution posture from `autoresearch-macos`, and the candidate-selection pressure of `openevolve`.
 
-The demo does not try to train a real model yet. Instead it simulates the part we need to prove first:
+The project now runs concrete local tasks instead of only rendering a blueprint:
 
-`task -> retrieved experience -> competing experiment proposals -> deterministic evaluation -> winner selection -> selective write-back`
+`baseline Python program -> candidate mutations -> fixed tests -> benchmark -> winner selection -> selective memory write-back`
 
-That gives you a runnable macOS prototype today and a clean handoff path to an H200-backed training lane later.
+That gives you a runnable macOS prototype today. Once this loop is stable, the same scaffold can be retargeted to prompt optimization or a tiny NAS search.
 
 ## What this repo shows
 
-- A macOS-first local research loop with deterministic scoring.
+- A macOS-first local runner that executes real Python optimization tasks.
 - Experience replay as the central organizing object.
 - Proposal competition across multiple agent lanes.
-- A handoff story from local MPS experimentation to H200 cluster execution.
-- A read-only frontend demo that visualizes the full loop.
+- Deterministic test-first evaluation before benchmark-based selection.
+- A frontend that can trigger tasks and inspect winners on localhost.
 
-## Run the demo
+## Run the task runner
 
-Generate the demo artifact:
+List available tasks:
+
+```bash
+python3 -m app.demo_run --list-tasks
+```
+
+Run `task1` directly:
+
+```bash
+python3 -m app.demo_run --task contains-duplicates
+```
+
+Run the full sequence:
 
 ```bash
 python3 -m app.demo_run
@@ -32,15 +44,26 @@ python3 -m app.server
 
 Then open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 
+Direct API calls:
+
+```bash
+curl http://127.0.0.1:8000/api/tasks
+curl http://127.0.0.1:8000/api/latest-run?task_id=contains-duplicates
+curl -X POST http://127.0.0.1:8000/api/run-task?task_id=contains-duplicates
+curl -X POST http://127.0.0.1:8000/api/run-sequence
+```
+
 ## Repo map
 
-- `app/engine.py`: planner, proposal lanes, selection logic, and write-back policy.
-- `app/evaluator.py`: deterministic evaluator for local and H200-targeted proposals.
+- `app/engine.py`: runner orchestration, candidate selection, and write-back policy.
+- `app/evaluator.py`: actual code execution, correctness tests, and benchmark scoring.
 - `app/memory_store.py`: file-backed retrieval and memory append logic.
 - `app/demo_run.py`: end-to-end demo artifact generation.
 - `app/server.py`: tiny local backend that serves the UI and latest run JSON.
-- `data/tasks.json`: the local-to-H200 scenario definitions.
+- `app/task_catalog.py`: runnable task definitions and candidate mutations.
+- `data/tasks.json`: the local task catalog.
 - `data/experiences.json`: seed experience memory.
+- `examples/evolve/*/initial_program.py`: baseline functions for real tasks.
 - `docs/plan.md`: implementation plan and scope lock.
 - `docs/framework.md`: core mechanism and system view.
 - `docs/demo.md`: narration for the frontend demo.
@@ -51,7 +74,7 @@ Then open [http://127.0.0.1:8000](http://127.0.0.1:8000).
 - **Validated experience over chat transcripts.** The reusable unit is a scored experience, not a conversation.
 - **Deterministic evaluation first.** Keep/discard decisions stay stable and inspectable.
 - **Local-first constraints.** The first loop must make sense on a Mac without GPU assumptions.
-- **H200 as a later lane.** Cluster scale-up is modeled as a handoff bundle, not a dependency of the local demo.
+- **Real code first.** The current runner executes concrete Python tasks before expanding to prompt optimization or tiny NAS.
 
 ## Reference repos cloned locally
 

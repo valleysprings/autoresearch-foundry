@@ -1,21 +1,21 @@
 [
   {
-    "experience_id": "exp-deterministic-loop",
+    "experience_id": "exp-correctness-first",
     "source_task": "seed",
-    "target_device": "agnostic",
+    "family": "agnostic",
     "task_signature": [
-      "autoresearch",
+      "python-evolve",
       "deterministic-eval",
-      "results-logging"
+      "correctness-first"
     ],
-    "failure_pattern": "free-form judging produced unstable keep/discard decisions",
-    "successful_strategy": "pin a fixed five-minute budget, parse run.log deterministically, and append results.tsv without committing it",
-    "tool_trace_summary": "README/program.md -> baseline run -> grep val_bpb and peak_vram_mb -> results.tsv",
-    "delta_J": 0.19,
+    "failure_pattern": "benchmark-only selection promoted fast but incorrect candidates",
+    "successful_strategy": "compile the candidate, run fixed correctness tests, and benchmark only the passing variants",
+    "tool_trace_summary": "candidate code -> deterministic tests -> median benchmark -> score -> selective write-back",
+    "delta_J": 0.18,
     "reusable_rules": [
-      "deterministic_eval",
-      "results_logging",
-      "fixed_budget"
+      "correctness_first",
+      "benchmark_after_tests",
+      "deterministic_scoring"
     ],
     "supporting_memory_ids": []
   }

@@ -1,153 +1,119 @@
 [
   {
-    "id": "local-mps-bootstrap",
-    "title": "Bootstrap a nightly autoresearch loop on Apple Silicon",
-    "description": "Turn the Karpathy-style train.py mutation loop into a reproducible local Mac job that finishes inside a five-minute budget and starts building replay memories.",
+    "id": "contains-duplicates",
+    "title": "Optimize contains_duplicates",
+    "description": "Improve a naive quadratic duplicate detector with deterministic correctness checks and a real benchmark.",
+    "family": "set-logic",
+    "function_name": "contains_duplicates",
+    "baseline_path": "examples/evolve/contains_duplicates/initial_program.py",
     "task_signature": [
-      "autoresearch",
-      "mps",
-      "local-loop",
-      "deterministic-eval",
-      "experience-replay"
+      "python-evolve",
+      "set-logic",
+      "duplicate-detection"
     ],
-    "profile": {
-      "target_device": "mps",
-      "memory_budget_gb": 18.0,
-      "runtime_budget_min": 5.0,
-      "must_include": [
-        "deterministic_eval",
-        "replay_memory",
-        "mps_safe_attention",
-        "results_logging",
-        "selective_writeback"
-      ],
-      "needs_handoff": false
+    "benchmark": {
+      "kind": "contains_duplicates",
+      "repeats": 14
     },
-    "baseline": {
-      "strategy": "Port the default GPU experiment loop directly onto the Mac without adapting the runner.",
-      "attention_backend": "flash-attn3",
-      "deterministic_eval": true,
-      "uses_memory": false,
-      "results_logging": false,
-      "selective_writeback": false,
-      "handoff_bundle": false,
-      "program_patch": [
-        "keep GPU-first kernels on the local device",
-        "skip explicit results logging",
-        "mutate without retrieval or write-back thresholds"
-      ],
-      "artifacts": [
-        "run.log"
-      ],
-      "expected_gain": 0.28,
-      "memory_gb": 23.0,
-      "runtime_min": 6.3,
-      "reproducibility": 0.55,
-      "complexity": 0.68,
-      "steps": 5,
-      "novelty": 0.12
-    }
+    "tests": [
+      {
+        "name": "unique-values",
+        "args": [[1, 2, 3, 4]],
+        "expected": false
+      },
+      {
+        "name": "has-duplicate",
+        "args": [[1, 2, 3, 2]],
+        "expected": true
+      },
+      {
+        "name": "empty",
+        "args": [[]],
+        "expected": false
+      },
+      {
+        "name": "pair",
+        "args": [[7, 7]],
+        "expected": true
+      }
+    ]
   },
   {
-    "id": "local-replay-tighten",
-    "title": "Use replay memory to improve the second local experiment",
-    "description": "A second local task should retrieve the first successful experience, reduce mutation churn, and make the keep/discard decision more reliable on macOS.",
+    "id": "first-repeated-value",
+    "title": "Optimize first_repeated_value",
+    "description": "Preserve correctness for the first repeated item while replacing the quadratic scan with a streaming strategy.",
+    "family": "set-logic",
+    "function_name": "first_repeated_value",
+    "baseline_path": "examples/evolve/first_repeated_value/initial_program.py",
     "task_signature": [
-      "autoresearch",
-      "mps",
-      "local-loop",
-      "deterministic-eval",
-      "experience-replay",
-      "selective-writeback"
+      "python-evolve",
+      "set-logic",
+      "first-repeat"
     ],
-    "profile": {
-      "target_device": "mps",
-      "memory_budget_gb": 16.0,
-      "runtime_budget_min": 4.7,
-      "must_include": [
-        "deterministic_eval",
-        "replay_memory",
-        "mps_safe_attention",
-        "results_logging",
-        "selective_writeback"
-      ],
-      "needs_handoff": false
+    "benchmark": {
+      "kind": "first_repeated_value",
+      "repeats": 12
     },
-    "baseline": {
-      "strategy": "Carry over the local-safe defaults but still treat each run as stateless.",
-      "attention_backend": "sdpa",
-      "deterministic_eval": true,
-      "uses_memory": false,
-      "results_logging": true,
-      "selective_writeback": false,
-      "handoff_bundle": false,
-      "program_patch": [
-        "keep the MPS-safe kernel fallback",
-        "log results but do not retrieve prior experience",
-        "accept the current baseline if it does not crash"
-      ],
-      "artifacts": [
-        "results.tsv",
-        "run.log"
-      ],
-      "expected_gain": 0.46,
-      "memory_gb": 17.4,
-      "runtime_min": 4.9,
-      "reproducibility": 0.69,
-      "complexity": 0.54,
-      "steps": 4,
-      "novelty": 0.16
-    }
+    "tests": [
+      {
+        "name": "basic-repeat",
+        "args": [[1, 2, 3, 2, 4]],
+        "expected": 2
+      },
+      {
+        "name": "first-repeat-matters",
+        "args": [[5, 1, 5, 1]],
+        "expected": 5
+      },
+      {
+        "name": "no-repeat",
+        "args": [[1, 2, 3]],
+        "expected": null
+      },
+      {
+        "name": "repeat-at-start",
+        "args": [[9, 9, 1]],
+        "expected": 9
+      }
+    ]
   },
   {
-    "id": "h200-handoff",
-    "title": "Package the winning local pattern for an H200 training lane",
-    "description": "Bridge the local flywheel into a cluster-ready experiment package that keeps deterministic evaluation, replay memory, and explicit handoff artifacts.",
+    "id": "has-overlap",
+    "title": "Optimize has_overlap",
+    "description": "Turn a nested-loop overlap check into a real set-based benchmarked optimization.",
+    "family": "set-logic",
+    "function_name": "has_overlap",
+    "baseline_path": "examples/evolve/has_overlap/initial_program.py",
     "task_signature": [
-      "autoresearch",
-      "h200",
-      "cluster-handoff",
-      "deterministic-eval",
-      "experience-replay",
-      "evolution"
+      "python-evolve",
+      "set-logic",
+      "overlap-detection"
     ],
-    "profile": {
-      "target_device": "h200",
-      "memory_budget_gb": 80.0,
-      "runtime_budget_min": 5.0,
-      "must_include": [
-        "deterministic_eval",
-        "replay_memory",
-        "results_logging",
-        "handoff_bundle",
-        "selective_writeback"
-      ],
-      "needs_handoff": true
+    "benchmark": {
+      "kind": "has_overlap",
+      "repeats": 16
     },
-    "baseline": {
-      "strategy": "Copy the local program over to the cluster and hope the scale-up path is obvious.",
-      "attention_backend": "flash-attn3",
-      "deterministic_eval": true,
-      "uses_memory": false,
-      "results_logging": true,
-      "selective_writeback": false,
-      "handoff_bundle": false,
-      "program_patch": [
-        "move the local loop to H200 without a handoff package",
-        "keep results logging but skip replay retrieval",
-        "treat scale-up as an operational detail"
-      ],
-      "artifacts": [
-        "results.tsv",
-        "run.log"
-      ],
-      "expected_gain": 0.54,
-      "memory_gb": 72.0,
-      "runtime_min": 5.4,
-      "reproducibility": 0.62,
-      "complexity": 0.57,
-      "steps": 5,
-      "novelty": 0.19
-    }
+    "tests": [
+      {
+        "name": "disjoint",
+        "args": [[1, 2, 3], [4, 5]],
+        "expected": false
+      },
+      {
+        "name": "has-overlap",
+        "args": [[1, 2, 3], [3, 4]],
+        "expected": true
+      },
+      {
+        "name": "empty-left",
+        "args": [[], [1]],
+        "expected": false
+      },
+      {
+        "name": "single-match",
+        "args": [[5], [5]],
+        "expected": true
+      }
+    ]
   }
 ]

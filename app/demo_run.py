@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 from collections import Counter
 from datetime import datetime
@@ -8,6 +9,7 @@ from typing import Any
 
 from app.engine import run_task
 from app.memory_store import MemoryStore
+from app.task_catalog import list_task_summaries, load_tasks
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
@@ -15,20 +17,24 @@ RUNS = ROOT / "runs"
 WORKING_MEMORY = RUNS / "working_memory.json"
 
 
-def generate_demo_payload() -> dict[str, Any]:
-    tasks = json.loads((DATA / "tasks.json").read_text())
+def generate_demo_payload(task_id: str | None = None) -> dict[str, Any]:
+    tasks = load_tasks()
+    if task_id is not None:
+        tasks = [task for task in tasks if task["id"] == task_id]
+        if not tasks:
+            raise ValueError(f"Unknown task id: {task_id}")
+
     RUNS.mkdir(exist_ok=True)
     store = MemoryStore(WORKING_MEMORY)
     seed_memories = store.seed_from(DATA / "experiences.json")
 
     all_runs = []
     write_backs = 0
-
     for task in tasks:
         before_count = store.count()
         memories = store.retrieve(
             task_signature=task["task_signature"],
-            target_device=task["profile"]["target_device"],
+            family=task["family"],
             top_k=3,
         )
         result = run_task(task, memories)
@@ -50,58 +56,41 @@ def generate_demo_payload() -> dict[str, Any]:
             "write_backs": write_backs,
             "winner_agents": dict(winners),
             "flywheel": [
-                "task intake",
-                "experience retrieval",
-                "candidate proposal generation",
-                "deterministic evaluation",
-                "winner selection",
-                "selective write-back",
+                "load baseline",
+                "retrieve experience",
+                "mutate candidate programs",
+                "run fixed tests",
+                "benchmark passing variants",
+                "select winner and write memory",
             ],
         },
-        "roadmap": [
-            {
-                "phase": "Local search loop",
-                "status": "implemented",
-                "detail": "macOS-first proposal selection with MPS-safe kernels and deterministic evaluation.",
-            },
-            {
-                "phase": "Experience replay",
-                "status": "implemented",
-                "detail": "task-signature retrieval and delta_J-gated memory consolidation.",
-            },
-            {
-                "phase": "H200 handoff",
-                "status": "demo-ready",
-                "detail": "bridge local winning strategies into cluster-ready handoff bundles.",
-            },
-        ],
-        "reference_mapping": [
-            {
-                "source": "karpathy/autoresearch",
-                "takeaway": "fixed-budget experiment loop, results logging, and branchable research programs",
-            },
-            {
-                "source": "miolini/autoresearch-macos",
-                "takeaway": "Apple Silicon first constraints, MPS-safe attention choices, and small local runs",
-            },
-            {
-                "source": "algorithmicsuperintelligence/openevolve",
-                "takeaway": "candidate diversity, mutation lanes, and selection pressure over proposals",
-            },
-        ],
+        "task_catalog": list_task_summaries(),
         "runs": all_runs,
     }
 
 
-def write_demo_artifacts() -> Path:
-    payload = generate_demo_payload()
-    out = RUNS / "latest_run.json"
+def write_demo_artifacts(task_id: str | None = None) -> Path:
+    payload = generate_demo_payload(task_id=task_id)
+    out_name = f"{task_id}.json" if task_id else "latest_run.json"
+    out = RUNS / out_name
     out.write_text(json.dumps(payload, indent=2))
+    if task_id:
+        (RUNS / "latest_run.json").write_text(json.dumps(payload, indent=2))
     return out
 
 
 def main() -> None:
-    out = write_demo_artifacts()
+    parser = argparse.ArgumentParser(description="Run the local evolve demo.")
+    parser.add_argument("--task", help="Run only one task id from the catalog.")
+    parser.add_argument("--list-tasks", action="store_true", help="List available task ids.")
+    args = parser.parse_args()
+
+    if args.list_tasks:
+        for task in list_task_summaries():
+            print(f"{task['id']}: {task['title']}")
+        return
+
+    out = write_demo_artifacts(task_id=args.task)
     print(f"wrote {out}")
 
 

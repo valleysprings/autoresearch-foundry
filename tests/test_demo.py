@@ -6,14 +6,14 @@ from app.demo_run import generate_demo_payload
 
 
 class DemoPayloadTest(unittest.TestCase):
-    def test_demo_payload_contains_three_runs_and_writebacks(self) -> None:
-        payload = generate_demo_payload()
-        self.assertEqual(payload["summary"]["num_tasks"], 3)
-        self.assertGreaterEqual(payload["summary"]["write_backs"], 2)
-        self.assertEqual(payload["runs"][0]["winner"]["agent"], "replay-synthesizer")
-        self.assertEqual(payload["runs"][-1]["winner"]["agent"], "scale-bridge")
+    def test_single_task_payload_runs_task1(self) -> None:
+        payload = generate_demo_payload(task_id="contains-duplicates")
+        self.assertEqual(payload["summary"]["num_tasks"], 1)
+        self.assertEqual(payload["runs"][0]["task"]["id"], "contains-duplicates")
+        self.assertGreater(payload["runs"][0]["winner"]["metrics"]["speedup_vs_baseline"], 1.0)
+        self.assertTrue(payload["runs"][0]["should_write_memory"])
 
-    def test_replay_memory_grows_over_time(self) -> None:
+    def test_sequence_replays_memory(self) -> None:
         payload = generate_demo_payload()
         runs = payload["runs"]
         self.assertLess(runs[0]["memory_before_count"], runs[0]["memory_after_count"])
