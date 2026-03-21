@@ -18,6 +18,7 @@ CANDIDATE_SPECS: dict[str, list[dict[str, Any]]] = {
         {
             "agent": "sort-optimizer",
             "label": "Sort and scan neighbors",
+            "architecture_family": "sort-based",
             "strategy": "Replace the nested loop with a sorted pass and an adjacent comparison.",
             "code": _code(
                 """
@@ -41,6 +42,7 @@ CANDIDATE_SPECS: dict[str, list[dict[str, Any]]] = {
         {
             "agent": "hash-optimizer",
             "label": "Set cardinality check",
+            "architecture_family": "hash-based",
             "strategy": "Materialize a set and compare its size with the original list length.",
             "code": _code(
                 """
@@ -60,6 +62,7 @@ CANDIDATE_SPECS: dict[str, list[dict[str, Any]]] = {
         {
             "agent": "replay-synthesizer",
             "label": "Streaming seen-set",
+            "architecture_family": "replay-conditioned",
             "strategy": "Use a seen set so later tasks can reuse the same pattern for first-repeat and overlap problems.",
             "code": _code(
                 """
@@ -86,6 +89,7 @@ CANDIDATE_SPECS: dict[str, list[dict[str, Any]]] = {
         {
             "agent": "count-optimizer",
             "label": "Count then rescan",
+            "architecture_family": "counting",
             "strategy": "Build counts once, then rescan to find the first value whose count exceeds one.",
             "code": _code(
                 """
@@ -111,6 +115,7 @@ CANDIDATE_SPECS: dict[str, list[dict[str, Any]]] = {
         {
             "agent": "sort-optimizer",
             "label": "Sorted adjacency guess",
+            "architecture_family": "sort-based",
             "strategy": "Sort the values and take the first adjacent duplicate, which is fast but wrong for the original order semantics.",
             "code": _code(
                 """
@@ -134,6 +139,7 @@ CANDIDATE_SPECS: dict[str, list[dict[str, Any]]] = {
         {
             "agent": "replay-synthesizer",
             "label": "Replay-guided streaming set",
+            "architecture_family": "replay-conditioned",
             "strategy": "Reuse the duplicate-detection memory and return on the first repeated value seen in order.",
             "code": _code(
                 """
@@ -160,6 +166,7 @@ CANDIDATE_SPECS: dict[str, list[dict[str, Any]]] = {
         {
             "agent": "merge-optimizer",
             "label": "Sort and merge",
+            "architecture_family": "sort-based",
             "strategy": "Sort both collections and walk them with two indices.",
             "code": _code(
                 """
@@ -193,6 +200,7 @@ CANDIDATE_SPECS: dict[str, list[dict[str, Any]]] = {
         {
             "agent": "hash-optimizer",
             "label": "Two-set intersection",
+            "architecture_family": "hash-based",
             "strategy": "Materialize both sides as sets and test whether the intersection is non-empty.",
             "code": _code(
                 """
@@ -212,6 +220,7 @@ CANDIDATE_SPECS: dict[str, list[dict[str, Any]]] = {
         {
             "agent": "replay-synthesizer",
             "label": "Replay-guided smaller-side set",
+            "architecture_family": "replay-conditioned",
             "strategy": "Use replay memory to materialize only the smaller side as a set and stream the other collection through it.",
             "code": _code(
                 """
@@ -238,6 +247,229 @@ CANDIDATE_SPECS: dict[str, list[dict[str, Any]]] = {
             ],
         },
     ],
+    "most-frequent-item": [
+        {
+            "agent": "count-optimizer",
+            "label": "Two-pass counting table",
+            "architecture_family": "counting",
+            "strategy": "Build a frequency table and then select the maximum count.",
+            "code": _code(
+                """
+                def most_frequent_item(values):
+                    counts = {}
+                    for value in values:
+                        counts[value] = counts.get(value, 0) + 1
+                    best_value = None
+                    best_count = -1
+                    for value, count in counts.items():
+                        if count > best_count:
+                            best_value = value
+                            best_count = count
+                    return best_value
+                """
+            ),
+            "complexity": 0.32,
+            "uses_memory": False,
+            "required_rules": [],
+            "reusable_rules": ["frequency_table", "count_then_select"],
+            "notes": [
+                "A direct architectural upgrade over the quadratic baseline.",
+                "Separates counting from selection.",
+            ],
+        },
+        {
+            "agent": "collections-optimizer",
+            "label": "Counter most_common",
+            "architecture_family": "library-assisted",
+            "strategy": "Use Counter and delegate the selection logic to the standard library.",
+            "code": _code(
+                """
+                from collections import Counter
+
+                def most_frequent_item(values):
+                    return Counter(values).most_common(1)[0][0]
+                """
+            ),
+            "complexity": 0.21,
+            "uses_memory": False,
+            "required_rules": [],
+            "reusable_rules": ["counter_library"],
+            "notes": [
+                "Short and expressive.",
+                "Usually wins when library overhead is dominated by the quadratic baseline.",
+            ],
+        },
+        {
+            "agent": "replay-synthesizer",
+            "label": "One-pass running best",
+            "architecture_family": "replay-conditioned",
+            "strategy": "Reuse counted-structure intuition and maintain the current best answer during the counting pass.",
+            "code": _code(
+                """
+                def most_frequent_item(values):
+                    counts = {}
+                    best_value = None
+                    best_count = -1
+                    for value in values:
+                        counts[value] = counts.get(value, 0) + 1
+                        if counts[value] > best_count:
+                            best_value = value
+                            best_count = counts[value]
+                    return best_value
+                """
+            ),
+            "complexity": 0.27,
+            "uses_memory": True,
+            "required_rules": ["count_then_scan"],
+            "reusable_rules": ["frequency_table", "one_pass_best"],
+            "notes": [
+                "Moves selection into the same pass as counting.",
+                "Acts like a lightweight architecture search over counting styles.",
+            ],
+        },
+    ],
+    "deduplicate-preserve-order": [
+        {
+            "agent": "dict-optimizer",
+            "label": "dict.fromkeys",
+            "architecture_family": "hash-based",
+            "strategy": "Exploit insertion ordering in dict to preserve order and remove duplicates.",
+            "code": _code(
+                """
+                def deduplicate_preserve_order(values):
+                    return list(dict.fromkeys(values))
+                """
+            ),
+            "complexity": 0.17,
+            "uses_memory": False,
+            "required_rules": [],
+            "reusable_rules": ["ordered_hashing"],
+            "notes": [
+                "Compact and usually very fast.",
+                "Uses language-level insertion ordering as the architecture trick.",
+            ],
+        },
+        {
+            "agent": "sort-optimizer",
+            "label": "Sorted set",
+            "architecture_family": "sort-based",
+            "strategy": "Sort a set of values, which is fast but breaks the original order guarantee.",
+            "code": _code(
+                """
+                def deduplicate_preserve_order(values):
+                    return sorted(set(values))
+                """
+            ),
+            "complexity": 0.14,
+            "uses_memory": False,
+            "required_rules": [],
+            "reusable_rules": ["sort_then_scan"],
+            "notes": [
+                "This candidate intentionally violates task semantics.",
+                "The evaluator should reject it like Karpathy would discard a faster but invalid run.",
+            ],
+        },
+        {
+            "agent": "replay-synthesizer",
+            "label": "Streaming seen-set dedup",
+            "architecture_family": "replay-conditioned",
+            "strategy": "Reuse hash-membership memory and explicitly preserve order with a seen set and output buffer.",
+            "code": _code(
+                """
+                def deduplicate_preserve_order(values):
+                    seen = set()
+                    result = []
+                    for value in values:
+                        if value not in seen:
+                            seen.add(value)
+                            result.append(value)
+                    return result
+                """
+            ),
+            "complexity": 0.24,
+            "uses_memory": True,
+            "required_rules": ["hash_membership"],
+            "reusable_rules": ["hash_membership", "preserve_order"],
+            "notes": [
+                "More explicit than dict.fromkeys and easier to generalize.",
+                "This is the replay version of stable deduplication.",
+            ],
+        },
+    ],
+    "missing-number": [
+        {
+            "agent": "sort-optimizer",
+            "label": "Sort and detect gap",
+            "architecture_family": "sort-based",
+            "strategy": "Sort the values once and scan for the missing integer gap.",
+            "code": _code(
+                """
+                def missing_number(values):
+                    ordered = sorted(values)
+                    if not ordered or ordered[0] != 0:
+                        return 0
+                    for index in range(1, len(ordered)):
+                        if ordered[index] - ordered[index - 1] > 1:
+                            return ordered[index - 1] + 1
+                    return ordered[-1] + 1
+                """
+            ),
+            "complexity": 0.33,
+            "uses_memory": False,
+            "required_rules": [],
+            "reusable_rules": ["sort_then_scan"],
+            "notes": [
+                "A classical sorting architecture.",
+                "Correct but heavier than arithmetic reasoning.",
+            ],
+        },
+        {
+            "agent": "formula-optimizer",
+            "label": "Arithmetic checksum",
+            "architecture_family": "analytic",
+            "strategy": "Subtract the observed sum from the expected arithmetic progression.",
+            "code": _code(
+                """
+                def missing_number(values):
+                    upper = len(values)
+                    expected = upper * (upper + 1) // 2
+                    return expected - sum(values)
+                """
+            ),
+            "complexity": 0.16,
+            "uses_memory": False,
+            "required_rules": [],
+            "reusable_rules": ["closed_form_reasoning"],
+            "notes": [
+                "An architecture-level change from search to algebra.",
+                "Most faithful to Karpathy's idea of genuinely trying a different architecture.",
+            ],
+        },
+        {
+            "agent": "replay-synthesizer",
+            "label": "Replay-guided set lookup",
+            "architecture_family": "replay-conditioned",
+            "strategy": "Reuse hash-membership memory and check membership with a set instead of scanning the list repeatedly.",
+            "code": _code(
+                """
+                def missing_number(values):
+                    seen = set(values)
+                    for candidate in range(len(values) + 1):
+                        if candidate not in seen:
+                            return candidate
+                    return None
+                """
+            ),
+            "complexity": 0.22,
+            "uses_memory": True,
+            "required_rules": ["hash_membership"],
+            "reusable_rules": ["hash_membership", "set_lookup"],
+            "notes": [
+                "Bridges the set-logic family into a numeric task.",
+                "Not the most elegant architecture, but replay makes it available.",
+            ],
+        },
+    ],
 }
 
 
@@ -261,6 +493,7 @@ def list_task_summaries() -> list[dict[str, str]]:
             "title": task["title"],
             "description": task["description"],
             "baseline_path": task["baseline_path"],
+            "family": task["family"],
         }
         for task in load_tasks()
     ]

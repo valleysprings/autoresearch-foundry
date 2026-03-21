@@ -5,7 +5,7 @@ import json
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from app.engine import run_task
 from app.memory_store import MemoryStore
@@ -15,9 +15,21 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
 RUNS = ROOT / "runs"
 WORKING_MEMORY = RUNS / "working_memory.json"
+ProgressCallback = Callable[[dict[str, Any]], None]
+
+J_FORMULA = (
+    "J = 1.20 * correctness + 0.95 * speed_score + 0.20 * memory_bonus "
+    "+ 0.15 * stability - 0.18 * complexity - 0.05 * (line_count / 10)"
+)
+DELTA_FORMULA = "delta_J = J(winner) - J(baseline)"
+SPEED_FORMULA = "speed_score = min(speedup_vs_baseline, 8) / 8"
 
 
-def generate_demo_payload(task_id: str | None = None) -> dict[str, Any]:
+def generate_demo_payload(
+    task_id: str | None = None,
+    progress_callback: ProgressCallback | None = None,
+    pace_ms: int = 0,
+) -> dict[str, Any]:
     tasks = load_tasks()
     if task_id is not None:
         tasks = [task for task in tasks if task["id"] == task_id]
@@ -37,7 +49,12 @@ def generate_demo_payload(task_id: str | None = None) -> dict[str, Any]:
             family=task["family"],
             top_k=3,
         )
-        result = run_task(task, memories)
+        result = run_task(
+            task,
+            memories,
+            progress_callback=progress_callback,
+            pace_ms=pace_ms,
+        )
         if result["should_write_memory"] and result["new_experience"] is not None:
             if store.append(result["new_experience"]):
                 write_backs += 1
@@ -63,14 +80,40 @@ def generate_demo_payload(task_id: str | None = None) -> dict[str, Any]:
                 "benchmark passing variants",
                 "select winner and write memory",
             ],
+            "karpathy_alignment": {
+                "matches": [
+                    "baseline-first comparison",
+                    "multiple candidate architectures per task",
+                    "deterministic keep/discard metric",
+                    "experience logged only after measured improvement",
+                ],
+                "gaps": [
+                    "not yet mutating train.py with an LLM",
+                    "not yet an overnight autonomous loop",
+                    "not yet training a real model architecture",
+                ],
+            },
+        },
+        "formulas": {
+            "J": J_FORMULA,
+            "speed_score": SPEED_FORMULA,
+            "delta_J": DELTA_FORMULA,
         },
         "task_catalog": list_task_summaries(),
         "runs": all_runs,
     }
 
 
-def write_demo_artifacts(task_id: str | None = None) -> Path:
-    payload = generate_demo_payload(task_id=task_id)
+def write_demo_artifacts(
+    task_id: str | None = None,
+    progress_callback: ProgressCallback | None = None,
+    pace_ms: int = 0,
+) -> Path:
+    payload = generate_demo_payload(
+        task_id=task_id,
+        progress_callback=progress_callback,
+        pace_ms=pace_ms,
+    )
     out_name = f"{task_id}.json" if task_id else "latest_run.json"
     out = RUNS / out_name
     out.write_text(json.dumps(payload, indent=2))

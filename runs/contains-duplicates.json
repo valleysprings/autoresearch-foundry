@@ -1,7 +1,7 @@
 {
   "summary": {
     "project": "autoresearch-with-experience-replay",
-    "generated_at": "2026-03-21T15:49:38+08:00",
+    "generated_at": "2026-03-21T17:15:57+08:00",
     "num_tasks": 1,
     "initial_memory_count": 1,
     "memory_size_after_run": 2,
@@ -16,26 +16,68 @@
       "run fixed tests",
       "benchmark passing variants",
       "select winner and write memory"
-    ]
+    ],
+    "karpathy_alignment": {
+      "matches": [
+        "baseline-first comparison",
+        "multiple candidate architectures per task",
+        "deterministic keep/discard metric",
+        "experience logged only after measured improvement"
+      ],
+      "gaps": [
+        "not yet mutating train.py with an LLM",
+        "not yet an overnight autonomous loop",
+        "not yet training a real model architecture"
+      ]
+    }
+  },
+  "formulas": {
+    "J": "J = 1.20 * correctness + 0.95 * speed_score + 0.20 * memory_bonus + 0.15 * stability - 0.18 * complexity - 0.05 * (line_count / 10)",
+    "speed_score": "speed_score = min(speedup_vs_baseline, 8) / 8",
+    "delta_J": "delta_J = J(winner) - J(baseline)"
   },
   "task_catalog": [
     {
       "id": "contains-duplicates",
       "title": "Optimize contains_duplicates",
       "description": "Improve a naive quadratic duplicate detector with deterministic correctness checks and a real benchmark.",
-      "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/contains_duplicates/initial_program.py"
+      "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/contains_duplicates/initial_program.py",
+      "family": "set-logic"
     },
     {
       "id": "first-repeated-value",
       "title": "Optimize first_repeated_value",
       "description": "Preserve correctness for the first repeated item while replacing the quadratic scan with a streaming strategy.",
-      "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/first_repeated_value/initial_program.py"
+      "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/first_repeated_value/initial_program.py",
+      "family": "set-logic"
     },
     {
       "id": "has-overlap",
       "title": "Optimize has_overlap",
       "description": "Turn a nested-loop overlap check into a real set-based benchmarked optimization.",
-      "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/has_overlap/initial_program.py"
+      "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/has_overlap/initial_program.py",
+      "family": "set-logic"
+    },
+    {
+      "id": "most-frequent-item",
+      "title": "Optimize most_frequent_item",
+      "description": "Replace a quadratic mode finder with counted architectures and compare one-pass versus two-pass strategies.",
+      "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/most_frequent_item/initial_program.py",
+      "family": "counting"
+    },
+    {
+      "id": "deduplicate-preserve-order",
+      "title": "Optimize deduplicate_preserve_order",
+      "description": "Keep original order while removing duplicates, and compare hash-based versus order-breaking architectures.",
+      "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/deduplicate_preserve_order/initial_program.py",
+      "family": "set-logic"
+    },
+    {
+      "id": "missing-number",
+      "title": "Optimize missing_number",
+      "description": "Find the missing integer with architecture families that mimic search, sorting, and arithmetic reasoning.",
+      "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/missing_number/initial_program.py",
+      "family": "numeric"
     }
   ],
   "runs": [
@@ -102,6 +144,7 @@
       "baseline": {
         "agent": "baseline",
         "label": "Initial program",
+        "architecture_family": "quadratic-baseline",
         "strategy": "Use the checked-in baseline implementation without any optimization.",
         "code": "def contains_duplicates(values):\n    for index, left in enumerate(values):\n        for right in values[index + 1 :]:\n            if left == right:\n                return True\n    return False\n",
         "notes": [
@@ -111,19 +154,21 @@
         "uses_memory": false,
         "supporting_memory_ids": [],
         "reusable_rules": [],
+        "complexity": 0.3,
         "metrics": {
           "status": "pass",
           "correctness": 1.0,
           "passed_tests": 4,
           "total_tests": 4,
-          "benchmark_ms": 54.113,
+          "benchmark_ms": 59.087,
           "benchmark_samples_ms": [
-            60.586,
-            54.113,
-            53.551
+            59.695,
+            57.786,
+            59.087
           ],
           "speedup_vs_baseline": 1.0,
-          "stability": 0.884,
+          "speed_score": 0.125,
+          "stability": 0.968,
           "complexity": 0.3,
           "line_count": 6,
           "test_results": [
@@ -153,13 +198,14 @@
             }
           ],
           "error": null,
-          "J": 1.3673
+          "J": 1.38
         }
       },
       "candidates": [
         {
           "agent": "replay-synthesizer",
           "label": "Streaming seen-set",
+          "architecture_family": "replay-conditioned",
           "strategy": "Use a seen set so later tasks can reuse the same pattern for first-repeat and overlap problems.",
           "code": "def contains_duplicates(values):\n    seen = set()\n    for value in values:\n        if value in seen:\n            return True\n        seen.add(value)\n    return False\n",
           "notes": [
@@ -180,14 +226,15 @@
             "correctness": 1.0,
             "passed_tests": 4,
             "total_tests": 4,
-            "benchmark_ms": 0.211,
+            "benchmark_ms": 0.209,
             "benchmark_samples_ms": [
+              0.209,
               0.21,
-              0.211,
-              0.213
+              0.207
             ],
-            "speedup_vs_baseline": 255.904,
-            "stability": 0.986,
+            "speedup_vs_baseline": 283.051,
+            "speed_score": 1.0,
+            "stability": 0.988,
             "complexity": 0.26,
             "line_count": 7,
             "test_results": [
@@ -217,12 +264,13 @@
               }
             ],
             "error": null,
-            "J": 2.4161
+            "J": 2.4165
           }
         },
         {
           "agent": "hash-optimizer",
           "label": "Set cardinality check",
+          "architecture_family": "hash-based",
           "strategy": "Materialize a set and compare its size with the original list length.",
           "code": "def contains_duplicates(values):\n    return len(values) != len(set(values))\n",
           "notes": [
@@ -241,14 +289,15 @@
             "correctness": 1.0,
             "passed_tests": 4,
             "total_tests": 4,
-            "benchmark_ms": 0.056,
+            "benchmark_ms": 0.053,
             "benchmark_samples_ms": [
-              0.064,
-              0.056,
-              0.055
+              0.057,
+              0.053,
+              0.053
             ],
-            "speedup_vs_baseline": 972.084,
-            "stability": 0.861,
+            "speedup_vs_baseline": 1121.025,
+            "speed_score": 1.0,
+            "stability": 0.919,
             "complexity": 0.18,
             "line_count": 2,
             "test_results": [
@@ -278,12 +327,13 @@
               }
             ],
             "error": null,
-            "J": 2.2368
+            "J": 2.2455
           }
         },
         {
           "agent": "sort-optimizer",
           "label": "Sort and scan neighbors",
+          "architecture_family": "sort-based",
           "strategy": "Replace the nested loop with a sorted pass and an adjacent comparison.",
           "code": "def contains_duplicates(values):\n    ordered = sorted(values)\n    for index in range(1, len(ordered)):\n        if ordered[index] == ordered[index - 1]:\n            return True\n    return False\n",
           "notes": [
@@ -301,14 +351,15 @@
             "correctness": 1.0,
             "passed_tests": 4,
             "total_tests": 4,
-            "benchmark_ms": 0.349,
+            "benchmark_ms": 0.31,
             "benchmark_samples_ms": [
-              0.349,
-              0.339,
-              0.352
+              0.334,
+              0.31,
+              0.308
             ],
-            "speedup_vs_baseline": 154.848,
-            "stability": 0.961,
+            "speedup_vs_baseline": 190.654,
+            "speed_score": 1.0,
+            "stability": 0.922,
             "complexity": 0.35,
             "line_count": 6,
             "test_results": [
@@ -338,13 +389,48 @@
               }
             ],
             "error": null,
-            "J": 2.2011
+            "J": 2.1954
           }
+        }
+      ],
+      "architectures": [
+        {
+          "agent": "baseline",
+          "label": "Initial program",
+          "family": "quadratic-baseline",
+          "J": 1.38,
+          "benchmark_ms": 59.087,
+          "speedup_vs_baseline": 1.0
+        },
+        {
+          "agent": "replay-synthesizer",
+          "label": "Streaming seen-set",
+          "family": "replay-conditioned",
+          "J": 2.4165,
+          "benchmark_ms": 0.209,
+          "speedup_vs_baseline": 283.051
+        },
+        {
+          "agent": "hash-optimizer",
+          "label": "Set cardinality check",
+          "family": "hash-based",
+          "J": 2.2455,
+          "benchmark_ms": 0.053,
+          "speedup_vs_baseline": 1121.025
+        },
+        {
+          "agent": "sort-optimizer",
+          "label": "Sort and scan neighbors",
+          "family": "sort-based",
+          "J": 2.1954,
+          "benchmark_ms": 0.31,
+          "speedup_vs_baseline": 190.654
         }
       ],
       "winner": {
         "agent": "replay-synthesizer",
         "label": "Streaming seen-set",
+        "architecture_family": "replay-conditioned",
         "strategy": "Use a seen set so later tasks can reuse the same pattern for first-repeat and overlap problems.",
         "code": "def contains_duplicates(values):\n    seen = set()\n    for value in values:\n        if value in seen:\n            return True\n        seen.add(value)\n    return False\n",
         "notes": [
@@ -365,14 +451,15 @@
           "correctness": 1.0,
           "passed_tests": 4,
           "total_tests": 4,
-          "benchmark_ms": 0.211,
+          "benchmark_ms": 0.209,
           "benchmark_samples_ms": [
+            0.209,
             0.21,
-            0.211,
-            0.213
+            0.207
           ],
-          "speedup_vs_baseline": 255.904,
-          "stability": 0.986,
+          "speedup_vs_baseline": 283.051,
+          "speed_score": 1.0,
+          "stability": 0.988,
           "complexity": 0.26,
           "line_count": 7,
           "test_results": [
@@ -402,12 +489,12 @@
             }
           ],
           "error": null,
-          "J": 2.4161
+          "J": 2.4165
         }
       },
-      "delta_J": 1.0488,
+      "delta_J": 1.0365,
       "should_write_memory": true,
-      "selection_reason": "replay-synthesizer won with J=2.4161 and 255.904x speedup while preserving correctness.",
+      "selection_reason": "replay-synthesizer won with J=2.4165 and 283.051x speedup while preserving correctness.",
       "new_experience": {
         "experience_id": "exp-contains-duplicates",
         "source_task": "contains-duplicates",
@@ -419,8 +506,8 @@
         ],
         "failure_pattern": "Use the checked-in baseline implementation without any optimization.",
         "successful_strategy": "Use a seen set so later tasks can reuse the same pattern for first-repeat and overlap problems.",
-        "tool_trace_summary": "replay-synthesizer passed 4/4 tests and ran in 0.211 ms",
-        "delta_J": 1.0488,
+        "tool_trace_summary": "replay-synthesizer passed 4/4 tests and ran in 0.209 ms",
+        "delta_J": 1.0365,
         "reusable_rules": [
           "hash_membership",
           "streaming_seen_set"

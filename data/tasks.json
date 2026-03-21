@@ -115,5 +115,122 @@
         "expected": true
       }
     ]
+  },
+  {
+    "id": "most-frequent-item",
+    "title": "Optimize most_frequent_item",
+    "description": "Replace a quadratic mode finder with counted architectures and compare one-pass versus two-pass strategies.",
+    "family": "counting",
+    "function_name": "most_frequent_item",
+    "baseline_path": "examples/evolve/most_frequent_item/initial_program.py",
+    "task_signature": [
+      "python-evolve",
+      "counting",
+      "mode-finding"
+    ],
+    "benchmark": {
+      "kind": "most_frequent_item",
+      "repeats": 10
+    },
+    "tests": [
+      {
+        "name": "simple-mode",
+        "args": [[1, 2, 2, 3]],
+        "expected": 2
+      },
+      {
+        "name": "string-mode",
+        "args": [["a", "b", "b", "a", "b"]],
+        "expected": "b"
+      },
+      {
+        "name": "single-item",
+        "args": [[7]],
+        "expected": 7
+      },
+      {
+        "name": "late-mode",
+        "args": [[3, 3, 2, 2, 2]],
+        "expected": 2
+      }
+    ]
+  },
+  {
+    "id": "deduplicate-preserve-order",
+    "title": "Optimize deduplicate_preserve_order",
+    "description": "Keep original order while removing duplicates, and compare hash-based versus order-breaking architectures.",
+    "family": "set-logic",
+    "function_name": "deduplicate_preserve_order",
+    "baseline_path": "examples/evolve/deduplicate_preserve_order/initial_program.py",
+    "task_signature": [
+      "python-evolve",
+      "set-logic",
+      "stable-deduplication"
+    ],
+    "benchmark": {
+      "kind": "deduplicate_preserve_order",
+      "repeats": 12
+    },
+    "tests": [
+      {
+        "name": "basic-dedup",
+        "args": [[1, 2, 1, 3, 2]],
+        "expected": [1, 2, 3]
+      },
+      {
+        "name": "already-unique",
+        "args": [[1, 2, 3]],
+        "expected": [1, 2, 3]
+      },
+      {
+        "name": "strings",
+        "args": [["a", "b", "a", "c"]],
+        "expected": ["a", "b", "c"]
+      },
+      {
+        "name": "empty",
+        "args": [[]],
+        "expected": []
+      }
+    ]
+  },
+  {
+    "id": "missing-number",
+    "title": "Optimize missing_number",
+    "description": "Find the missing integer with architecture families that mimic search, sorting, and arithmetic reasoning.",
+    "family": "numeric",
+    "function_name": "missing_number",
+    "baseline_path": "examples/evolve/missing_number/initial_program.py",
+    "task_signature": [
+      "python-evolve",
+      "numeric",
+      "missing-value"
+    ],
+    "benchmark": {
+      "kind": "missing_number",
+      "repeats": 16
+    },
+    "tests": [
+      {
+        "name": "missing-middle",
+        "args": [[0, 1, 3]],
+        "expected": 2
+      },
+      {
+        "name": "missing-zero",
+        "args": [[1, 2, 3]],
+        "expected": 0
+      },
+      {
+        "name": "missing-end",
+        "args": [[0, 1, 2]],
+        "expected": 3
+      },
+      {
+        "name": "unordered-input",
+        "args": [[4, 2, 1, 0]],
+        "expected": 3
+      }
+    ]
   }
 ]

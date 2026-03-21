@@ -1,13 +1,14 @@
 {
   "summary": {
     "project": "autoresearch-with-experience-replay",
-    "generated_at": "2026-03-21T15:49:38+08:00",
-    "num_tasks": 1,
+    "generated_at": "2026-03-21T17:15:58+08:00",
+    "num_tasks": 6,
     "initial_memory_count": 1,
-    "memory_size_after_run": 2,
-    "write_backs": 1,
+    "memory_size_after_run": 7,
+    "write_backs": 5,
     "winner_agents": {
-      "replay-synthesizer": 1
+      "replay-synthesizer": 5,
+      "collections-optimizer": 1
     },
     "flywheel": [
       "load baseline",
@@ -16,26 +17,68 @@
       "run fixed tests",
       "benchmark passing variants",
       "select winner and write memory"
-    ]
+    ],
+    "karpathy_alignment": {
+      "matches": [
+        "baseline-first comparison",
+        "multiple candidate architectures per task",
+        "deterministic keep/discard metric",
+        "experience logged only after measured improvement"
+      ],
+      "gaps": [
+        "not yet mutating train.py with an LLM",
+        "not yet an overnight autonomous loop",
+        "not yet training a real model architecture"
+      ]
+    }
+  },
+  "formulas": {
+    "J": "J = 1.20 * correctness + 0.95 * speed_score + 0.20 * memory_bonus + 0.15 * stability - 0.18 * complexity - 0.05 * (line_count / 10)",
+    "speed_score": "speed_score = min(speedup_vs_baseline, 8) / 8",
+    "delta_J": "delta_J = J(winner) - J(baseline)"
   },
   "task_catalog": [
     {
       "id": "contains-duplicates",
       "title": "Optimize contains_duplicates",
       "description": "Improve a naive quadratic duplicate detector with deterministic correctness checks and a real benchmark.",
-      "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/contains_duplicates/initial_program.py"
+      "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/contains_duplicates/initial_program.py",
+      "family": "set-logic"
     },
     {
       "id": "first-repeated-value",
       "title": "Optimize first_repeated_value",
       "description": "Preserve correctness for the first repeated item while replacing the quadratic scan with a streaming strategy.",
-      "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/first_repeated_value/initial_program.py"
+      "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/first_repeated_value/initial_program.py",
+      "family": "set-logic"
     },
     {
       "id": "has-overlap",
       "title": "Optimize has_overlap",
       "description": "Turn a nested-loop overlap check into a real set-based benchmarked optimization.",
-      "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/has_overlap/initial_program.py"
+      "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/has_overlap/initial_program.py",
+      "family": "set-logic"
+    },
+    {
+      "id": "most-frequent-item",
+      "title": "Optimize most_frequent_item",
+      "description": "Replace a quadratic mode finder with counted architectures and compare one-pass versus two-pass strategies.",
+      "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/most_frequent_item/initial_program.py",
+      "family": "counting"
+    },
+    {
+      "id": "deduplicate-preserve-order",
+      "title": "Optimize deduplicate_preserve_order",
+      "description": "Keep original order while removing duplicates, and compare hash-based versus order-breaking architectures.",
+      "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/deduplicate_preserve_order/initial_program.py",
+      "family": "set-logic"
+    },
+    {
+      "id": "missing-number",
+      "title": "Optimize missing_number",
+      "description": "Find the missing integer with architecture families that mimic search, sorting, and arithmetic reasoning.",
+      "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/missing_number/initial_program.py",
+      "family": "numeric"
     }
   ],
   "runs": [
@@ -102,6 +145,7 @@
       "baseline": {
         "agent": "baseline",
         "label": "Initial program",
+        "architecture_family": "quadratic-baseline",
         "strategy": "Use the checked-in baseline implementation without any optimization.",
         "code": "def contains_duplicates(values):\n    for index, left in enumerate(values):\n        for right in values[index + 1 :]:\n            if left == right:\n                return True\n    return False\n",
         "notes": [
@@ -111,19 +155,21 @@
         "uses_memory": false,
         "supporting_memory_ids": [],
         "reusable_rules": [],
+        "complexity": 0.3,
         "metrics": {
           "status": "pass",
           "correctness": 1.0,
           "passed_tests": 4,
           "total_tests": 4,
-          "benchmark_ms": 54.113,
+          "benchmark_ms": 61.991,
           "benchmark_samples_ms": [
-            60.586,
-            54.113,
-            53.551
+            64.593,
+            61.991,
+            61.937
           ],
           "speedup_vs_baseline": 1.0,
-          "stability": 0.884,
+          "speed_score": 0.125,
+          "stability": 0.959,
           "complexity": 0.3,
           "line_count": 6,
           "test_results": [
@@ -153,13 +199,14 @@
             }
           ],
           "error": null,
-          "J": 1.3673
+          "J": 1.3786
         }
       },
       "candidates": [
         {
           "agent": "replay-synthesizer",
           "label": "Streaming seen-set",
+          "architecture_family": "replay-conditioned",
           "strategy": "Use a seen set so later tasks can reuse the same pattern for first-repeat and overlap problems.",
           "code": "def contains_duplicates(values):\n    seen = set()\n    for value in values:\n        if value in seen:\n            return True\n        seen.add(value)\n    return False\n",
           "notes": [
@@ -180,14 +227,15 @@
             "correctness": 1.0,
             "passed_tests": 4,
             "total_tests": 4,
-            "benchmark_ms": 0.211,
+            "benchmark_ms": 0.213,
             "benchmark_samples_ms": [
-              0.21,
+              0.213,
               0.211,
               0.213
             ],
-            "speedup_vs_baseline": 255.904,
-            "stability": 0.986,
+            "speedup_vs_baseline": 291.322,
+            "speed_score": 1.0,
+            "stability": 0.987,
             "complexity": 0.26,
             "line_count": 7,
             "test_results": [
@@ -217,12 +265,13 @@
               }
             ],
             "error": null,
-            "J": 2.4161
+            "J": 2.4163
           }
         },
         {
           "agent": "hash-optimizer",
           "label": "Set cardinality check",
+          "architecture_family": "hash-based",
           "strategy": "Materialize a set and compare its size with the original list length.",
           "code": "def contains_duplicates(values):\n    return len(values) != len(set(values))\n",
           "notes": [
@@ -243,12 +292,13 @@
             "total_tests": 4,
             "benchmark_ms": 0.056,
             "benchmark_samples_ms": [
-              0.064,
+              0.063,
               0.056,
               0.055
             ],
-            "speedup_vs_baseline": 972.084,
-            "stability": 0.861,
+            "speedup_vs_baseline": 1111.946,
+            "speed_score": 1.0,
+            "stability": 0.876,
             "complexity": 0.18,
             "line_count": 2,
             "test_results": [
@@ -278,12 +328,13 @@
               }
             ],
             "error": null,
-            "J": 2.2368
+            "J": 2.2389
           }
         },
         {
           "agent": "sort-optimizer",
           "label": "Sort and scan neighbors",
+          "architecture_family": "sort-based",
           "strategy": "Replace the nested loop with a sorted pass and an adjacent comparison.",
           "code": "def contains_duplicates(values):\n    ordered = sorted(values)\n    for index in range(1, len(ordered)):\n        if ordered[index] == ordered[index - 1]:\n            return True\n    return False\n",
           "notes": [
@@ -301,14 +352,15 @@
             "correctness": 1.0,
             "passed_tests": 4,
             "total_tests": 4,
-            "benchmark_ms": 0.349,
+            "benchmark_ms": 0.333,
             "benchmark_samples_ms": [
-              0.349,
-              0.339,
-              0.352
+              0.35,
+              0.327,
+              0.333
             ],
-            "speedup_vs_baseline": 154.848,
-            "stability": 0.961,
+            "speedup_vs_baseline": 186.206,
+            "speed_score": 1.0,
+            "stability": 0.934,
             "complexity": 0.35,
             "line_count": 6,
             "test_results": [
@@ -338,13 +390,48 @@
               }
             ],
             "error": null,
-            "J": 2.2011
+            "J": 2.1971
           }
+        }
+      ],
+      "architectures": [
+        {
+          "agent": "baseline",
+          "label": "Initial program",
+          "family": "quadratic-baseline",
+          "J": 1.3786,
+          "benchmark_ms": 61.991,
+          "speedup_vs_baseline": 1.0
+        },
+        {
+          "agent": "replay-synthesizer",
+          "label": "Streaming seen-set",
+          "family": "replay-conditioned",
+          "J": 2.4163,
+          "benchmark_ms": 0.213,
+          "speedup_vs_baseline": 291.322
+        },
+        {
+          "agent": "hash-optimizer",
+          "label": "Set cardinality check",
+          "family": "hash-based",
+          "J": 2.2389,
+          "benchmark_ms": 0.056,
+          "speedup_vs_baseline": 1111.946
+        },
+        {
+          "agent": "sort-optimizer",
+          "label": "Sort and scan neighbors",
+          "family": "sort-based",
+          "J": 2.1971,
+          "benchmark_ms": 0.333,
+          "speedup_vs_baseline": 186.206
         }
       ],
       "winner": {
         "agent": "replay-synthesizer",
         "label": "Streaming seen-set",
+        "architecture_family": "replay-conditioned",
         "strategy": "Use a seen set so later tasks can reuse the same pattern for first-repeat and overlap problems.",
         "code": "def contains_duplicates(values):\n    seen = set()\n    for value in values:\n        if value in seen:\n            return True\n        seen.add(value)\n    return False\n",
         "notes": [
@@ -365,14 +452,15 @@
           "correctness": 1.0,
           "passed_tests": 4,
           "total_tests": 4,
-          "benchmark_ms": 0.211,
+          "benchmark_ms": 0.213,
           "benchmark_samples_ms": [
-            0.21,
+            0.213,
             0.211,
             0.213
           ],
-          "speedup_vs_baseline": 255.904,
-          "stability": 0.986,
+          "speedup_vs_baseline": 291.322,
+          "speed_score": 1.0,
+          "stability": 0.987,
           "complexity": 0.26,
           "line_count": 7,
           "test_results": [
@@ -402,12 +490,12 @@
             }
           ],
           "error": null,
-          "J": 2.4161
+          "J": 2.4163
         }
       },
-      "delta_J": 1.0488,
+      "delta_J": 1.0377,
       "should_write_memory": true,
-      "selection_reason": "replay-synthesizer won with J=2.4161 and 255.904x speedup while preserving correctness.",
+      "selection_reason": "replay-synthesizer won with J=2.4163 and 291.322x speedup while preserving correctness.",
       "new_experience": {
         "experience_id": "exp-contains-duplicates",
         "source_task": "contains-duplicates",
@@ -419,8 +507,8 @@
         ],
         "failure_pattern": "Use the checked-in baseline implementation without any optimization.",
         "successful_strategy": "Use a seen set so later tasks can reuse the same pattern for first-repeat and overlap problems.",
-        "tool_trace_summary": "replay-synthesizer passed 4/4 tests and ran in 0.211 ms",
-        "delta_J": 1.0488,
+        "tool_trace_summary": "replay-synthesizer passed 4/4 tests and ran in 0.213 ms",
+        "delta_J": 1.0377,
         "reusable_rules": [
           "hash_membership",
           "streaming_seen_set"
@@ -432,6 +520,2549 @@
       },
       "memory_before_count": 1,
       "memory_after_count": 2
+    },
+    {
+      "task": {
+        "id": "first-repeated-value",
+        "title": "Optimize first_repeated_value",
+        "description": "Preserve correctness for the first repeated item while replacing the quadratic scan with a streaming strategy.",
+        "family": "set-logic",
+        "function_name": "first_repeated_value",
+        "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/first_repeated_value/initial_program.py",
+        "task_signature": [
+          "python-evolve",
+          "set-logic",
+          "first-repeat"
+        ]
+      },
+      "plan": {
+        "task_id": "first-repeated-value",
+        "objective": "Preserve correctness for the first repeated item while replacing the quadratic scan with a streaming strategy.",
+        "family": "set-logic",
+        "selection_policy": "run fixed tests first, benchmark only passing candidates, then maximize J",
+        "priority_checks": [
+          "preserve correctness under fixed unit cases",
+          "improve runtime over the baseline implementation",
+          "reuse retrieved memory only when it maps to a real code idiom",
+          "write back experience only if delta_J clears epsilon"
+        ],
+        "active_rules": [
+          "benchmark_after_tests",
+          "correctness_first",
+          "deterministic_scoring",
+          "hash_membership",
+          "streaming_seen_set"
+        ],
+        "lanes": [
+          "count-optimizer",
+          "sort-optimizer",
+          "replay-synthesizer"
+        ],
+        "memory_count": 2
+      },
+      "retrieved_memories": [
+        {
+          "experience_id": "exp-contains-duplicates",
+          "source_task": "contains-duplicates",
+          "family": "set-logic",
+          "task_signature": [
+            "python-evolve",
+            "set-logic",
+            "duplicate-detection"
+          ],
+          "failure_pattern": "Use the checked-in baseline implementation without any optimization.",
+          "successful_strategy": "Use a seen set so later tasks can reuse the same pattern for first-repeat and overlap problems.",
+          "tool_trace_summary": "replay-synthesizer passed 4/4 tests and ran in 0.209 ms",
+          "delta_J": 1.0365,
+          "reusable_rules": [
+            "hash_membership",
+            "streaming_seen_set"
+          ],
+          "supporting_memory_ids": [
+            "exp-correctness-first"
+          ],
+          "code_pattern": "Streaming seen-set",
+          "retrieval_score": 9.0
+        },
+        {
+          "experience_id": "exp-correctness-first",
+          "source_task": "seed",
+          "family": "agnostic",
+          "task_signature": [
+            "python-evolve",
+            "deterministic-eval",
+            "correctness-first"
+          ],
+          "failure_pattern": "benchmark-only selection promoted fast but incorrect candidates",
+          "successful_strategy": "compile the candidate, run fixed correctness tests, and benchmark only the passing variants",
+          "tool_trace_summary": "candidate code -> deterministic tests -> median benchmark -> score -> selective write-back",
+          "delta_J": 0.18,
+          "reusable_rules": [
+            "correctness_first",
+            "benchmark_after_tests",
+            "deterministic_scoring"
+          ],
+          "supporting_memory_ids": [],
+          "retrieval_score": 4.18
+        }
+      ],
+      "baseline": {
+        "agent": "baseline",
+        "label": "Initial program",
+        "architecture_family": "quadratic-baseline",
+        "strategy": "Use the checked-in baseline implementation without any optimization.",
+        "code": "def first_repeated_value(values):\n    for index, left in enumerate(values):\n        for right in values[index + 1 :]:\n            if left == right:\n                return left\n    return None\n",
+        "notes": [
+          "This is the starting point that every candidate must beat.",
+          "The baseline is executed exactly like the mutated candidates."
+        ],
+        "uses_memory": false,
+        "supporting_memory_ids": [],
+        "reusable_rules": [],
+        "complexity": 0.3,
+        "metrics": {
+          "status": "pass",
+          "correctness": 1.0,
+          "passed_tests": 4,
+          "total_tests": 4,
+          "benchmark_ms": 22.844,
+          "benchmark_samples_ms": [
+            22.844,
+            22.683,
+            24.329
+          ],
+          "speedup_vs_baseline": 1.0,
+          "speed_score": 0.125,
+          "stability": 0.932,
+          "complexity": 0.3,
+          "line_count": 6,
+          "test_results": [
+            {
+              "name": "basic-repeat",
+              "expected": 2,
+              "actual": 2,
+              "passed": true
+            },
+            {
+              "name": "first-repeat-matters",
+              "expected": 5,
+              "actual": 5,
+              "passed": true
+            },
+            {
+              "name": "no-repeat",
+              "expected": null,
+              "actual": null,
+              "passed": true
+            },
+            {
+              "name": "repeat-at-start",
+              "expected": 9,
+              "actual": 9,
+              "passed": true
+            }
+          ],
+          "error": null,
+          "J": 1.3746
+        }
+      },
+      "candidates": [
+        {
+          "agent": "replay-synthesizer",
+          "label": "Replay-guided streaming set",
+          "architecture_family": "replay-conditioned",
+          "strategy": "Reuse the duplicate-detection memory and return on the first repeated value seen in order.",
+          "code": "def first_repeated_value(values):\n    seen = set()\n    for value in values:\n        if value in seen:\n            return value\n        seen.add(value)\n    return None\n",
+          "notes": [
+            "Carries a concrete memory forward from the first task.",
+            "Fast and preserves the original traversal order."
+          ],
+          "uses_memory": true,
+          "supporting_memory_ids": [
+            "exp-contains-duplicates"
+          ],
+          "reusable_rules": [
+            "hash_membership",
+            "streaming_seen_set",
+            "preserve_order"
+          ],
+          "complexity": 0.22,
+          "metrics": {
+            "status": "pass",
+            "correctness": 1.0,
+            "passed_tests": 4,
+            "total_tests": 4,
+            "benchmark_ms": 0.173,
+            "benchmark_samples_ms": [
+              0.173,
+              0.172,
+              0.173
+            ],
+            "speedup_vs_baseline": 132.301,
+            "speed_score": 1.0,
+            "stability": 0.993,
+            "complexity": 0.22,
+            "line_count": 7,
+            "test_results": [
+              {
+                "name": "basic-repeat",
+                "expected": 2,
+                "actual": 2,
+                "passed": true
+              },
+              {
+                "name": "first-repeat-matters",
+                "expected": 5,
+                "actual": 5,
+                "passed": true
+              },
+              {
+                "name": "no-repeat",
+                "expected": null,
+                "actual": null,
+                "passed": true
+              },
+              {
+                "name": "repeat-at-start",
+                "expected": 9,
+                "actual": 9,
+                "passed": true
+              }
+            ],
+            "error": null,
+            "J": 2.4244
+          }
+        },
+        {
+          "agent": "count-optimizer",
+          "label": "Count then rescan",
+          "architecture_family": "counting",
+          "strategy": "Build counts once, then rescan to find the first value whose count exceeds one.",
+          "code": "def first_repeated_value(values):\n    counts = {}\n    for value in values:\n        counts[value] = counts.get(value, 0) + 1\n    for value in values:\n        if counts[value] > 1:\n            return value\n    return None\n",
+          "notes": [
+            "Correct and clearly faster than the nested baseline.",
+            "Needs two passes through the list."
+          ],
+          "uses_memory": false,
+          "supporting_memory_ids": [],
+          "reusable_rules": [
+            "count_then_scan"
+          ],
+          "complexity": 0.31,
+          "metrics": {
+            "status": "pass",
+            "correctness": 1.0,
+            "passed_tests": 4,
+            "total_tests": 4,
+            "benchmark_ms": 0.36,
+            "benchmark_samples_ms": [
+              0.395,
+              0.36,
+              0.359
+            ],
+            "speedup_vs_baseline": 63.456,
+            "speed_score": 1.0,
+            "stability": 0.91,
+            "complexity": 0.31,
+            "line_count": 8,
+            "test_results": [
+              {
+                "name": "basic-repeat",
+                "expected": 2,
+                "actual": 2,
+                "passed": true
+              },
+              {
+                "name": "first-repeat-matters",
+                "expected": 5,
+                "actual": 5,
+                "passed": true
+              },
+              {
+                "name": "no-repeat",
+                "expected": null,
+                "actual": null,
+                "passed": true
+              },
+              {
+                "name": "repeat-at-start",
+                "expected": 9,
+                "actual": 9,
+                "passed": true
+              }
+            ],
+            "error": null,
+            "J": 2.1907
+          }
+        },
+        {
+          "agent": "sort-optimizer",
+          "label": "Sorted adjacency guess",
+          "architecture_family": "sort-based",
+          "strategy": "Sort the values and take the first adjacent duplicate, which is fast but wrong for the original order semantics.",
+          "code": "def first_repeated_value(values):\n    ordered = sorted(values)\n    for index in range(1, len(ordered)):\n        if ordered[index] == ordered[index - 1]:\n            return ordered[index]\n    return None\n",
+          "notes": [
+            "This candidate is intentionally incorrect for first-occurrence semantics.",
+            "The evaluator should reject it even if it is fast."
+          ],
+          "uses_memory": false,
+          "supporting_memory_ids": [],
+          "reusable_rules": [
+            "sort_then_scan"
+          ],
+          "complexity": 0.28,
+          "metrics": {
+            "status": "fail",
+            "correctness": 0.0,
+            "passed_tests": 3,
+            "total_tests": 4,
+            "benchmark_ms": null,
+            "benchmark_samples_ms": [],
+            "speedup_vs_baseline": 0.0,
+            "speed_score": 0.0,
+            "stability": 0.0,
+            "complexity": 0.28,
+            "line_count": 6,
+            "test_results": [
+              {
+                "name": "basic-repeat",
+                "expected": 2,
+                "actual": 2,
+                "passed": true
+              },
+              {
+                "name": "first-repeat-matters",
+                "expected": 5,
+                "actual": 1,
+                "passed": false
+              },
+              {
+                "name": "no-repeat",
+                "expected": null,
+                "actual": null,
+                "passed": true
+              },
+              {
+                "name": "repeat-at-start",
+                "expected": 9,
+                "actual": 9,
+                "passed": true
+              }
+            ],
+            "error": null,
+            "J": 0.38
+          }
+        }
+      ],
+      "architectures": [
+        {
+          "agent": "baseline",
+          "label": "Initial program",
+          "family": "quadratic-baseline",
+          "J": 1.3746,
+          "benchmark_ms": 22.844,
+          "speedup_vs_baseline": 1.0
+        },
+        {
+          "agent": "replay-synthesizer",
+          "label": "Replay-guided streaming set",
+          "family": "replay-conditioned",
+          "J": 2.4244,
+          "benchmark_ms": 0.173,
+          "speedup_vs_baseline": 132.301
+        },
+        {
+          "agent": "count-optimizer",
+          "label": "Count then rescan",
+          "family": "counting",
+          "J": 2.1907,
+          "benchmark_ms": 0.36,
+          "speedup_vs_baseline": 63.456
+        },
+        {
+          "agent": "sort-optimizer",
+          "label": "Sorted adjacency guess",
+          "family": "sort-based",
+          "J": 0.38,
+          "benchmark_ms": null,
+          "speedup_vs_baseline": 0.0
+        }
+      ],
+      "winner": {
+        "agent": "replay-synthesizer",
+        "label": "Replay-guided streaming set",
+        "architecture_family": "replay-conditioned",
+        "strategy": "Reuse the duplicate-detection memory and return on the first repeated value seen in order.",
+        "code": "def first_repeated_value(values):\n    seen = set()\n    for value in values:\n        if value in seen:\n            return value\n        seen.add(value)\n    return None\n",
+        "notes": [
+          "Carries a concrete memory forward from the first task.",
+          "Fast and preserves the original traversal order."
+        ],
+        "uses_memory": true,
+        "supporting_memory_ids": [
+          "exp-contains-duplicates"
+        ],
+        "reusable_rules": [
+          "hash_membership",
+          "streaming_seen_set",
+          "preserve_order"
+        ],
+        "complexity": 0.22,
+        "metrics": {
+          "status": "pass",
+          "correctness": 1.0,
+          "passed_tests": 4,
+          "total_tests": 4,
+          "benchmark_ms": 0.173,
+          "benchmark_samples_ms": [
+            0.173,
+            0.172,
+            0.173
+          ],
+          "speedup_vs_baseline": 132.301,
+          "speed_score": 1.0,
+          "stability": 0.993,
+          "complexity": 0.22,
+          "line_count": 7,
+          "test_results": [
+            {
+              "name": "basic-repeat",
+              "expected": 2,
+              "actual": 2,
+              "passed": true
+            },
+            {
+              "name": "first-repeat-matters",
+              "expected": 5,
+              "actual": 5,
+              "passed": true
+            },
+            {
+              "name": "no-repeat",
+              "expected": null,
+              "actual": null,
+              "passed": true
+            },
+            {
+              "name": "repeat-at-start",
+              "expected": 9,
+              "actual": 9,
+              "passed": true
+            }
+          ],
+          "error": null,
+          "J": 2.4244
+        }
+      },
+      "delta_J": 1.0498,
+      "should_write_memory": true,
+      "selection_reason": "replay-synthesizer won with J=2.4244 and 132.301x speedup while preserving correctness.",
+      "new_experience": {
+        "experience_id": "exp-first-repeated-value",
+        "source_task": "first-repeated-value",
+        "family": "set-logic",
+        "task_signature": [
+          "python-evolve",
+          "set-logic",
+          "first-repeat"
+        ],
+        "failure_pattern": "Use the checked-in baseline implementation without any optimization.",
+        "successful_strategy": "Reuse the duplicate-detection memory and return on the first repeated value seen in order.",
+        "tool_trace_summary": "replay-synthesizer passed 4/4 tests and ran in 0.173 ms",
+        "delta_J": 1.0498,
+        "reusable_rules": [
+          "hash_membership",
+          "streaming_seen_set",
+          "preserve_order"
+        ],
+        "supporting_memory_ids": [
+          "exp-contains-duplicates"
+        ],
+        "code_pattern": "Replay-guided streaming set"
+      },
+      "memory_before_count": 2,
+      "memory_after_count": 3
+    },
+    {
+      "task": {
+        "id": "has-overlap",
+        "title": "Optimize has_overlap",
+        "description": "Turn a nested-loop overlap check into a real set-based benchmarked optimization.",
+        "family": "set-logic",
+        "function_name": "has_overlap",
+        "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/has_overlap/initial_program.py",
+        "task_signature": [
+          "python-evolve",
+          "set-logic",
+          "overlap-detection"
+        ]
+      },
+      "plan": {
+        "task_id": "has-overlap",
+        "objective": "Turn a nested-loop overlap check into a real set-based benchmarked optimization.",
+        "family": "set-logic",
+        "selection_policy": "run fixed tests first, benchmark only passing candidates, then maximize J",
+        "priority_checks": [
+          "preserve correctness under fixed unit cases",
+          "improve runtime over the baseline implementation",
+          "reuse retrieved memory only when it maps to a real code idiom",
+          "write back experience only if delta_J clears epsilon"
+        ],
+        "active_rules": [
+          "benchmark_after_tests",
+          "correctness_first",
+          "deterministic_scoring",
+          "hash_membership",
+          "preserve_order",
+          "streaming_seen_set"
+        ],
+        "lanes": [
+          "merge-optimizer",
+          "hash-optimizer",
+          "replay-synthesizer"
+        ],
+        "memory_count": 3
+      },
+      "retrieved_memories": [
+        {
+          "experience_id": "exp-first-repeated-value",
+          "source_task": "first-repeated-value",
+          "family": "set-logic",
+          "task_signature": [
+            "python-evolve",
+            "set-logic",
+            "first-repeat"
+          ],
+          "failure_pattern": "Use the checked-in baseline implementation without any optimization.",
+          "successful_strategy": "Reuse the duplicate-detection memory and return on the first repeated value seen in order.",
+          "tool_trace_summary": "replay-synthesizer passed 4/4 tests and ran in 0.173 ms",
+          "delta_J": 1.0498,
+          "reusable_rules": [
+            "hash_membership",
+            "streaming_seen_set",
+            "preserve_order"
+          ],
+          "supporting_memory_ids": [
+            "exp-contains-duplicates"
+          ],
+          "code_pattern": "Replay-guided streaming set",
+          "retrieval_score": 9.0
+        },
+        {
+          "experience_id": "exp-contains-duplicates",
+          "source_task": "contains-duplicates",
+          "family": "set-logic",
+          "task_signature": [
+            "python-evolve",
+            "set-logic",
+            "duplicate-detection"
+          ],
+          "failure_pattern": "Use the checked-in baseline implementation without any optimization.",
+          "successful_strategy": "Use a seen set so later tasks can reuse the same pattern for first-repeat and overlap problems.",
+          "tool_trace_summary": "replay-synthesizer passed 4/4 tests and ran in 0.209 ms",
+          "delta_J": 1.0365,
+          "reusable_rules": [
+            "hash_membership",
+            "streaming_seen_set"
+          ],
+          "supporting_memory_ids": [
+            "exp-correctness-first"
+          ],
+          "code_pattern": "Streaming seen-set",
+          "retrieval_score": 9.0
+        },
+        {
+          "experience_id": "exp-correctness-first",
+          "source_task": "seed",
+          "family": "agnostic",
+          "task_signature": [
+            "python-evolve",
+            "deterministic-eval",
+            "correctness-first"
+          ],
+          "failure_pattern": "benchmark-only selection promoted fast but incorrect candidates",
+          "successful_strategy": "compile the candidate, run fixed correctness tests, and benchmark only the passing variants",
+          "tool_trace_summary": "candidate code -> deterministic tests -> median benchmark -> score -> selective write-back",
+          "delta_J": 0.18,
+          "reusable_rules": [
+            "correctness_first",
+            "benchmark_after_tests",
+            "deterministic_scoring"
+          ],
+          "supporting_memory_ids": [],
+          "retrieval_score": 4.18
+        }
+      ],
+      "baseline": {
+        "agent": "baseline",
+        "label": "Initial program",
+        "architecture_family": "quadratic-baseline",
+        "strategy": "Use the checked-in baseline implementation without any optimization.",
+        "code": "def has_overlap(left, right):\n    for left_value in left:\n        for right_value in right:\n            if left_value == right_value:\n                return True\n    return False\n",
+        "notes": [
+          "This is the starting point that every candidate must beat.",
+          "The baseline is executed exactly like the mutated candidates."
+        ],
+        "uses_memory": false,
+        "supporting_memory_ids": [],
+        "reusable_rules": [],
+        "complexity": 0.3,
+        "metrics": {
+          "status": "pass",
+          "correctness": 1.0,
+          "passed_tests": 4,
+          "total_tests": 4,
+          "benchmark_ms": 21.113,
+          "benchmark_samples_ms": [
+            21.736,
+            21.113,
+            21.097
+          ],
+          "speedup_vs_baseline": 1.0,
+          "speed_score": 0.125,
+          "stability": 0.971,
+          "complexity": 0.3,
+          "line_count": 6,
+          "test_results": [
+            {
+              "name": "disjoint",
+              "expected": false,
+              "actual": false,
+              "passed": true
+            },
+            {
+              "name": "has-overlap",
+              "expected": true,
+              "actual": true,
+              "passed": true
+            },
+            {
+              "name": "empty-left",
+              "expected": false,
+              "actual": false,
+              "passed": true
+            },
+            {
+              "name": "single-match",
+              "expected": true,
+              "actual": true,
+              "passed": true
+            }
+          ],
+          "error": null,
+          "J": 1.3803
+        }
+      },
+      "candidates": [
+        {
+          "agent": "replay-synthesizer",
+          "label": "Replay-guided smaller-side set",
+          "architecture_family": "replay-conditioned",
+          "strategy": "Use replay memory to materialize only the smaller side as a set and stream the other collection through it.",
+          "code": "def has_overlap(left, right):\n    if len(left) <= len(right):\n        seen = set(left)\n        probe = right\n    else:\n        seen = set(right)\n        probe = left\n    for value in probe:\n        if value in seen:\n            return True\n    return False\n",
+          "notes": [
+            "Generalizes the hash-membership lesson from earlier tasks.",
+            "Avoids unnecessary work when one side is much smaller."
+          ],
+          "uses_memory": true,
+          "supporting_memory_ids": [
+            "exp-first-repeated-value",
+            "exp-contains-duplicates"
+          ],
+          "reusable_rules": [
+            "hash_membership",
+            "materialize_smaller_side"
+          ],
+          "complexity": 0.27,
+          "metrics": {
+            "status": "pass",
+            "correctness": 1.0,
+            "passed_tests": 4,
+            "total_tests": 4,
+            "benchmark_ms": 0.122,
+            "benchmark_samples_ms": [
+              0.113,
+              0.122,
+              0.124
+            ],
+            "speedup_vs_baseline": 173.413,
+            "speed_score": 1.0,
+            "stability": 0.918,
+            "complexity": 0.27,
+            "line_count": 11,
+            "test_results": [
+              {
+                "name": "disjoint",
+                "expected": false,
+                "actual": false,
+                "passed": true
+              },
+              {
+                "name": "has-overlap",
+                "expected": true,
+                "actual": true,
+                "passed": true
+              },
+              {
+                "name": "empty-left",
+                "expected": false,
+                "actual": false,
+                "passed": true
+              },
+              {
+                "name": "single-match",
+                "expected": true,
+                "actual": true,
+                "passed": true
+              }
+            ],
+            "error": null,
+            "J": 2.3841
+          }
+        },
+        {
+          "agent": "hash-optimizer",
+          "label": "Two-set intersection",
+          "architecture_family": "hash-based",
+          "strategy": "Materialize both sides as sets and test whether the intersection is non-empty.",
+          "code": "def has_overlap(left, right):\n    return bool(set(left) & set(right))\n",
+          "notes": [
+            "Concise and usually fast for medium-sized collections.",
+            "Builds two sets even when one side is much smaller."
+          ],
+          "uses_memory": false,
+          "supporting_memory_ids": [],
+          "reusable_rules": [
+            "hash_membership",
+            "set_intersection"
+          ],
+          "complexity": 0.2,
+          "metrics": {
+            "status": "pass",
+            "correctness": 1.0,
+            "passed_tests": 4,
+            "total_tests": 4,
+            "benchmark_ms": 0.123,
+            "benchmark_samples_ms": [
+              0.132,
+              0.117,
+              0.123
+            ],
+            "speedup_vs_baseline": 171.419,
+            "speed_score": 1.0,
+            "stability": 0.886,
+            "complexity": 0.2,
+            "line_count": 2,
+            "test_results": [
+              {
+                "name": "disjoint",
+                "expected": false,
+                "actual": false,
+                "passed": true
+              },
+              {
+                "name": "has-overlap",
+                "expected": true,
+                "actual": true,
+                "passed": true
+              },
+              {
+                "name": "empty-left",
+                "expected": false,
+                "actual": false,
+                "passed": true
+              },
+              {
+                "name": "single-match",
+                "expected": true,
+                "actual": true,
+                "passed": true
+              }
+            ],
+            "error": null,
+            "J": 2.2369
+          }
+        },
+        {
+          "agent": "merge-optimizer",
+          "label": "Sort and merge",
+          "architecture_family": "sort-based",
+          "strategy": "Sort both collections and walk them with two indices.",
+          "code": "def has_overlap(left, right):\n    ordered_left = sorted(left)\n    ordered_right = sorted(right)\n    left_index = 0\n    right_index = 0\n\n    while left_index < len(ordered_left) and right_index < len(ordered_right):\n        left_value = ordered_left[left_index]\n        right_value = ordered_right[right_index]\n        if left_value == right_value:\n            return True\n        if left_value < right_value:\n            left_index += 1\n        else:\n            right_index += 1\n    return False\n",
+          "notes": [
+            "A solid O(n log n) fallback when hashability is uncertain.",
+            "More moving parts than a hash-based check."
+          ],
+          "uses_memory": false,
+          "supporting_memory_ids": [],
+          "reusable_rules": [
+            "sort_then_scan"
+          ],
+          "complexity": 0.39,
+          "metrics": {
+            "status": "pass",
+            "correctness": 1.0,
+            "passed_tests": 4,
+            "total_tests": 4,
+            "benchmark_ms": 0.233,
+            "benchmark_samples_ms": [
+              0.233,
+              0.225,
+              0.234
+            ],
+            "speedup_vs_baseline": 90.63,
+            "speed_score": 1.0,
+            "stability": 0.962,
+            "complexity": 0.39,
+            "line_count": 15,
+            "test_results": [
+              {
+                "name": "disjoint",
+                "expected": false,
+                "actual": false,
+                "passed": true
+              },
+              {
+                "name": "has-overlap",
+                "expected": true,
+                "actual": true,
+                "passed": true
+              },
+              {
+                "name": "empty-left",
+                "expected": false,
+                "actual": false,
+                "passed": true
+              },
+              {
+                "name": "single-match",
+                "expected": true,
+                "actual": true,
+                "passed": true
+              }
+            ],
+            "error": null,
+            "J": 2.149
+          }
+        }
+      ],
+      "architectures": [
+        {
+          "agent": "baseline",
+          "label": "Initial program",
+          "family": "quadratic-baseline",
+          "J": 1.3803,
+          "benchmark_ms": 21.113,
+          "speedup_vs_baseline": 1.0
+        },
+        {
+          "agent": "replay-synthesizer",
+          "label": "Replay-guided smaller-side set",
+          "family": "replay-conditioned",
+          "J": 2.3841,
+          "benchmark_ms": 0.122,
+          "speedup_vs_baseline": 173.413
+        },
+        {
+          "agent": "hash-optimizer",
+          "label": "Two-set intersection",
+          "family": "hash-based",
+          "J": 2.2369,
+          "benchmark_ms": 0.123,
+          "speedup_vs_baseline": 171.419
+        },
+        {
+          "agent": "merge-optimizer",
+          "label": "Sort and merge",
+          "family": "sort-based",
+          "J": 2.149,
+          "benchmark_ms": 0.233,
+          "speedup_vs_baseline": 90.63
+        }
+      ],
+      "winner": {
+        "agent": "replay-synthesizer",
+        "label": "Replay-guided smaller-side set",
+        "architecture_family": "replay-conditioned",
+        "strategy": "Use replay memory to materialize only the smaller side as a set and stream the other collection through it.",
+        "code": "def has_overlap(left, right):\n    if len(left) <= len(right):\n        seen = set(left)\n        probe = right\n    else:\n        seen = set(right)\n        probe = left\n    for value in probe:\n        if value in seen:\n            return True\n    return False\n",
+        "notes": [
+          "Generalizes the hash-membership lesson from earlier tasks.",
+          "Avoids unnecessary work when one side is much smaller."
+        ],
+        "uses_memory": true,
+        "supporting_memory_ids": [
+          "exp-first-repeated-value",
+          "exp-contains-duplicates"
+        ],
+        "reusable_rules": [
+          "hash_membership",
+          "materialize_smaller_side"
+        ],
+        "complexity": 0.27,
+        "metrics": {
+          "status": "pass",
+          "correctness": 1.0,
+          "passed_tests": 4,
+          "total_tests": 4,
+          "benchmark_ms": 0.122,
+          "benchmark_samples_ms": [
+            0.113,
+            0.122,
+            0.124
+          ],
+          "speedup_vs_baseline": 173.413,
+          "speed_score": 1.0,
+          "stability": 0.918,
+          "complexity": 0.27,
+          "line_count": 11,
+          "test_results": [
+            {
+              "name": "disjoint",
+              "expected": false,
+              "actual": false,
+              "passed": true
+            },
+            {
+              "name": "has-overlap",
+              "expected": true,
+              "actual": true,
+              "passed": true
+            },
+            {
+              "name": "empty-left",
+              "expected": false,
+              "actual": false,
+              "passed": true
+            },
+            {
+              "name": "single-match",
+              "expected": true,
+              "actual": true,
+              "passed": true
+            }
+          ],
+          "error": null,
+          "J": 2.3841
+        }
+      },
+      "delta_J": 1.0038,
+      "should_write_memory": true,
+      "selection_reason": "replay-synthesizer won with J=2.3841 and 173.413x speedup while preserving correctness.",
+      "new_experience": {
+        "experience_id": "exp-has-overlap",
+        "source_task": "has-overlap",
+        "family": "set-logic",
+        "task_signature": [
+          "python-evolve",
+          "set-logic",
+          "overlap-detection"
+        ],
+        "failure_pattern": "Use the checked-in baseline implementation without any optimization.",
+        "successful_strategy": "Use replay memory to materialize only the smaller side as a set and stream the other collection through it.",
+        "tool_trace_summary": "replay-synthesizer passed 4/4 tests and ran in 0.122 ms",
+        "delta_J": 1.0038,
+        "reusable_rules": [
+          "hash_membership",
+          "materialize_smaller_side"
+        ],
+        "supporting_memory_ids": [
+          "exp-first-repeated-value",
+          "exp-contains-duplicates"
+        ],
+        "code_pattern": "Replay-guided smaller-side set"
+      },
+      "memory_before_count": 3,
+      "memory_after_count": 4
+    },
+    {
+      "task": {
+        "id": "most-frequent-item",
+        "title": "Optimize most_frequent_item",
+        "description": "Replace a quadratic mode finder with counted architectures and compare one-pass versus two-pass strategies.",
+        "family": "counting",
+        "function_name": "most_frequent_item",
+        "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/most_frequent_item/initial_program.py",
+        "task_signature": [
+          "python-evolve",
+          "counting",
+          "mode-finding"
+        ]
+      },
+      "plan": {
+        "task_id": "most-frequent-item",
+        "objective": "Replace a quadratic mode finder with counted architectures and compare one-pass versus two-pass strategies.",
+        "family": "counting",
+        "selection_policy": "run fixed tests first, benchmark only passing candidates, then maximize J",
+        "priority_checks": [
+          "preserve correctness under fixed unit cases",
+          "improve runtime over the baseline implementation",
+          "reuse retrieved memory only when it maps to a real code idiom",
+          "write back experience only if delta_J clears epsilon"
+        ],
+        "active_rules": [
+          "benchmark_after_tests",
+          "correctness_first",
+          "deterministic_scoring",
+          "hash_membership",
+          "preserve_order",
+          "streaming_seen_set"
+        ],
+        "lanes": [
+          "count-optimizer",
+          "collections-optimizer",
+          "replay-synthesizer"
+        ],
+        "memory_count": 3
+      },
+      "retrieved_memories": [
+        {
+          "experience_id": "exp-correctness-first",
+          "source_task": "seed",
+          "family": "agnostic",
+          "task_signature": [
+            "python-evolve",
+            "deterministic-eval",
+            "correctness-first"
+          ],
+          "failure_pattern": "benchmark-only selection promoted fast but incorrect candidates",
+          "successful_strategy": "compile the candidate, run fixed correctness tests, and benchmark only the passing variants",
+          "tool_trace_summary": "candidate code -> deterministic tests -> median benchmark -> score -> selective write-back",
+          "delta_J": 0.18,
+          "reusable_rules": [
+            "correctness_first",
+            "benchmark_after_tests",
+            "deterministic_scoring"
+          ],
+          "supporting_memory_ids": [],
+          "retrieval_score": 4.18
+        },
+        {
+          "experience_id": "exp-first-repeated-value",
+          "source_task": "first-repeated-value",
+          "family": "set-logic",
+          "task_signature": [
+            "python-evolve",
+            "set-logic",
+            "first-repeat"
+          ],
+          "failure_pattern": "Use the checked-in baseline implementation without any optimization.",
+          "successful_strategy": "Reuse the duplicate-detection memory and return on the first repeated value seen in order.",
+          "tool_trace_summary": "replay-synthesizer passed 4/4 tests and ran in 0.173 ms",
+          "delta_J": 1.0498,
+          "reusable_rules": [
+            "hash_membership",
+            "streaming_seen_set",
+            "preserve_order"
+          ],
+          "supporting_memory_ids": [
+            "exp-contains-duplicates"
+          ],
+          "code_pattern": "Replay-guided streaming set",
+          "retrieval_score": 4.0
+        },
+        {
+          "experience_id": "exp-contains-duplicates",
+          "source_task": "contains-duplicates",
+          "family": "set-logic",
+          "task_signature": [
+            "python-evolve",
+            "set-logic",
+            "duplicate-detection"
+          ],
+          "failure_pattern": "Use the checked-in baseline implementation without any optimization.",
+          "successful_strategy": "Use a seen set so later tasks can reuse the same pattern for first-repeat and overlap problems.",
+          "tool_trace_summary": "replay-synthesizer passed 4/4 tests and ran in 0.209 ms",
+          "delta_J": 1.0365,
+          "reusable_rules": [
+            "hash_membership",
+            "streaming_seen_set"
+          ],
+          "supporting_memory_ids": [
+            "exp-correctness-first"
+          ],
+          "code_pattern": "Streaming seen-set",
+          "retrieval_score": 4.0
+        }
+      ],
+      "baseline": {
+        "agent": "baseline",
+        "label": "Initial program",
+        "architecture_family": "quadratic-baseline",
+        "strategy": "Use the checked-in baseline implementation without any optimization.",
+        "code": "def most_frequent_item(values):\n    best_value = None\n    best_count = -1\n    for value in values:\n        count = 0\n        for other in values:\n            if other == value:\n                count += 1\n        if count > best_count:\n            best_value = value\n            best_count = count\n    return best_value\n",
+        "notes": [
+          "This is the starting point that every candidate must beat.",
+          "The baseline is executed exactly like the mutated candidates."
+        ],
+        "uses_memory": false,
+        "supporting_memory_ids": [],
+        "reusable_rules": [],
+        "complexity": 0.3,
+        "metrics": {
+          "status": "pass",
+          "correctness": 1.0,
+          "passed_tests": 4,
+          "total_tests": 4,
+          "benchmark_ms": 229.664,
+          "benchmark_samples_ms": [
+            229.664,
+            229.661,
+            231.569
+          ],
+          "speedup_vs_baseline": 1.0,
+          "speed_score": 0.125,
+          "stability": 0.992,
+          "complexity": 0.3,
+          "line_count": 12,
+          "test_results": [
+            {
+              "name": "simple-mode",
+              "expected": 2,
+              "actual": 2,
+              "passed": true
+            },
+            {
+              "name": "string-mode",
+              "expected": "b",
+              "actual": "b",
+              "passed": true
+            },
+            {
+              "name": "single-item",
+              "expected": 7,
+              "actual": 7,
+              "passed": true
+            },
+            {
+              "name": "late-mode",
+              "expected": 2,
+              "actual": 2,
+              "passed": true
+            }
+          ],
+          "error": null,
+          "J": 1.3535
+        }
+      },
+      "candidates": [
+        {
+          "agent": "collections-optimizer",
+          "label": "Counter most_common",
+          "architecture_family": "library-assisted",
+          "strategy": "Use Counter and delegate the selection logic to the standard library.",
+          "code": "from collections import Counter\n\ndef most_frequent_item(values):\n    return Counter(values).most_common(1)[0][0]\n",
+          "notes": [
+            "Short and expressive.",
+            "Usually wins when library overhead is dominated by the quadratic baseline."
+          ],
+          "uses_memory": false,
+          "supporting_memory_ids": [],
+          "reusable_rules": [
+            "counter_library"
+          ],
+          "complexity": 0.21,
+          "metrics": {
+            "status": "pass",
+            "correctness": 1.0,
+            "passed_tests": 4,
+            "total_tests": 4,
+            "benchmark_ms": 0.173,
+            "benchmark_samples_ms": [
+              0.202,
+              0.173,
+              0.173
+            ],
+            "speedup_vs_baseline": 1327.538,
+            "speed_score": 1.0,
+            "stability": 0.856,
+            "complexity": 0.21,
+            "line_count": 3,
+            "test_results": [
+              {
+                "name": "simple-mode",
+                "expected": 2,
+                "actual": 2,
+                "passed": true
+              },
+              {
+                "name": "string-mode",
+                "expected": "b",
+                "actual": "b",
+                "passed": true
+              },
+              {
+                "name": "single-item",
+                "expected": 7,
+                "actual": 7,
+                "passed": true
+              },
+              {
+                "name": "late-mode",
+                "expected": 2,
+                "actual": 2,
+                "passed": true
+              }
+            ],
+            "error": null,
+            "J": 2.2256
+          }
+        },
+        {
+          "agent": "replay-synthesizer",
+          "label": "One-pass running best",
+          "architecture_family": "replay-conditioned",
+          "strategy": "Reuse counted-structure intuition and maintain the current best answer during the counting pass.",
+          "code": "def most_frequent_item(values):\n    counts = {}\n    best_value = None\n    best_count = -1\n    for value in values:\n        counts[value] = counts.get(value, 0) + 1\n        if counts[value] > best_count:\n            best_value = value\n            best_count = counts[value]\n    return best_value\n",
+          "notes": [
+            "Moves selection into the same pass as counting.",
+            "Acts like a lightweight architecture search over counting styles."
+          ],
+          "uses_memory": true,
+          "supporting_memory_ids": [],
+          "reusable_rules": [
+            "frequency_table",
+            "one_pass_best"
+          ],
+          "complexity": 0.27,
+          "metrics": {
+            "status": "pass",
+            "correctness": 1.0,
+            "passed_tests": 4,
+            "total_tests": 4,
+            "benchmark_ms": 0.568,
+            "benchmark_samples_ms": [
+              0.557,
+              0.582,
+              0.568
+            ],
+            "speedup_vs_baseline": 404.427,
+            "speed_score": 1.0,
+            "stability": 0.956,
+            "complexity": 0.27,
+            "line_count": 10,
+            "test_results": [
+              {
+                "name": "simple-mode",
+                "expected": 2,
+                "actual": 2,
+                "passed": true
+              },
+              {
+                "name": "string-mode",
+                "expected": "b",
+                "actual": "b",
+                "passed": true
+              },
+              {
+                "name": "single-item",
+                "expected": 7,
+                "actual": 7,
+                "passed": true
+              },
+              {
+                "name": "late-mode",
+                "expected": 2,
+                "actual": 2,
+                "passed": true
+              }
+            ],
+            "error": null,
+            "J": 2.1948
+          }
+        },
+        {
+          "agent": "count-optimizer",
+          "label": "Two-pass counting table",
+          "architecture_family": "counting",
+          "strategy": "Build a frequency table and then select the maximum count.",
+          "code": "def most_frequent_item(values):\n    counts = {}\n    for value in values:\n        counts[value] = counts.get(value, 0) + 1\n    best_value = None\n    best_count = -1\n    for value, count in counts.items():\n        if count > best_count:\n            best_value = value\n            best_count = count\n    return best_value\n",
+          "notes": [
+            "A direct architectural upgrade over the quadratic baseline.",
+            "Separates counting from selection."
+          ],
+          "uses_memory": false,
+          "supporting_memory_ids": [],
+          "reusable_rules": [
+            "frequency_table",
+            "count_then_select"
+          ],
+          "complexity": 0.32,
+          "metrics": {
+            "status": "pass",
+            "correctness": 1.0,
+            "passed_tests": 4,
+            "total_tests": 4,
+            "benchmark_ms": 0.303,
+            "benchmark_samples_ms": [
+              0.311,
+              0.303,
+              0.303
+            ],
+            "speedup_vs_baseline": 757.342,
+            "speed_score": 1.0,
+            "stability": 0.975,
+            "complexity": 0.32,
+            "line_count": 11,
+            "test_results": [
+              {
+                "name": "simple-mode",
+                "expected": 2,
+                "actual": 2,
+                "passed": true
+              },
+              {
+                "name": "string-mode",
+                "expected": "b",
+                "actual": "b",
+                "passed": true
+              },
+              {
+                "name": "single-item",
+                "expected": 7,
+                "actual": 7,
+                "passed": true
+              },
+              {
+                "name": "late-mode",
+                "expected": 2,
+                "actual": 2,
+                "passed": true
+              }
+            ],
+            "error": null,
+            "J": 2.1836
+          }
+        }
+      ],
+      "architectures": [
+        {
+          "agent": "baseline",
+          "label": "Initial program",
+          "family": "quadratic-baseline",
+          "J": 1.3535,
+          "benchmark_ms": 229.664,
+          "speedup_vs_baseline": 1.0
+        },
+        {
+          "agent": "collections-optimizer",
+          "label": "Counter most_common",
+          "family": "library-assisted",
+          "J": 2.2256,
+          "benchmark_ms": 0.173,
+          "speedup_vs_baseline": 1327.538
+        },
+        {
+          "agent": "replay-synthesizer",
+          "label": "One-pass running best",
+          "family": "replay-conditioned",
+          "J": 2.1948,
+          "benchmark_ms": 0.568,
+          "speedup_vs_baseline": 404.427
+        },
+        {
+          "agent": "count-optimizer",
+          "label": "Two-pass counting table",
+          "family": "counting",
+          "J": 2.1836,
+          "benchmark_ms": 0.303,
+          "speedup_vs_baseline": 757.342
+        }
+      ],
+      "winner": {
+        "agent": "collections-optimizer",
+        "label": "Counter most_common",
+        "architecture_family": "library-assisted",
+        "strategy": "Use Counter and delegate the selection logic to the standard library.",
+        "code": "from collections import Counter\n\ndef most_frequent_item(values):\n    return Counter(values).most_common(1)[0][0]\n",
+        "notes": [
+          "Short and expressive.",
+          "Usually wins when library overhead is dominated by the quadratic baseline."
+        ],
+        "uses_memory": false,
+        "supporting_memory_ids": [],
+        "reusable_rules": [
+          "counter_library"
+        ],
+        "complexity": 0.21,
+        "metrics": {
+          "status": "pass",
+          "correctness": 1.0,
+          "passed_tests": 4,
+          "total_tests": 4,
+          "benchmark_ms": 0.173,
+          "benchmark_samples_ms": [
+            0.202,
+            0.173,
+            0.173
+          ],
+          "speedup_vs_baseline": 1327.538,
+          "speed_score": 1.0,
+          "stability": 0.856,
+          "complexity": 0.21,
+          "line_count": 3,
+          "test_results": [
+            {
+              "name": "simple-mode",
+              "expected": 2,
+              "actual": 2,
+              "passed": true
+            },
+            {
+              "name": "string-mode",
+              "expected": "b",
+              "actual": "b",
+              "passed": true
+            },
+            {
+              "name": "single-item",
+              "expected": 7,
+              "actual": 7,
+              "passed": true
+            },
+            {
+              "name": "late-mode",
+              "expected": 2,
+              "actual": 2,
+              "passed": true
+            }
+          ],
+          "error": null,
+          "J": 2.2256
+        }
+      },
+      "delta_J": 0.8721,
+      "should_write_memory": true,
+      "selection_reason": "collections-optimizer won with J=2.2256 and 1327.538x speedup while preserving correctness.",
+      "new_experience": {
+        "experience_id": "exp-most-frequent-item",
+        "source_task": "most-frequent-item",
+        "family": "counting",
+        "task_signature": [
+          "python-evolve",
+          "counting",
+          "mode-finding"
+        ],
+        "failure_pattern": "Use the checked-in baseline implementation without any optimization.",
+        "successful_strategy": "Use Counter and delegate the selection logic to the standard library.",
+        "tool_trace_summary": "collections-optimizer passed 4/4 tests and ran in 0.173 ms",
+        "delta_J": 0.8721,
+        "reusable_rules": [
+          "counter_library"
+        ],
+        "supporting_memory_ids": [],
+        "code_pattern": "Counter most_common"
+      },
+      "memory_before_count": 4,
+      "memory_after_count": 5
+    },
+    {
+      "task": {
+        "id": "deduplicate-preserve-order",
+        "title": "Optimize deduplicate_preserve_order",
+        "description": "Keep original order while removing duplicates, and compare hash-based versus order-breaking architectures.",
+        "family": "set-logic",
+        "function_name": "deduplicate_preserve_order",
+        "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/deduplicate_preserve_order/initial_program.py",
+        "task_signature": [
+          "python-evolve",
+          "set-logic",
+          "stable-deduplication"
+        ]
+      },
+      "plan": {
+        "task_id": "deduplicate-preserve-order",
+        "objective": "Keep original order while removing duplicates, and compare hash-based versus order-breaking architectures.",
+        "family": "set-logic",
+        "selection_policy": "run fixed tests first, benchmark only passing candidates, then maximize J",
+        "priority_checks": [
+          "preserve correctness under fixed unit cases",
+          "improve runtime over the baseline implementation",
+          "reuse retrieved memory only when it maps to a real code idiom",
+          "write back experience only if delta_J clears epsilon"
+        ],
+        "active_rules": [
+          "hash_membership",
+          "materialize_smaller_side",
+          "preserve_order",
+          "streaming_seen_set"
+        ],
+        "lanes": [
+          "dict-optimizer",
+          "sort-optimizer",
+          "replay-synthesizer"
+        ],
+        "memory_count": 3
+      },
+      "retrieved_memories": [
+        {
+          "experience_id": "exp-first-repeated-value",
+          "source_task": "first-repeated-value",
+          "family": "set-logic",
+          "task_signature": [
+            "python-evolve",
+            "set-logic",
+            "first-repeat"
+          ],
+          "failure_pattern": "Use the checked-in baseline implementation without any optimization.",
+          "successful_strategy": "Reuse the duplicate-detection memory and return on the first repeated value seen in order.",
+          "tool_trace_summary": "replay-synthesizer passed 4/4 tests and ran in 0.173 ms",
+          "delta_J": 1.0498,
+          "reusable_rules": [
+            "hash_membership",
+            "streaming_seen_set",
+            "preserve_order"
+          ],
+          "supporting_memory_ids": [
+            "exp-contains-duplicates"
+          ],
+          "code_pattern": "Replay-guided streaming set",
+          "retrieval_score": 9.0
+        },
+        {
+          "experience_id": "exp-contains-duplicates",
+          "source_task": "contains-duplicates",
+          "family": "set-logic",
+          "task_signature": [
+            "python-evolve",
+            "set-logic",
+            "duplicate-detection"
+          ],
+          "failure_pattern": "Use the checked-in baseline implementation without any optimization.",
+          "successful_strategy": "Use a seen set so later tasks can reuse the same pattern for first-repeat and overlap problems.",
+          "tool_trace_summary": "replay-synthesizer passed 4/4 tests and ran in 0.209 ms",
+          "delta_J": 1.0365,
+          "reusable_rules": [
+            "hash_membership",
+            "streaming_seen_set"
+          ],
+          "supporting_memory_ids": [
+            "exp-correctness-first"
+          ],
+          "code_pattern": "Streaming seen-set",
+          "retrieval_score": 9.0
+        },
+        {
+          "experience_id": "exp-has-overlap",
+          "source_task": "has-overlap",
+          "family": "set-logic",
+          "task_signature": [
+            "python-evolve",
+            "set-logic",
+            "overlap-detection"
+          ],
+          "failure_pattern": "Use the checked-in baseline implementation without any optimization.",
+          "successful_strategy": "Use replay memory to materialize only the smaller side as a set and stream the other collection through it.",
+          "tool_trace_summary": "replay-synthesizer passed 4/4 tests and ran in 0.122 ms",
+          "delta_J": 1.0038,
+          "reusable_rules": [
+            "hash_membership",
+            "materialize_smaller_side"
+          ],
+          "supporting_memory_ids": [
+            "exp-first-repeated-value",
+            "exp-contains-duplicates"
+          ],
+          "code_pattern": "Replay-guided smaller-side set",
+          "retrieval_score": 9.0
+        }
+      ],
+      "baseline": {
+        "agent": "baseline",
+        "label": "Initial program",
+        "architecture_family": "quadratic-baseline",
+        "strategy": "Use the checked-in baseline implementation without any optimization.",
+        "code": "def deduplicate_preserve_order(values):\n    result = []\n    for value in values:\n        seen = False\n        for existing in result:\n            if existing == value:\n                seen = True\n                break\n        if not seen:\n            result.append(value)\n    return result\n",
+        "notes": [
+          "This is the starting point that every candidate must beat.",
+          "The baseline is executed exactly like the mutated candidates."
+        ],
+        "uses_memory": false,
+        "supporting_memory_ids": [],
+        "reusable_rules": [],
+        "complexity": 0.3,
+        "metrics": {
+          "status": "pass",
+          "correctness": 1.0,
+          "passed_tests": 4,
+          "total_tests": 4,
+          "benchmark_ms": 3.651,
+          "benchmark_samples_ms": [
+            3.437,
+            3.802,
+            3.651
+          ],
+          "speedup_vs_baseline": 1.0,
+          "speed_score": 0.125,
+          "stability": 0.904,
+          "complexity": 0.3,
+          "line_count": 11,
+          "test_results": [
+            {
+              "name": "basic-dedup",
+              "expected": [
+                1,
+                2,
+                3
+              ],
+              "actual": [
+                1,
+                2,
+                3
+              ],
+              "passed": true
+            },
+            {
+              "name": "already-unique",
+              "expected": [
+                1,
+                2,
+                3
+              ],
+              "actual": [
+                1,
+                2,
+                3
+              ],
+              "passed": true
+            },
+            {
+              "name": "strings",
+              "expected": [
+                "a",
+                "b",
+                "c"
+              ],
+              "actual": [
+                "a",
+                "b",
+                "c"
+              ],
+              "passed": true
+            },
+            {
+              "name": "empty",
+              "expected": [],
+              "actual": [],
+              "passed": true
+            }
+          ],
+          "error": null,
+          "J": 1.3454
+        }
+      },
+      "candidates": [
+        {
+          "agent": "replay-synthesizer",
+          "label": "Streaming seen-set dedup",
+          "architecture_family": "replay-conditioned",
+          "strategy": "Reuse hash-membership memory and explicitly preserve order with a seen set and output buffer.",
+          "code": "def deduplicate_preserve_order(values):\n    seen = set()\n    result = []\n    for value in values:\n        if value not in seen:\n            seen.add(value)\n            result.append(value)\n    return result\n",
+          "notes": [
+            "More explicit than dict.fromkeys and easier to generalize.",
+            "This is the replay version of stable deduplication."
+          ],
+          "uses_memory": true,
+          "supporting_memory_ids": [
+            "exp-first-repeated-value",
+            "exp-contains-duplicates",
+            "exp-has-overlap"
+          ],
+          "reusable_rules": [
+            "hash_membership",
+            "preserve_order"
+          ],
+          "complexity": 0.24,
+          "metrics": {
+            "status": "pass",
+            "correctness": 1.0,
+            "passed_tests": 4,
+            "total_tests": 4,
+            "benchmark_ms": 0.112,
+            "benchmark_samples_ms": [
+              0.106,
+              0.123,
+              0.112
+            ],
+            "speedup_vs_baseline": 32.502,
+            "speed_score": 1.0,
+            "stability": 0.862,
+            "complexity": 0.24,
+            "line_count": 8,
+            "test_results": [
+              {
+                "name": "basic-dedup",
+                "expected": [
+                  1,
+                  2,
+                  3
+                ],
+                "actual": [
+                  1,
+                  2,
+                  3
+                ],
+                "passed": true
+              },
+              {
+                "name": "already-unique",
+                "expected": [
+                  1,
+                  2,
+                  3
+                ],
+                "actual": [
+                  1,
+                  2,
+                  3
+                ],
+                "passed": true
+              },
+              {
+                "name": "strings",
+                "expected": [
+                  "a",
+                  "b",
+                  "c"
+                ],
+                "actual": [
+                  "a",
+                  "b",
+                  "c"
+                ],
+                "passed": true
+              },
+              {
+                "name": "empty",
+                "expected": [],
+                "actual": [],
+                "passed": true
+              }
+            ],
+            "error": null,
+            "J": 2.396
+          }
+        },
+        {
+          "agent": "sort-optimizer",
+          "label": "Sorted set",
+          "architecture_family": "sort-based",
+          "strategy": "Sort a set of values, which is fast but breaks the original order guarantee.",
+          "code": "def deduplicate_preserve_order(values):\n    return sorted(set(values))\n",
+          "notes": [
+            "This candidate intentionally violates task semantics.",
+            "The evaluator should reject it like Karpathy would discard a faster but invalid run."
+          ],
+          "uses_memory": false,
+          "supporting_memory_ids": [],
+          "reusable_rules": [
+            "sort_then_scan"
+          ],
+          "complexity": 0.14,
+          "metrics": {
+            "status": "pass",
+            "correctness": 1.0,
+            "passed_tests": 4,
+            "total_tests": 4,
+            "benchmark_ms": 0.056,
+            "benchmark_samples_ms": [
+              0.058,
+              0.056,
+              0.049
+            ],
+            "speedup_vs_baseline": 64.619,
+            "speed_score": 1.0,
+            "stability": 0.84,
+            "complexity": 0.14,
+            "line_count": 2,
+            "test_results": [
+              {
+                "name": "basic-dedup",
+                "expected": [
+                  1,
+                  2,
+                  3
+                ],
+                "actual": [
+                  1,
+                  2,
+                  3
+                ],
+                "passed": true
+              },
+              {
+                "name": "already-unique",
+                "expected": [
+                  1,
+                  2,
+                  3
+                ],
+                "actual": [
+                  1,
+                  2,
+                  3
+                ],
+                "passed": true
+              },
+              {
+                "name": "strings",
+                "expected": [
+                  "a",
+                  "b",
+                  "c"
+                ],
+                "actual": [
+                  "a",
+                  "b",
+                  "c"
+                ],
+                "passed": true
+              },
+              {
+                "name": "empty",
+                "expected": [],
+                "actual": [],
+                "passed": true
+              }
+            ],
+            "error": null,
+            "J": 2.2408
+          }
+        },
+        {
+          "agent": "dict-optimizer",
+          "label": "dict.fromkeys",
+          "architecture_family": "hash-based",
+          "strategy": "Exploit insertion ordering in dict to preserve order and remove duplicates.",
+          "code": "def deduplicate_preserve_order(values):\n    return list(dict.fromkeys(values))\n",
+          "notes": [
+            "Compact and usually very fast.",
+            "Uses language-level insertion ordering as the architecture trick."
+          ],
+          "uses_memory": false,
+          "supporting_memory_ids": [],
+          "reusable_rules": [
+            "ordered_hashing"
+          ],
+          "complexity": 0.17,
+          "metrics": {
+            "status": "pass",
+            "correctness": 1.0,
+            "passed_tests": 4,
+            "total_tests": 4,
+            "benchmark_ms": 0.098,
+            "benchmark_samples_ms": [
+              0.098,
+              0.097,
+              0.113
+            ],
+            "speedup_vs_baseline": 37.192,
+            "speed_score": 1.0,
+            "stability": 0.853,
+            "complexity": 0.17,
+            "line_count": 2,
+            "test_results": [
+              {
+                "name": "basic-dedup",
+                "expected": [
+                  1,
+                  2,
+                  3
+                ],
+                "actual": [
+                  1,
+                  2,
+                  3
+                ],
+                "passed": true
+              },
+              {
+                "name": "already-unique",
+                "expected": [
+                  1,
+                  2,
+                  3
+                ],
+                "actual": [
+                  1,
+                  2,
+                  3
+                ],
+                "passed": true
+              },
+              {
+                "name": "strings",
+                "expected": [
+                  "a",
+                  "b",
+                  "c"
+                ],
+                "actual": [
+                  "a",
+                  "b",
+                  "c"
+                ],
+                "passed": true
+              },
+              {
+                "name": "empty",
+                "expected": [],
+                "actual": [],
+                "passed": true
+              }
+            ],
+            "error": null,
+            "J": 2.2373
+          }
+        }
+      ],
+      "architectures": [
+        {
+          "agent": "baseline",
+          "label": "Initial program",
+          "family": "quadratic-baseline",
+          "J": 1.3454,
+          "benchmark_ms": 3.651,
+          "speedup_vs_baseline": 1.0
+        },
+        {
+          "agent": "replay-synthesizer",
+          "label": "Streaming seen-set dedup",
+          "family": "replay-conditioned",
+          "J": 2.396,
+          "benchmark_ms": 0.112,
+          "speedup_vs_baseline": 32.502
+        },
+        {
+          "agent": "sort-optimizer",
+          "label": "Sorted set",
+          "family": "sort-based",
+          "J": 2.2408,
+          "benchmark_ms": 0.056,
+          "speedup_vs_baseline": 64.619
+        },
+        {
+          "agent": "dict-optimizer",
+          "label": "dict.fromkeys",
+          "family": "hash-based",
+          "J": 2.2373,
+          "benchmark_ms": 0.098,
+          "speedup_vs_baseline": 37.192
+        }
+      ],
+      "winner": {
+        "agent": "replay-synthesizer",
+        "label": "Streaming seen-set dedup",
+        "architecture_family": "replay-conditioned",
+        "strategy": "Reuse hash-membership memory and explicitly preserve order with a seen set and output buffer.",
+        "code": "def deduplicate_preserve_order(values):\n    seen = set()\n    result = []\n    for value in values:\n        if value not in seen:\n            seen.add(value)\n            result.append(value)\n    return result\n",
+        "notes": [
+          "More explicit than dict.fromkeys and easier to generalize.",
+          "This is the replay version of stable deduplication."
+        ],
+        "uses_memory": true,
+        "supporting_memory_ids": [
+          "exp-first-repeated-value",
+          "exp-contains-duplicates",
+          "exp-has-overlap"
+        ],
+        "reusable_rules": [
+          "hash_membership",
+          "preserve_order"
+        ],
+        "complexity": 0.24,
+        "metrics": {
+          "status": "pass",
+          "correctness": 1.0,
+          "passed_tests": 4,
+          "total_tests": 4,
+          "benchmark_ms": 0.112,
+          "benchmark_samples_ms": [
+            0.106,
+            0.123,
+            0.112
+          ],
+          "speedup_vs_baseline": 32.502,
+          "speed_score": 1.0,
+          "stability": 0.862,
+          "complexity": 0.24,
+          "line_count": 8,
+          "test_results": [
+            {
+              "name": "basic-dedup",
+              "expected": [
+                1,
+                2,
+                3
+              ],
+              "actual": [
+                1,
+                2,
+                3
+              ],
+              "passed": true
+            },
+            {
+              "name": "already-unique",
+              "expected": [
+                1,
+                2,
+                3
+              ],
+              "actual": [
+                1,
+                2,
+                3
+              ],
+              "passed": true
+            },
+            {
+              "name": "strings",
+              "expected": [
+                "a",
+                "b",
+                "c"
+              ],
+              "actual": [
+                "a",
+                "b",
+                "c"
+              ],
+              "passed": true
+            },
+            {
+              "name": "empty",
+              "expected": [],
+              "actual": [],
+              "passed": true
+            }
+          ],
+          "error": null,
+          "J": 2.396
+        }
+      },
+      "delta_J": 1.0506,
+      "should_write_memory": true,
+      "selection_reason": "replay-synthesizer won with J=2.396 and 32.502x speedup while preserving correctness.",
+      "new_experience": {
+        "experience_id": "exp-deduplicate-preserve-order",
+        "source_task": "deduplicate-preserve-order",
+        "family": "set-logic",
+        "task_signature": [
+          "python-evolve",
+          "set-logic",
+          "stable-deduplication"
+        ],
+        "failure_pattern": "Use the checked-in baseline implementation without any optimization.",
+        "successful_strategy": "Reuse hash-membership memory and explicitly preserve order with a seen set and output buffer.",
+        "tool_trace_summary": "replay-synthesizer passed 4/4 tests and ran in 0.112 ms",
+        "delta_J": 1.0506,
+        "reusable_rules": [
+          "hash_membership",
+          "preserve_order"
+        ],
+        "supporting_memory_ids": [
+          "exp-first-repeated-value",
+          "exp-contains-duplicates",
+          "exp-has-overlap"
+        ],
+        "code_pattern": "Streaming seen-set dedup"
+      },
+      "memory_before_count": 5,
+      "memory_after_count": 6
+    },
+    {
+      "task": {
+        "id": "missing-number",
+        "title": "Optimize missing_number",
+        "description": "Find the missing integer with architecture families that mimic search, sorting, and arithmetic reasoning.",
+        "family": "numeric",
+        "function_name": "missing_number",
+        "baseline_path": "/Users/david/coding/2026/autoresearcher-MA/examples/evolve/missing_number/initial_program.py",
+        "task_signature": [
+          "python-evolve",
+          "numeric",
+          "missing-value"
+        ]
+      },
+      "plan": {
+        "task_id": "missing-number",
+        "objective": "Find the missing integer with architecture families that mimic search, sorting, and arithmetic reasoning.",
+        "family": "numeric",
+        "selection_policy": "run fixed tests first, benchmark only passing candidates, then maximize J",
+        "priority_checks": [
+          "preserve correctness under fixed unit cases",
+          "improve runtime over the baseline implementation",
+          "reuse retrieved memory only when it maps to a real code idiom",
+          "write back experience only if delta_J clears epsilon"
+        ],
+        "active_rules": [
+          "benchmark_after_tests",
+          "correctness_first",
+          "deterministic_scoring",
+          "hash_membership",
+          "preserve_order",
+          "streaming_seen_set"
+        ],
+        "lanes": [
+          "sort-optimizer",
+          "formula-optimizer",
+          "replay-synthesizer"
+        ],
+        "memory_count": 3
+      },
+      "retrieved_memories": [
+        {
+          "experience_id": "exp-correctness-first",
+          "source_task": "seed",
+          "family": "agnostic",
+          "task_signature": [
+            "python-evolve",
+            "deterministic-eval",
+            "correctness-first"
+          ],
+          "failure_pattern": "benchmark-only selection promoted fast but incorrect candidates",
+          "successful_strategy": "compile the candidate, run fixed correctness tests, and benchmark only the passing variants",
+          "tool_trace_summary": "candidate code -> deterministic tests -> median benchmark -> score -> selective write-back",
+          "delta_J": 0.18,
+          "reusable_rules": [
+            "correctness_first",
+            "benchmark_after_tests",
+            "deterministic_scoring"
+          ],
+          "supporting_memory_ids": [],
+          "retrieval_score": 4.18
+        },
+        {
+          "experience_id": "exp-deduplicate-preserve-order",
+          "source_task": "deduplicate-preserve-order",
+          "family": "set-logic",
+          "task_signature": [
+            "python-evolve",
+            "set-logic",
+            "stable-deduplication"
+          ],
+          "failure_pattern": "Use the checked-in baseline implementation without any optimization.",
+          "successful_strategy": "Reuse hash-membership memory and explicitly preserve order with a seen set and output buffer.",
+          "tool_trace_summary": "replay-synthesizer passed 4/4 tests and ran in 0.112 ms",
+          "delta_J": 1.0506,
+          "reusable_rules": [
+            "hash_membership",
+            "preserve_order"
+          ],
+          "supporting_memory_ids": [
+            "exp-first-repeated-value",
+            "exp-contains-duplicates",
+            "exp-has-overlap"
+          ],
+          "code_pattern": "Streaming seen-set dedup",
+          "retrieval_score": 4.0
+        },
+        {
+          "experience_id": "exp-first-repeated-value",
+          "source_task": "first-repeated-value",
+          "family": "set-logic",
+          "task_signature": [
+            "python-evolve",
+            "set-logic",
+            "first-repeat"
+          ],
+          "failure_pattern": "Use the checked-in baseline implementation without any optimization.",
+          "successful_strategy": "Reuse the duplicate-detection memory and return on the first repeated value seen in order.",
+          "tool_trace_summary": "replay-synthesizer passed 4/4 tests and ran in 0.173 ms",
+          "delta_J": 1.0498,
+          "reusable_rules": [
+            "hash_membership",
+            "streaming_seen_set",
+            "preserve_order"
+          ],
+          "supporting_memory_ids": [
+            "exp-contains-duplicates"
+          ],
+          "code_pattern": "Replay-guided streaming set",
+          "retrieval_score": 4.0
+        }
+      ],
+      "baseline": {
+        "agent": "baseline",
+        "label": "Initial program",
+        "architecture_family": "quadratic-baseline",
+        "strategy": "Use the checked-in baseline implementation without any optimization.",
+        "code": "def missing_number(values):\n    upper = len(values) + 1\n    for candidate in range(upper):\n        present = False\n        for value in values:\n            if value == candidate:\n                present = True\n                break\n        if not present:\n            return candidate\n    return None\n",
+        "notes": [
+          "This is the starting point that every candidate must beat.",
+          "The baseline is executed exactly like the mutated candidates."
+        ],
+        "uses_memory": false,
+        "supporting_memory_ids": [],
+        "reusable_rules": [],
+        "complexity": 0.3,
+        "metrics": {
+          "status": "pass",
+          "correctness": 1.0,
+          "passed_tests": 4,
+          "total_tests": 4,
+          "benchmark_ms": 30.606,
+          "benchmark_samples_ms": [
+            30.606,
+            30.509,
+            30.667
+          ],
+          "speedup_vs_baseline": 1.0,
+          "speed_score": 0.125,
+          "stability": 0.995,
+          "complexity": 0.3,
+          "line_count": 11,
+          "test_results": [
+            {
+              "name": "missing-middle",
+              "expected": 2,
+              "actual": 2,
+              "passed": true
+            },
+            {
+              "name": "missing-zero",
+              "expected": 0,
+              "actual": 0,
+              "passed": true
+            },
+            {
+              "name": "missing-end",
+              "expected": 3,
+              "actual": 3,
+              "passed": true
+            },
+            {
+              "name": "unordered-input",
+              "expected": 3,
+              "actual": 3,
+              "passed": true
+            }
+          ],
+          "error": null,
+          "J": 1.359
+        }
+      },
+      "candidates": [
+        {
+          "agent": "replay-synthesizer",
+          "label": "Replay-guided set lookup",
+          "architecture_family": "replay-conditioned",
+          "strategy": "Reuse hash-membership memory and check membership with a set instead of scanning the list repeatedly.",
+          "code": "def missing_number(values):\n    seen = set(values)\n    for candidate in range(len(values) + 1):\n        if candidate not in seen:\n            return candidate\n    return None\n",
+          "notes": [
+            "Bridges the set-logic family into a numeric task.",
+            "Not the most elegant architecture, but replay makes it available."
+          ],
+          "uses_memory": true,
+          "supporting_memory_ids": [
+            "exp-deduplicate-preserve-order",
+            "exp-first-repeated-value"
+          ],
+          "reusable_rules": [
+            "hash_membership",
+            "set_lookup"
+          ],
+          "complexity": 0.22,
+          "metrics": {
+            "status": "pass",
+            "correctness": 1.0,
+            "passed_tests": 4,
+            "total_tests": 4,
+            "benchmark_ms": 0.234,
+            "benchmark_samples_ms": [
+              0.25,
+              0.234,
+              0.224
+            ],
+            "speedup_vs_baseline": 130.632,
+            "speed_score": 1.0,
+            "stability": 0.896,
+            "complexity": 0.22,
+            "line_count": 6,
+            "test_results": [
+              {
+                "name": "missing-middle",
+                "expected": 2,
+                "actual": 2,
+                "passed": true
+              },
+              {
+                "name": "missing-zero",
+                "expected": 0,
+                "actual": 0,
+                "passed": true
+              },
+              {
+                "name": "missing-end",
+                "expected": 3,
+                "actual": 3,
+                "passed": true
+              },
+              {
+                "name": "unordered-input",
+                "expected": 3,
+                "actual": 3,
+                "passed": true
+              }
+            ],
+            "error": null,
+            "J": 2.4147
+          }
+        },
+        {
+          "agent": "formula-optimizer",
+          "label": "Arithmetic checksum",
+          "architecture_family": "analytic",
+          "strategy": "Subtract the observed sum from the expected arithmetic progression.",
+          "code": "def missing_number(values):\n    upper = len(values)\n    expected = upper * (upper + 1) // 2\n    return expected - sum(values)\n",
+          "notes": [
+            "An architecture-level change from search to algebra.",
+            "Most faithful to Karpathy's idea of genuinely trying a different architecture."
+          ],
+          "uses_memory": false,
+          "supporting_memory_ids": [],
+          "reusable_rules": [
+            "closed_form_reasoning"
+          ],
+          "complexity": 0.16,
+          "metrics": {
+            "status": "pass",
+            "correctness": 1.0,
+            "passed_tests": 4,
+            "total_tests": 4,
+            "benchmark_ms": 0.049,
+            "benchmark_samples_ms": [
+              0.051,
+              0.049,
+              0.048
+            ],
+            "speedup_vs_baseline": 628.344,
+            "speed_score": 1.0,
+            "stability": 0.958,
+            "complexity": 0.16,
+            "line_count": 4,
+            "test_results": [
+              {
+                "name": "missing-middle",
+                "expected": 2,
+                "actual": 2,
+                "passed": true
+              },
+              {
+                "name": "missing-zero",
+                "expected": 0,
+                "actual": 0,
+                "passed": true
+              },
+              {
+                "name": "missing-end",
+                "expected": 3,
+                "actual": 3,
+                "passed": true
+              },
+              {
+                "name": "unordered-input",
+                "expected": 3,
+                "actual": 3,
+                "passed": true
+              }
+            ],
+            "error": null,
+            "J": 2.2449
+          }
+        },
+        {
+          "agent": "sort-optimizer",
+          "label": "Sort and detect gap",
+          "architecture_family": "sort-based",
+          "strategy": "Sort the values once and scan for the missing integer gap.",
+          "code": "def missing_number(values):\n    ordered = sorted(values)\n    if not ordered or ordered[0] != 0:\n        return 0\n    for index in range(1, len(ordered)):\n        if ordered[index] - ordered[index - 1] > 1:\n            return ordered[index - 1] + 1\n    return ordered[-1] + 1\n",
+          "notes": [
+            "A classical sorting architecture.",
+            "Correct but heavier than arithmetic reasoning."
+          ],
+          "uses_memory": false,
+          "supporting_memory_ids": [],
+          "reusable_rules": [
+            "sort_then_scan"
+          ],
+          "complexity": 0.33,
+          "metrics": {
+            "status": "pass",
+            "correctness": 1.0,
+            "passed_tests": 4,
+            "total_tests": 4,
+            "benchmark_ms": 0.275,
+            "benchmark_samples_ms": [
+              0.289,
+              0.275,
+              0.273
+            ],
+            "speedup_vs_baseline": 111.497,
+            "speed_score": 1.0,
+            "stability": 0.948,
+            "complexity": 0.33,
+            "line_count": 8,
+            "test_results": [
+              {
+                "name": "missing-middle",
+                "expected": 2,
+                "actual": 2,
+                "passed": true
+              },
+              {
+                "name": "missing-zero",
+                "expected": 0,
+                "actual": 0,
+                "passed": true
+              },
+              {
+                "name": "missing-end",
+                "expected": 3,
+                "actual": 3,
+                "passed": true
+              },
+              {
+                "name": "unordered-input",
+                "expected": 3,
+                "actual": 3,
+                "passed": true
+              }
+            ],
+            "error": null,
+            "J": 2.1927
+          }
+        }
+      ],
+      "architectures": [
+        {
+          "agent": "baseline",
+          "label": "Initial program",
+          "family": "quadratic-baseline",
+          "J": 1.359,
+          "benchmark_ms": 30.606,
+          "speedup_vs_baseline": 1.0
+        },
+        {
+          "agent": "replay-synthesizer",
+          "label": "Replay-guided set lookup",
+          "family": "replay-conditioned",
+          "J": 2.4147,
+          "benchmark_ms": 0.234,
+          "speedup_vs_baseline": 130.632
+        },
+        {
+          "agent": "formula-optimizer",
+          "label": "Arithmetic checksum",
+          "family": "analytic",
+          "J": 2.2449,
+          "benchmark_ms": 0.049,
+          "speedup_vs_baseline": 628.344
+        },
+        {
+          "agent": "sort-optimizer",
+          "label": "Sort and detect gap",
+          "family": "sort-based",
+          "J": 2.1927,
+          "benchmark_ms": 0.275,
+          "speedup_vs_baseline": 111.497
+        }
+      ],
+      "winner": {
+        "agent": "replay-synthesizer",
+        "label": "Replay-guided set lookup",
+        "architecture_family": "replay-conditioned",
+        "strategy": "Reuse hash-membership memory and check membership with a set instead of scanning the list repeatedly.",
+        "code": "def missing_number(values):\n    seen = set(values)\n    for candidate in range(len(values) + 1):\n        if candidate not in seen:\n            return candidate\n    return None\n",
+        "notes": [
+          "Bridges the set-logic family into a numeric task.",
+          "Not the most elegant architecture, but replay makes it available."
+        ],
+        "uses_memory": true,
+        "supporting_memory_ids": [
+          "exp-deduplicate-preserve-order",
+          "exp-first-repeated-value"
+        ],
+        "reusable_rules": [
+          "hash_membership",
+          "set_lookup"
+        ],
+        "complexity": 0.22,
+        "metrics": {
+          "status": "pass",
+          "correctness": 1.0,
+          "passed_tests": 4,
+          "total_tests": 4,
+          "benchmark_ms": 0.234,
+          "benchmark_samples_ms": [
+            0.25,
+            0.234,
+            0.224
+          ],
+          "speedup_vs_baseline": 130.632,
+          "speed_score": 1.0,
+          "stability": 0.896,
+          "complexity": 0.22,
+          "line_count": 6,
+          "test_results": [
+            {
+              "name": "missing-middle",
+              "expected": 2,
+              "actual": 2,
+              "passed": true
+            },
+            {
+              "name": "missing-zero",
+              "expected": 0,
+              "actual": 0,
+              "passed": true
+            },
+            {
+              "name": "missing-end",
+              "expected": 3,
+              "actual": 3,
+              "passed": true
+            },
+            {
+              "name": "unordered-input",
+              "expected": 3,
+              "actual": 3,
+              "passed": true
+            }
+          ],
+          "error": null,
+          "J": 2.4147
+        }
+      },
+      "delta_J": 1.0557,
+      "should_write_memory": true,
+      "selection_reason": "replay-synthesizer won with J=2.4147 and 130.632x speedup while preserving correctness.",
+      "new_experience": {
+        "experience_id": "exp-missing-number",
+        "source_task": "missing-number",
+        "family": "numeric",
+        "task_signature": [
+          "python-evolve",
+          "numeric",
+          "missing-value"
+        ],
+        "failure_pattern": "Use the checked-in baseline implementation without any optimization.",
+        "successful_strategy": "Reuse hash-membership memory and check membership with a set instead of scanning the list repeatedly.",
+        "tool_trace_summary": "replay-synthesizer passed 4/4 tests and ran in 0.234 ms",
+        "delta_J": 1.0557,
+        "reusable_rules": [
+          "hash_membership",
+          "set_lookup"
+        ],
+        "supporting_memory_ids": [
+          "exp-deduplicate-preserve-order",
+          "exp-first-repeated-value"
+        ],
+        "code_pattern": "Replay-guided set lookup"
+      },
+      "memory_before_count": 6,
+      "memory_after_count": 7
     }
   ]
 }

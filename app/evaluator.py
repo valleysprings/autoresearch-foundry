@@ -27,6 +27,17 @@ def _benchmark_args(kind: str) -> tuple[Any, ...]:
         right = list(range(2400, 3600))
         right[960] = 215
         return (left, right)
+    if kind == "most_frequent_item":
+        values = [index % 17 for index in range(1800)]
+        values.extend([7] * 180)
+        return (values,)
+    if kind == "deduplicate_preserve_order":
+        values = [index % 45 for index in range(1600)]
+        return (values,)
+    if kind == "missing_number":
+        missing = 777
+        values = [index for index in range(1600) if index != missing]
+        return (values,)
     raise ValueError(f"Unknown benchmark kind: {kind}")
 
 
@@ -67,6 +78,7 @@ def evaluate_program(
             "benchmark_ms": None,
             "benchmark_samples_ms": [],
             "speedup_vs_baseline": 0.0,
+            "speed_score": 0.0,
             "stability": 0.0,
             "complexity": round(complexity, 2),
             "line_count": _line_count(code),
@@ -88,6 +100,7 @@ def evaluate_program(
             "benchmark_ms": None,
             "benchmark_samples_ms": [],
             "speedup_vs_baseline": 0.0,
+            "speed_score": 0.0,
             "stability": 0.0,
             "complexity": round(complexity, 2),
             "line_count": _line_count(code),
@@ -133,6 +146,7 @@ def evaluate_program(
         "benchmark_ms": round(benchmark_ms, 3),
         "benchmark_samples_ms": [round(sample, 3) for sample in samples],
         "speedup_vs_baseline": round(speedup, 3),
+        "speed_score": round(speed_score, 3),
         "stability": round(stability, 3),
         "complexity": round(complexity, 2),
         "line_count": line_count,
