@@ -14,6 +14,8 @@ import type {
   TaskSummary,
 } from "./types";
 
+type ThemePreference = "system" | "light" | "dark";
+
 function shortPath(path?: string | null): string {
   return path ? path.replace(/^runs\//, "") : "n/a";
 }
@@ -121,6 +123,10 @@ function numeric(value: string | number | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function themeChoices(): ThemePreference[] {
+  return ["system", "light", "dark"];
+}
+
 function summarizeLiveEvents(events: LiveEvent[]): LiveGenerationCard[] {
   const cards = new Map<number, LiveGenerationCard>();
   for (const event of events) {
@@ -155,6 +161,144 @@ function summarizeLiveEvents(events: LiveEvent[]): LiveGenerationCard[] {
     cards.set(generation, current);
   }
   return [...cards.values()].sort((left, right) => left.generation - right.generation);
+}
+
+function runOverviewChart(run: Run) {
+  const points = run.objective_curve ?? [];
+  if (!points.length) {
+    return null;
+  }
+
+  const baselineObjective = numeric(points[0].objective);
+  const baselineJ = numeric(points[0].J);
+  const chartPoints = points.map((point, index) => ({
+    generation: point.generation,
+    index,
+    objectiveDelta: numeric(point.objective) - baselineObjective,
+    jDelta: numeric(point.J) - baselineJ,
+    accepted: point.accepted,
+  }));
+
+  const width = 520;
+  const height = 220;
+  const padding = 24;
+  const plotWidth = width - padding * 2;
+  const plotHeight = height - padding * 2;
+  const values = chartPoints.flatMap((point) => [point.objectiveDelta, point.jDelta, 0]);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const x = (index: number) =>
+    padding + (chartPoints.length === 1 ? plotWidth / 2 : (plotWidth * index) / (chartPoints.length - 1));
+  const y = (value: number) => padding + plotHeight - ((value - min) / range) * plotHeight;
+  const linePath = (key: "objectiveDelta" | "jDelta") =>
+    chartPoints.map((point, index) => `${index === 0 ? "M" : "L"} ${x(point.index)} ${y(point[key])}`).join(" ");
+
+  return (
+    <svg className="chart-svg compact-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Run overview chart">
+      {[0.2, 0.4, 0.6, 0.8].map((ratio) => {
+        const lineY = padding + plotHeight * ratio;
+        return <line key={ratio} className="chart-grid-line" x1={padding} x2={width - padding} y1={lineY} y2={lineY} />;
+      })}
+      <line className="chart-axis" x1={padding} x2={width - padding} y1={y(0)} y2={y(0)} />
+      <path className="chart-line objective-line" d={linePath("objectiveDelta")} />
+      <path className="chart-line j-line" d={linePath("jDelta")} />
+      {chartPoints.map((point) => (
+        <g key={`overview-${point.generation}`}>
+          <circle
+            className={`chart-point ${point.accepted ? "accepted" : "candidate"}`}
+            cx={x(point.index)}
+            cy={y(point.objectiveDelta)}
+            r="4.5"
+          />
+          <circle
+            className={`chart-point j-point ${point.accepted ? "accepted" : "candidate"}`}
+            cx={x(point.index)}
+            cy={y(point.jDelta)}
+            r="4.5"
+          />
+          <text className="chart-label" x={x(point.index)} y={height - 6} textAnchor="middle">
+            g{point.generation}
+          </text>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+function memoryGrowthChart(run: Run) {
+  const generationCount = run.generations.length;
+  if (!generationCount) {
+    return null;
+  }
+
+  const grouped = new Map<number, { positive: number; negative: number }>();
+  for (let generation = 1; generation <= generationCount; generation += 1) {
+    grouped.set(generation, { positive: 0, negative: 0 });
+  }
+  for (const experience of run.added_experiences ?? []) {
+    const row = grouped.get(experience.generation) ?? { positive: 0, negative: 0 };
+    if (experience.experience_outcome === "success") {
+      row.positive += 1;
+    } else if (experience.experience_outcome === "failure") {
+      row.negative += 1;
+    }
+    grouped.set(experience.generation, row);
+  }
+
+  let positiveRunning = 0;
+  let negativeRunning = 0;
+  const rows = [...grouped.entries()].map(([generation, value]) => {
+    positiveRunning += value.positive;
+    negativeRunning += value.negative;
+    return { generation, positive: positiveRunning, negative: negativeRunning };
+  });
+
+  const width = 520;
+  const height = 220;
+  const padding = 24;
+  const plotWidth = width - padding * 2;
+  const plotHeight = height - padding * 2;
+  const maxValue = Math.max(...rows.flatMap((row) => [row.positive, row.negative]), 1);
+  const barWidth = plotWidth / Math.max(rows.length * 2, 2);
+  const x = (index: number, offset: number) => padding + index * barWidth * 2 + offset * barWidth;
+  const barHeight = (value: number) => (value / maxValue) * (plotHeight - 18);
+
+  return (
+    <svg className="chart-svg compact-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Memory growth chart">
+      {[0.2, 0.4, 0.6, 0.8].map((ratio) => {
+        const lineY = padding + plotHeight * ratio;
+        return <line key={ratio} className="chart-grid-line" x1={padding} x2={width - padding} y1={lineY} y2={lineY} />;
+      })}
+      {rows.map((row, index) => {
+        const positiveHeight = barHeight(row.positive);
+        const negativeHeight = barHeight(row.negative);
+        return (
+          <g key={`memory-growth-${row.generation}`}>
+            <rect
+              className="memory-bar positive-bar"
+              x={x(index, 0)}
+              y={height - padding - positiveHeight}
+              width={Math.max(barWidth - 8, 10)}
+              height={positiveHeight}
+              rx="8"
+            />
+            <rect
+              className="memory-bar negative-bar"
+              x={x(index, 1)}
+              y={height - padding - negativeHeight}
+              width={Math.max(barWidth - 8, 10)}
+              height={negativeHeight}
+              rx="8"
+            />
+            <text className="chart-label" x={x(index, 0.5)} y={height - 6} textAnchor="middle">
+              g{row.generation}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
 }
 
 function fallbackImprovementChart(run: Run) {
@@ -449,6 +593,40 @@ function memoryFragmentsPanel(run: Run) {
   );
 }
 
+function runOverviewPanels(run: Run) {
+  return (
+    <div className="split-grid overview-grid">
+      <section className="panel chart-card">
+        <div className="panel-header">
+          <div>
+            <p className="eyebrow">run overview</p>
+            <h3>Objective and J drift by generation</h3>
+          </div>
+          <div className="badge-row">
+            <span className="badge">{run.task.objective_label}</span>
+            <span className="badge">{run.winner.agent}</span>
+          </div>
+        </div>
+        {runOverviewChart(run)}
+      </section>
+
+      <section className="panel chart-card">
+        <div className="panel-header">
+          <div>
+            <p className="eyebrow">memory growth</p>
+            <h3>Cumulative positive and negative write-backs</h3>
+          </div>
+          <div className="badge-row">
+            <span className="badge good">+positive {run.positive_experiences_added ?? 0}</span>
+            <span className="badge warn">+negative {run.negative_experiences_added ?? 0}</span>
+          </div>
+        </div>
+        {memoryGrowthChart(run)}
+      </section>
+    </div>
+  );
+}
+
 function runDetail(run: Run | null) {
   if (!run) {
     return (
@@ -498,6 +676,8 @@ function runDetail(run: Run | null) {
         {metric("winner candidate", run.winner.agent)}
       </div>
 
+      {runOverviewPanels(run)}
+
       {improvementPanel(run)}
 
       {memoryFragmentsPanel(run)}
@@ -542,6 +722,7 @@ export function App() {
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
   const [selectedRunId, setSelectedRunId] = useState("");
+  const [themePreference, setThemePreference] = useState<ThemePreference>("system");
   const [liveJob, setLiveJob] = useState<JobState | null>({
     status: "loading",
     events: [{ phase: "boot", message: "Loading runtime and task catalog." }],
@@ -559,6 +740,25 @@ export function App() {
     [payload.runs, selectedRunId],
   );
   const liveGenerationCards = useMemo(() => summarizeLiveEvents(liveJob?.events ?? []), [liveJob?.events]);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("autoresearch-theme");
+    if (stored === "system" || stored === "light" || stored === "dark") {
+      setThemePreference(stored);
+    }
+  }, []);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const applyTheme = () => {
+      const resolvedTheme = themePreference === "system" ? (mediaQuery.matches ? "dark" : "light") : themePreference;
+      document.documentElement.dataset.theme = resolvedTheme;
+    };
+    window.localStorage.setItem("autoresearch-theme", themePreference);
+    applyTheme();
+    mediaQuery.addEventListener("change", applyTheme);
+    return () => mediaQuery.removeEventListener("change", applyTheme);
+  }, [themePreference]);
 
   useEffect(() => {
     let cancelled = false;
@@ -672,13 +872,31 @@ export function App() {
 
   return (
     <main className="app-shell">
+      <section className="topbar">
+        <div>
+          <p className="eyebrow">autoresearch</p>
+          <strong className="topbar-title">LLM-required codegen flywheel</strong>
+        </div>
+        <div className="theme-toggle" role="tablist" aria-label="Theme mode">
+          {themeChoices().map((choice) => (
+            <button
+              key={choice}
+              className={`theme-chip ${themePreference === choice ? "active" : ""}`}
+              onClick={() => setThemePreference(choice)}
+            >
+              {choice}
+            </button>
+          ))}
+        </div>
+      </section>
+
       <section className="hero panel">
         <div>
-          <p className="eyebrow">llm-required codegen</p>
-          <h1>React workbench around a deterministic verifier.</h1>
+          <p className="eyebrow">strategy memory + deterministic verifier</p>
+          <h1>LLM-required autoresearch around direct code generation.</h1>
           <p className="muted hero-copy">
-            Pick a task, pick an enabled model, launch the backend run, and let the UI poll until the result lands.
-            The page no longer needs to stretch forever: one selected run stays in focus and each generation folds away.
+            Launch a selected task, let the backend outer loop run, and inspect the result through one focused workbench:
+            runtime state, live generations, prompt-ready memory, artifacts, and deterministic reports.
           </p>
         </div>
         <div className="hero-side">
@@ -751,8 +969,8 @@ export function App() {
       <section className="panel">
         <div className="panel-header">
           <div>
-            <p className="eyebrow">engine</p>
-            <h2>Dynamic runtime state</h2>
+            <p className="eyebrow">runtime</p>
+            <h2>Deterministic verifier and model runtime</h2>
           </div>
           <div className="badge-row">
             <span className="badge">{runtimeInfo.mode}</span>
