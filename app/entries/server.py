@@ -7,12 +7,15 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from app.legacy.demo_run import ROOT, write_demo_artifacts
-from app.legacy.task_catalog import list_task_summaries
+from app.codegen.catalog import list_codegen_task_summaries
+from app.codegen.errors import AutoresearchError
+from app.codegen.llm import ProposalRuntime
+from app.entries.discrete_demo import ROOT, write_discrete_artifacts
+
 
 UI_DIR = ROOT / "ui"
 JOB_LOCK = threading.Lock()
-JOBS: dict[str, dict] = {}
+JOBS: dict[str, dict[str, object]] = {}
 
 
 def _json_response(handler: SimpleHTTPRequestHandler, payload: dict, status: HTTPStatus = HTTPStatus.OK) -> None:
@@ -24,16 +27,27 @@ def _json_response(handler: SimpleHTTPRequestHandler, payload: dict, status: HTT
     handler.wfile.write(body)
 
 
+def _error_payload(exc: Exception) -> dict[str, object]:
+    if isinstance(exc, AutoresearchError):
+        return exc.as_payload()
+    return {
+        "terminal": True,
+        "error_type": "runtime_error",
+        "error": str(exc),
+        "model": None,
+    }
+
+
 def _run_job(job_id: str, task_id: str | None) -> None:
     def progress(event: dict) -> None:
         with JOB_LOCK:
             JOBS[job_id]["events"].append(event)
 
     try:
-        artifact = write_demo_artifacts(
+        artifact = write_discrete_artifacts(
             task_id=task_id,
             progress_callback=progress,
-            pace_ms=160,
+            pace_ms=120,
         )
         payload = json.loads(artifact.read_text())
         with JOB_LOCK:
@@ -42,7 +56,7 @@ def _run_job(job_id: str, task_id: str | None) -> None:
     except Exception as exc:  # noqa: BLE001
         with JOB_LOCK:
             JOBS[job_id]["status"] = "failed"
-            JOBS[job_id]["error"] = str(exc)
+            JOBS[job_id].update(_error_payload(exc))
 
 
 def _start_job(task_id: str | None) -> str:
@@ -53,7 +67,10 @@ def _start_job(task_id: str | None) -> str:
             "task_id": task_id,
             "events": [],
             "payload": None,
+            "terminal": False,
+            "error_type": None,
             "error": None,
+            "model": None,
         }
     thread = threading.Thread(target=_run_job, args=(job_id, task_id), daemon=True)
     thread.start()
@@ -70,12 +87,16 @@ class DemoHandler(SimpleHTTPRequestHandler):
 
         if parsed.path == "/api/latest-run":
             task_id = query.get("task_id", [None])[0]
-            artifact = write_demo_artifacts(task_id=task_id)
+            try:
+                artifact = write_discrete_artifacts(task_id=task_id)
+            except Exception as exc:  # noqa: BLE001
+                _json_response(self, _error_payload(exc), status=HTTPStatus.INTERNAL_SERVER_ERROR)
+                return
             _json_response(self, json.loads(artifact.read_text()))
             return
 
         if parsed.path == "/api/tasks":
-            _json_response(self, {"tasks": list_task_summaries()})
+            _json_response(self, {"tasks": list_codegen_task_summaries()})
             return
 
         if parsed.path == "/api/job":
@@ -121,9 +142,9 @@ class DemoHandler(SimpleHTTPRequestHandler):
 
 
 def main() -> None:
-    write_demo_artifacts(task_id="contains-duplicates")
+    ProposalRuntime.from_env()
     server = ThreadingHTTPServer(("127.0.0.1", 8000), DemoHandler)
-    print("serving demo at http://127.0.0.1:8000")
+    print("serving codegen demo at http://127.0.0.1:8000")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

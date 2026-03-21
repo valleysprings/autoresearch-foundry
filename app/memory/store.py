@@ -13,12 +13,15 @@ class MemoryStore:
         self.markdown_path = markdown_path
         self.title = title
 
-    def seed_from(self, source_path: Path) -> list[dict[str, Any]]:
-        seed_memories = json.loads(source_path.read_text())
+    def seed_from_records(self, records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        seed_memories = [dict(record) for record in records]
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(json.dumps(seed_memories, indent=2))
         self._write_markdown(seed_memories)
         return seed_memories
+
+    def seed_from(self, source_path: Path) -> list[dict[str, Any]]:
+        return self.seed_from_records(json.loads(source_path.read_text()))
 
     def load(self) -> list[dict[str, Any]]:
         if not self.path.exists():
@@ -56,7 +59,7 @@ class MemoryStore:
         existing_ids = {item.get("experience_id") for item in memories}
         if experience.get("experience_id") in existing_ids:
             return False
-        memories.append(experience)
+        memories.append(dict(experience))
         self.path.write_text(json.dumps(memories, indent=2))
         self._write_markdown(memories)
         return True

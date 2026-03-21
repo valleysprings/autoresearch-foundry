@@ -16,16 +16,47 @@ function metric(label, value) {
   `;
 }
 
-function renderSummary(summary) {
-  const matches = summary.karpathy_alignment.matches.map(item => `<li>${escapeHtml(item)}</li>`).join('');
-  const gaps = summary.karpathy_alignment.gaps.map(item => `<li>${escapeHtml(item)}</li>`).join('');
+function shortPath(path) {
+  return path ? path.replace(/^runs\//, '') : 'n/a';
+}
 
+function renderErrorPanel(errorPayload) {
+  if (!errorPayload) {
+    return '';
+  }
+  return `
+    <section class="panel error-panel">
+      <div class="eyebrow">terminal failure</div>
+      <h2>${escapeHtml(errorPayload.error_type || 'runtime_error')}</h2>
+      <p class="muted">${escapeHtml(errorPayload.error || 'Unknown error')}</p>
+      <div class="metric-grid">
+        ${metric('terminal', String(Boolean(errorPayload.terminal)))}
+        ${metric('model', errorPayload.model || 'n/a')}
+      </div>
+    </section>
+  `;
+}
+
+function renderSummary(summary, audit) {
+  const proposalEngine = summary.proposal_engine || {};
   return `
     <section class="panel">
       <div class="summary-grid">
         <article class="summary-card">
-          <div class="small">tasks in current run</div>
+          <div class="small">mode</div>
+          <div class="summary-value">${escapeHtml(summary.run_mode)}</div>
+        </article>
+        <article class="summary-card">
+          <div class="small">active model</div>
+          <div class="summary-value">${escapeHtml(summary.active_model)}</div>
+        </article>
+        <article class="summary-card">
+          <div class="small">tasks</div>
           <div class="summary-value">${escapeHtml(summary.num_tasks)}</div>
+        </article>
+        <article class="summary-card">
+          <div class="small">generations</div>
+          <div class="summary-value">${escapeHtml(summary.total_generations)}</div>
         </article>
         <article class="summary-card">
           <div class="small">memory growth</div>
@@ -38,12 +69,21 @@ function renderSummary(summary) {
       </div>
       <div class="run-grid" style="margin-top:14px;">
         <article class="summary-card">
-          <h3>Karpathy Alignment</h3>
-          <ul class="list">${matches}</ul>
+          <h3>Flywheel</h3>
+          <ul class="list">${summary.flywheel.map(step => `<li>${escapeHtml(step)}</li>`).join('')}</ul>
         </article>
         <article class="summary-card">
-          <h3>Current Gaps</h3>
-          <ul class="list">${gaps}</ul>
+          <h3>Audit</h3>
+          <div class="metric-grid">
+            ${metric('git commit', summary.git_commit)}
+            ${metric('session id', audit.session_id || 'n/a')}
+            ${metric('workspace', audit.workspace_root || 'n/a')}
+          </div>
+          <ul class="list">
+            <li><strong>source repo</strong>: ${escapeHtml(summary.source_repo)}</li>
+            <li><strong>upstream target</strong>: ${escapeHtml(summary.upstream_target)}</li>
+            <li><strong>api base</strong>: ${escapeHtml(proposalEngine.api_base || 'n/a')}</li>
+          </ul>
         </article>
       </div>
     </section>
@@ -54,15 +94,15 @@ function renderFormulas(formulas) {
   return `
     <section class="panel">
       <div class="eyebrow">scoring</div>
-      <h2>How J and delta_J are computed</h2>
+      <h2>Deterministic Verifier</h2>
       <div class="run-grid">
         <article class="summary-card">
           <h3>J</h3>
           <pre class="code-block"><code>${escapeHtml(formulas.J)}</code></pre>
         </article>
         <article class="summary-card">
-          <h3>Speed Score</h3>
-          <pre class="code-block"><code>${escapeHtml(formulas.speed_score)}</code></pre>
+          <h3>Objective</h3>
+          <pre class="code-block"><code>${escapeHtml(formulas.objective)}</code></pre>
         </article>
       </div>
       <article class="summary-card" style="margin-top:14px;">
@@ -77,15 +117,19 @@ function renderTaskCatalog(taskCatalog, activeTaskId) {
   return `
     <section class="panel">
       <div class="eyebrow">tasks</div>
-      <h2>Runnable local tasks</h2>
-      <p class="muted">Each task loads a real baseline Python function, evaluates candidate mutations, and writes memory only if the winner actually beats the baseline. You can switch tasks or run the whole sequence from the page.</p>
+      <h2>Strict Codegen Workbench</h2>
+      <p class="muted">The model must generate candidate function bodies. The verifier materializes those candidates under <code>runs/</code>, runs fixed tests and benchmarks, and accepts no fallback of any kind.</p>
       <div class="task-list">
         ${taskCatalog.map(task => `
           <article class="task-card">
             <button class="task-button ${task.id === activeTaskId ? 'active' : ''}" data-task="${escapeHtml(task.id)}">Run ${escapeHtml(task.id)}</button>
             <h3>${escapeHtml(task.title)}</h3>
             <p class="muted">${escapeHtml(task.description)}</p>
-            <div class="small">${escapeHtml(task.family)} · ${escapeHtml(task.baseline_path)}</div>
+            <div class="small">${escapeHtml(task.family)} · ${escapeHtml(task.function_name)} · ${escapeHtml(task.objective_direction)} ${escapeHtml(task.objective_label)}</div>
+            <div class="toolbar">
+              <span class="pill">${escapeHtml(task.generation_budget)} generations</span>
+              <span class="pill">${escapeHtml(task.candidate_budget)} candidates</span>
+            </div>
           </article>
         `).join('')}
       </div>
@@ -97,158 +141,178 @@ function renderLiveStatus(liveState) {
   if (!liveState) {
     return '';
   }
-
-  const events = liveState.events.map(event => `
+  const events = (liveState.events || []).map(event => `
     <li>
-      <strong>${escapeHtml(event.phase)}</strong>
+      <strong>${escapeHtml(event.phase || event.event_type || 'event')}</strong>
+      ${event.generation ? ` · g${escapeHtml(event.generation)}` : ''}
       ${event.candidate ? ` · ${escapeHtml(event.candidate)}` : ''}
-      ${event.architecture ? ` · ${escapeHtml(event.architecture)}` : ''}
       <br />
-      <span class="small">${escapeHtml(event.message)}</span>
+      <span class="small">${escapeHtml(event.timestamp || '')} · ${escapeHtml(event.message || '')}</span>
     </li>
   `).join('');
+  const failure = liveState.status === 'failed'
+    ? `<p class="muted">terminal=${escapeHtml(String(Boolean(liveState.terminal)))} · ${escapeHtml(liveState.error_type || 'runtime_error')} · ${escapeHtml(liveState.error || '')}</p>`
+    : '';
 
   return `
     <section class="panel">
       <div class="eyebrow">live run</div>
-      <h2>${liveState.status === 'running' ? 'Executing in real time' : 'Last live run'}</h2>
+      <h2>${liveState.status === 'running' ? 'Executing strict codegen loop' : 'Last live run'}</h2>
       <p class="muted">${liveState.taskId ? `task: ${liveState.taskId}` : 'full sequence'}</p>
-      <ul class="list">
-        ${events || '<li>No events yet.</li>'}
-      </ul>
+      ${failure}
+      <ul class="list">${events || '<li>No events yet.</li>'}</ul>
     </section>
   `;
 }
 
-function renderCandidate(candidate, winnerAgent) {
-  const isWinner = candidate.agent === winnerAgent;
-  const benchmarkValue = candidate.metrics.benchmark_ms === null ? 'n/a' : `${candidate.metrics.benchmark_ms} ms`;
-  const speedupValue = candidate.metrics.speedup_vs_baseline === 0 ? 'n/a' : `${candidate.metrics.speedup_vs_baseline}x`;
-  const memoryBadge = candidate.supporting_memory_ids.length
-    ? `<span class="pill good">memory: ${escapeHtml(candidate.supporting_memory_ids.join(', '))}</span>`
-    : '<span class="pill warn">no memory support</span>';
-
+function renderCandidate(candidate, isWinner) {
+  const benchmark = candidate.metrics.benchmark_ms == null ? 'n/a' : `${candidate.metrics.benchmark_ms} ms`;
   return `
     <article class="candidate-card ${isWinner ? 'winner' : ''}">
-      <div class="pill ${isWinner ? 'good' : ''}">${isWinner ? 'winner' : 'candidate'} · ${escapeHtml(candidate.agent)}</div>
+      <div class="toolbar">
+        <span class="pill ${isWinner ? 'good' : ''}">${isWinner ? 'winner' : 'candidate'}</span>
+        <span class="pill">${escapeHtml(candidate.agent)}</span>
+        <span class="pill">${escapeHtml(candidate.verifier_status)}</span>
+        <span class="pill">${escapeHtml(candidate.proposal_model || 'n/a')}</span>
+      </div>
       <h3>${escapeHtml(candidate.label)}</h3>
       <p class="muted">${escapeHtml(candidate.strategy)}</p>
-      <div class="toolbar">
-        <span class="pill">${escapeHtml(candidate.architecture_family)}</span>
-        ${memoryBadge}
-      </div>
+      <p class="small">${escapeHtml(candidate.candidate_summary)}</p>
       <div class="metric-grid">
+        ${metric('objective', candidate.metrics.objective)}
         ${metric('J', candidate.metrics.J)}
-        ${metric('benchmark', benchmarkValue)}
-        ${metric('speedup', speedupValue)}
-        ${metric('speed score', candidate.metrics.speed_score)}
+        ${metric('benchmark', benchmark)}
+        ${metric('speedup', `${candidate.metrics.speedup_vs_baseline}x`)}
         ${metric('tests', `${candidate.metrics.passed_tests}/${candidate.metrics.total_tests}`)}
-        ${metric('stability', candidate.metrics.stability)}
+        ${metric('workspace', shortPath(candidate.workspace_path))}
       </div>
-      <ul class="list">
-        ${candidate.notes.map(note => `<li>${escapeHtml(note)}</li>`).join('')}
-      </ul>
-      <pre class="code-block"><code>${escapeHtml(candidate.code)}</code></pre>
+      <p class="small">Rationale: ${escapeHtml(candidate.rationale)}</p>
+      <pre class="code-block code-scroll"><code>${escapeHtml(candidate.source_code)}</code></pre>
     </article>
   `;
 }
 
-function renderArchitectureComparison(run) {
+function renderGeneration(generation) {
   return `
-    <article class="code-card">
-      <h3>Architecture Comparison</h3>
+    <section class="panel">
+      <div class="toolbar">
+        <span class="pill">generation ${escapeHtml(generation.generation)}</span>
+        <span class="pill ${generation.winner_accepted ? 'good' : 'warn'}">${generation.winner_accepted ? 'accepted' : 'rejected'}</span>
+        <span class="pill ${generation.wrote_memory ? 'good' : 'warn'}">${generation.wrote_memory ? 'memory write-back' : 'no write-back'}</span>
+      </div>
+      <h3>${escapeHtml(generation.winner.label)}</h3>
+      <p class="muted">${escapeHtml(generation.winner.candidate_summary)}</p>
+      <div class="metric-grid">
+        ${metric('winner objective', generation.winner.metrics.objective)}
+        ${metric('winner J', generation.winner.metrics.J)}
+        ${metric('delta_J', generation.delta_J)}
+      </div>
+      <h3 style="margin-top:16px;">Retrieved Memory Fragments</h3>
       <ul class="list">
-        ${run.architectures.map(item => `
+        ${generation.retrieved_memories.map(memory => `
           <li>
-            <strong>${escapeHtml(item.agent)}</strong>
-            <span class="small"> · ${escapeHtml(item.family)} · ${escapeHtml(item.label)}</span><br />
-            <span class="small">J=${escapeHtml(item.J)} · benchmark=${escapeHtml(item.benchmark_ms)} ms · speedup=${escapeHtml(item.speedup_vs_baseline)}x</span>
+            <strong>${escapeHtml(memory.experience_id)}</strong>: ${escapeHtml(memory.prompt_fragment || '')}
+            <br />
+            <span class="small">${escapeHtml(memory.strategy_hypothesis || '')}</span>
           </li>
-        `).join('')}
+        `).join('') || '<li>No retrieved memory.</li>'}
       </ul>
-    </article>
+      <div class="candidate-grid" style="margin-top:16px;">
+        ${generation.candidates.map(candidate => renderCandidate(candidate, candidate.candidate_id === generation.winner.candidate_id)).join('')}
+      </div>
+    </section>
   `;
 }
 
 function renderRun(run) {
-  const baselineBenchmark = run.baseline.metrics.benchmark_ms === null ? 'n/a' : `${run.baseline.metrics.benchmark_ms} ms`;
+  const manifest = run.handoff_bundle ? run.handoff_bundle.manifest : null;
+  const artifactItems = manifest ? `
+    <ul class="list artifact-list">
+      <li><strong>manifest</strong>: ${escapeHtml(shortPath(run.handoff_bundle.manifest_path))}</li>
+      <li><strong>payload</strong>: ${escapeHtml(shortPath(manifest.artifact_paths.payload))}</li>
+      <li><strong>trace</strong>: ${escapeHtml(shortPath(manifest.artifact_paths.trace))}</li>
+      <li><strong>llm trace</strong>: ${escapeHtml(shortPath(manifest.artifact_paths.llm_trace_jsonl))}</li>
+      <li><strong>memory markdown</strong>: ${escapeHtml(shortPath(manifest.artifact_paths.memory_markdown))}</li>
+    </ul>
+  ` : '<p class="muted">No artifact manifest yet.</p>';
+
   return `
     <section class="panel stack">
       <div>
         <div class="eyebrow">${escapeHtml(run.task.id)}</div>
         <h2>${escapeHtml(run.task.title)}</h2>
         <p class="muted">${escapeHtml(run.task.description)}</p>
+        <div class="toolbar">
+          <span class="pill">${escapeHtml(run.run_mode)}</span>
+          <span class="pill">${escapeHtml(run.active_model)}</span>
+          <span class="pill">${escapeHtml(run.llm_traces.length)} llm traces</span>
+        </div>
       </div>
-
       <div class="run-grid">
         <article class="code-card">
           <h3>Baseline</h3>
-          <p class="muted">${escapeHtml(run.task.baseline_path)}</p>
+          <p class="muted">${escapeHtml(run.baseline.candidate_summary)}</p>
           <div class="metric-grid">
-            ${metric('baseline J', run.baseline.metrics.J)}
-            ${metric('benchmark', baselineBenchmark)}
-            ${metric('speed score', run.baseline.metrics.speed_score)}
-            ${metric('tests', `${run.baseline.metrics.passed_tests}/${run.baseline.metrics.total_tests}`)}
-            ${metric('family', run.baseline.architecture_family)}
+            ${metric('objective', run.baseline.metrics.objective)}
+            ${metric('benchmark', run.baseline.metrics.benchmark_ms == null ? 'n/a' : `${run.baseline.metrics.benchmark_ms} ms`)}
+            ${metric('J', run.baseline.metrics.J)}
+          </div>
+          <pre class="code-block code-scroll"><code>${escapeHtml(run.baseline.source_code)}</code></pre>
+        </article>
+        <article class="code-card">
+          <h3>Winner</h3>
+          <p class="muted">${escapeHtml(run.selection_reason)}</p>
+          <div class="metric-grid">
+            ${metric('winner candidate', run.winner.agent)}
+            ${metric('objective', run.winner.metrics.objective)}
             ${metric('delta_J', run.delta_J)}
           </div>
-          <pre class="code-block"><code>${escapeHtml(run.baseline.code)}</code></pre>
-        </article>
-
-        <article class="code-card">
-          <h3>Selection</h3>
-          <p>${escapeHtml(run.selection_reason)}</p>
-          <div class="metric-grid">
-            ${metric('memory', `${run.memory_before_count} -> ${run.memory_after_count}`)}
-            ${metric('write back', run.should_write_memory)}
-            ${metric('winner', run.winner.agent)}
-            ${metric('winner family', run.winner.architecture_family)}
-            ${metric('winner J', run.winner.metrics.J)}
-            ${metric('winner speedup', `${run.winner.metrics.speedup_vs_baseline}x`)}
-          </div>
-          <h3 style="margin-top:16px;">Retrieved memory</h3>
-          <ul class="list">
-            ${run.retrieved_memories.map(memory => `
-              <li>
-                <strong>${escapeHtml(memory.experience_id)}</strong>: ${escapeHtml(memory.successful_strategy)}
-              </li>
-            `).join('') || '<li>No retrieved memory.</li>'}
-          </ul>
+          <p class="small">${escapeHtml(run.winner.candidate_summary)}</p>
+          <pre class="code-block code-scroll"><code>${escapeHtml(run.winner.source_code)}</code></pre>
         </article>
       </div>
-
-      ${renderArchitectureComparison(run)}
-
-      <div class="candidate-grid">
-        ${run.candidates.map(candidate => renderCandidate(candidate, run.winner.agent)).join('')}
-      </div>
+      <section class="panel">
+        <div class="eyebrow">artifacts</div>
+        <h3>Handoff Bundle</h3>
+        ${artifactItems}
+      </section>
+      <section class="panel">
+        <div class="eyebrow">memory</div>
+        <h3>Prompt-Ready Strategy Ledger</h3>
+        <pre class="code-block memory-ledger"><code>${escapeHtml(run.memory_markdown)}</code></pre>
+      </section>
+      ${run.generations.map(renderGeneration).join('')}
     </section>
   `;
 }
 
-function renderApp(data, activeTaskId, liveState) {
+function renderApp(data, activeTaskId, liveState, terminalError) {
   return `
     <section class="panel">
       <div class="header-grid">
         <div>
-          <div class="eyebrow">real local runner</div>
-          <h1>Task definitions that actually execute.</h1>
-          <p class="muted">This page now behaves more like a tiny autoresearch workbench: it compares multiple architecture families, writes back experience only on measured gains, and can show a live timeline as a task runs.</p>
+          <div class="eyebrow">llm-required codegen</div>
+          <h1>Deterministic verification around direct code generation.</h1>
+          <p class="muted">The configured model proposes candidate function bodies. The verifier materializes each candidate in an ignored workspace, runs fixed tests and benchmarks, and fails the run immediately on config, runtime, or LLM errors.</p>
           <div class="toolbar">
             <button class="action-button primary" id="run-sequence">Run full sequence live</button>
             <span class="small">generated at ${escapeHtml(data.summary.generated_at)}</span>
           </div>
         </div>
         <div class="summary-card">
-          <div class="small">flywheel</div>
+          <div class="small">engine</div>
           <ul class="list">
-            ${data.summary.flywheel.map(step => `<li>${escapeHtml(step)}</li>`).join('')}
+            <li><strong>mode</strong>: ${escapeHtml(data.summary.proposal_engine.mode)}</li>
+            <li><strong>model</strong>: ${escapeHtml(data.summary.proposal_engine.active_model)}</li>
+            <li><strong>temperature</strong>: ${escapeHtml(data.summary.proposal_engine.temperature)}</li>
+            <li><strong>max tokens</strong>: ${escapeHtml(data.summary.proposal_engine.max_tokens)}</li>
+            <li><strong>timeout</strong>: ${escapeHtml(data.summary.proposal_engine.timeout_s)} s</li>
           </ul>
         </div>
       </div>
     </section>
-
-    ${renderSummary(data.summary)}
+    ${renderErrorPanel(terminalError)}
+    ${renderSummary(data.summary, data.audit)}
     ${renderFormulas(data.formulas)}
     ${renderLiveStatus(liveState)}
     ${renderTaskCatalog(data.task_catalog, activeTaskId)}
@@ -258,14 +322,27 @@ function renderApp(data, activeTaskId, liveState) {
 
 async function fetchJson(url, options) {
   const response = await fetch(url, options);
-  if (!response.ok) {
-    throw new Error(`request failed with status ${response.status}`);
+  const text = await response.text();
+  let payload = {};
+  try {
+    payload = text ? JSON.parse(text) : {};
+  } catch (error) {
+    throw new Error(`request failed with status ${response.status}: ${text}`);
   }
-  return response.json();
+  if (!response.ok) {
+    const message = payload.error_type
+      ? `${payload.error_type}: ${payload.error || ''}`.trim()
+      : `request failed with status ${response.status}`;
+    const failure = new Error(message);
+    failure.payload = payload;
+    throw failure;
+  }
+  return payload;
 }
 
 async function loadTask(taskId) {
-  return fetchJson(`/api/latest-run?task_id=${encodeURIComponent(taskId)}`);
+  const query = taskId ? `?task_id=${encodeURIComponent(taskId)}` : '';
+  return fetchJson(`/api/latest-run${query}`);
 }
 
 async function startJob(taskId) {
@@ -274,43 +351,67 @@ async function startJob(taskId) {
   return fetchJson(url, { method: 'POST' });
 }
 
-async function pollJob(jobId) {
-  while (true) {
-    const job = await fetchJson(`/api/job?job_id=${encodeURIComponent(jobId)}`);
-    if (job.status === 'completed' || job.status === 'failed') {
-      return job;
-    }
-    await new Promise(resolve => setTimeout(resolve, 220));
-  }
-}
-
 async function main() {
   const root = document.getElementById('app');
-  let activeTaskId = 'contains-duplicates';
   let liveState = null;
-  let data = await loadTask(activeTaskId);
+  let terminalError = null;
+  let data;
+
+  try {
+    data = await loadTask();
+  } catch (error) {
+    terminalError = error.payload || { terminal: true, error_type: 'runtime_error', error: String(error), model: null };
+    data = {
+      summary: {
+        generated_at: 'n/a',
+        run_mode: 'llm-required',
+        active_model: 'n/a',
+        num_tasks: 0,
+        total_generations: 0,
+        initial_memory_count: 0,
+        memory_size_after_run: 0,
+        write_backs: 0,
+        source_repo: 'n/a',
+        git_commit: 'n/a',
+        upstream_target: 'n/a',
+        flywheel: [],
+        proposal_engine: { mode: 'llm-required', active_model: 'n/a', temperature: 'n/a', max_tokens: 'n/a', timeout_s: 'n/a', api_base: 'n/a' },
+      },
+      formulas: { J: '', objective: '', delta_J: '' },
+      audit: { workspace_root: 'n/a', session_id: 'n/a' },
+      task_catalog: await fetchJson('/api/tasks').then(result => result.tasks).catch(() => []),
+      runs: [],
+    };
+  }
+
+  let activeTaskId = data.runs[0]?.task?.id || data.task_catalog[0]?.id || '';
 
   async function repaint(nextData) {
     data = nextData;
-    root.innerHTML = renderApp(data, activeTaskId, liveState);
+    root.innerHTML = renderApp(data, activeTaskId, liveState, terminalError);
 
     for (const button of root.querySelectorAll('[data-task]')) {
       button.addEventListener('click', async () => {
         activeTaskId = button.getAttribute('data-task');
         liveState = { status: 'running', taskId: activeTaskId, events: [] };
-        root.innerHTML = renderApp(data, activeTaskId, liveState);
+        terminalError = null;
+        root.innerHTML = renderApp(data, activeTaskId, liveState, terminalError);
         const jobStart = await startJob(activeTaskId);
         let job = await fetchJson(`/api/job?job_id=${encodeURIComponent(jobStart.job_id)}`);
         while (job.status === 'running') {
           liveState = { status: job.status, taskId: activeTaskId, events: job.events };
-          root.innerHTML = renderApp(data, activeTaskId, liveState);
+          root.innerHTML = renderApp(data, activeTaskId, liveState, terminalError);
           await new Promise(resolve => setTimeout(resolve, 220));
           job = await fetchJson(`/api/job?job_id=${encodeURIComponent(jobStart.job_id)}`);
         }
         if (job.status === 'failed') {
-          throw new Error(job.error || 'job failed');
+          liveState = { ...job, taskId: activeTaskId };
+          terminalError = job;
+          root.innerHTML = renderApp(data, activeTaskId, liveState, terminalError);
+          return;
         }
         liveState = { status: job.status, taskId: activeTaskId, events: job.events };
+        terminalError = null;
         await repaint(job.payload);
       });
     }
@@ -320,19 +421,24 @@ async function main() {
       sequenceButton.addEventListener('click', async () => {
         activeTaskId = '';
         liveState = { status: 'running', taskId: null, events: [] };
-        root.innerHTML = renderApp(data, activeTaskId, liveState);
+        terminalError = null;
+        root.innerHTML = renderApp(data, activeTaskId, liveState, terminalError);
         const jobStart = await startJob(null);
         let job = await fetchJson(`/api/job?job_id=${encodeURIComponent(jobStart.job_id)}`);
         while (job.status === 'running') {
           liveState = { status: job.status, taskId: null, events: job.events };
-          root.innerHTML = renderApp(data, activeTaskId, liveState);
+          root.innerHTML = renderApp(data, activeTaskId, liveState, terminalError);
           await new Promise(resolve => setTimeout(resolve, 220));
           job = await fetchJson(`/api/job?job_id=${encodeURIComponent(jobStart.job_id)}`);
         }
         if (job.status === 'failed') {
-          throw new Error(job.error || 'job failed');
+          liveState = { ...job, taskId: null };
+          terminalError = job;
+          root.innerHTML = renderApp(data, activeTaskId, liveState, terminalError);
+          return;
         }
         liveState = { status: job.status, taskId: null, events: job.events };
+        terminalError = null;
         await repaint(job.payload);
       });
     }
@@ -344,8 +450,8 @@ async function main() {
 main().catch(error => {
   document.getElementById('app').innerHTML = `
     <section class="loading-panel">
-      <p class="eyebrow">load failure</p>
-      <h1>Failed to load the task runner.</h1>
+      <p class="eyebrow">terminal failure</p>
+      <h1>Failed to load the codegen workbench.</h1>
       <p class="muted">${escapeHtml(error)}</p>
     </section>
   `;

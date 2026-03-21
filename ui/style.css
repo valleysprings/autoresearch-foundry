@@ -98,6 +98,7 @@ h3 {
 .task-list,
 .summary-grid,
 .run-grid,
+.visual-grid,
 .candidate-grid,
 .metric-grid,
 .stack {
@@ -116,6 +117,12 @@ h3 {
 
 .run-grid {
   grid-template-columns: 1fr 1fr;
+}
+
+.visual-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
 }
 
 .candidate-grid {
@@ -159,7 +166,7 @@ h3 {
   padding: 12px;
   border-radius: 16px;
   background: #f4ede0;
-  overflow-x: auto;
+  overflow: auto;
   white-space: pre-wrap;
   line-height: 1.45;
 }
@@ -211,6 +218,184 @@ h3 {
   border-color: var(--good);
 }
 
+.visual-svg,
+.line-chart {
+  width: 100%;
+  height: auto;
+  margin-top: 14px;
+  display: block;
+}
+
+.chart-bg {
+  fill: #fbf6ee;
+  stroke: #e2d9ca;
+  stroke-width: 1;
+}
+
+.chart-axis {
+  stroke: #b9aa93;
+  stroke-width: 1.2;
+}
+
+.chart-grid {
+  stroke: rgba(185, 170, 147, 0.28);
+  stroke-width: 1;
+}
+
+.chart-step-line {
+  fill: none;
+  stroke: #59be87;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart-point {
+  stroke-width: 1.8;
+}
+
+.chart-point.kept {
+  fill: #43c979;
+  stroke: #1d6b57;
+}
+
+.chart-point.discarded {
+  fill: #d7d4ce;
+  stroke: #c0bab1;
+}
+
+.chart-label {
+  fill: var(--muted);
+  font-size: 0.72rem;
+  text-anchor: middle;
+}
+
+.chart-label-left {
+  text-anchor: end;
+}
+
+.chart-annotation {
+  fill: #2f8153;
+  font-size: 0.72rem;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-dot,
+.legend-line {
+  display: inline-block;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.legend-dot.kept {
+  background: #43c979;
+  border: 1px solid #1d6b57;
+}
+
+.legend-dot.discarded {
+  background: #d7d4ce;
+  border: 1px solid #c0bab1;
+}
+
+.legend-line {
+  width: 18px;
+  height: 0;
+  border-top: 3px solid #59be87;
+}
+
+.route-line {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.route-line.baseline {
+  stroke: #c8b9a4;
+}
+
+.route-line.winner {
+  stroke: var(--good);
+}
+
+.graph-node,
+.partition-node {
+  stroke: white;
+  stroke-width: 2;
+}
+
+.graph-node.baseline {
+  fill: #d8c4af;
+}
+
+.graph-node.winner {
+  fill: var(--good);
+}
+
+.partition-node.left {
+  fill: #d88d5f;
+}
+
+.partition-node.right {
+  fill: #2f7a66;
+}
+
+.cut-edge {
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.cut-edge.same {
+  stroke: #d6c7b4;
+  opacity: 0.85;
+}
+
+.cut-edge.cut {
+  stroke: var(--accent);
+}
+
+.graph-label {
+  fill: white;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+}
+
+.artifact-list {
+  word-break: break-word;
+}
+
+.memory-ledger {
+  max-height: 480px;
+}
+
+.code-scroll {
+  max-height: 420px;
+}
+
+.error-panel {
+  border-color: var(--accent);
+  background: rgba(255, 244, 237, 0.96);
+}
+
 .list {
   margin: 12px 0 0;
   padding-left: 18px;
@@ -218,7 +403,8 @@ h3 {
 
 @media (max-width: 900px) {
   .header-grid,
-  .run-grid {
+  .run-grid,
+  .visual-grid {
     grid-template-columns: 1fr;
   }
 }
