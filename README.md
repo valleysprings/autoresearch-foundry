@@ -24,14 +24,15 @@ This repo is a small autoresearch workbench around one idea:
 
 The current implementation is intentionally biased toward pure-function, deterministic tasks because that keeps correctness, benchmarking, and experience replay legible.
 
-The benchmark source of truth now lives under [benchmark/](/Users/david/coding/2026/autoresearcher-MA/benchmark), split into two tiers:
+The benchmark source of truth lives under [benchmark/](/Users/david/coding/2026/autoresearcher-MA/benchmark).
 
-- `benchmark_tier=comparable`
-  the four default tracks used for main runs, leaderboard-style summaries, and primary charts
-- `benchmark_tier=experiment`
-  small experiments used for smoke, regression, and manual runs without polluting the main comparison lane
+The active research lane is dataset-first:
 
-In git, only [benchmark/registry.json](/Users/david/coding/2026/autoresearcher-MA/benchmark/registry.json) is intended to sync by default. The task assets under `benchmark/` can remain local-only.
+- each comparable benchmark task is a real local dataset such as `olymmath` or `sciq`
+- each dataset fans out into independent question-runs
+- each question-run evolves its own solver trajectory and emits its own artifacts
+
+Only [benchmark/registry.json](/Users/david/coding/2026/autoresearcher-MA/benchmark/registry.json) is intended to sync by default. Dataset assets under `benchmark/`, plus `paper/` and `references/`, stay local.
 
 ## 5-Layer Architecture
 
@@ -48,80 +49,14 @@ In git, only [benchmark/registry.json](/Users/david/coding/2026/autoresearcher-M
 
 The active implementation path is [app/codegen/](/Users/david/coding/2026/autoresearcher-MA/app/codegen).
 
-## Engine Design
+Detailed implementation notes now live next to the code:
 
-### Proposal runtime
-
-- loads strict model config from `.env` or shell env
-- sends one-model OpenAI-compatible chat requests
-- expects strict JSON candidates with `file_body`, not operator plans
-
-### Trainer
-
-- retrieves prompt-ready memory fragments
-- asks the model for candidate function bodies
-- materializes and verifies each candidate
-- writes back new success or failure experiences for the current run
-
-### Verifier
-
-- materializes a single editable file from `file_body`
-- imports and executes the target function
-- runs fixed correctness tests first
-- benchmarks only verified candidates
-- computes `objective`, `speed_score`, `stability`, `complexity`, and `J`
-
-### Reporting and handoff
-
-- writes payload JSON, traces, `llm_trace.jsonl`, markdown memory, improvement table, and SVG report
-- exposes those artifacts to the UI and to downstream handoff consumers
-
-## Objective Design
-
-The runner uses two related scores:
-
-- **objective**
-  the task-facing metric, currently `speedup_vs_baseline`
-- **J**
-  the deterministic selection score used by the engine
-
-Current `J` formula:
-
-`J = 1.20 * correctness + 0.95 * speed_score + 0.20 * memory_bonus + 0.15 * stability - 0.18 * complexity - 0.05 * (line_count / 10)`
-
-Selection logic:
-
-- correctness is gated first
-- failing or erroring candidates do not enter the benchmark lane as winners
-- generations mutate a selected frontier parent, not only the global incumbent
-- a generation is accepted when it beats its selected parent by `epsilon`
-- the global best updates only when a frontier winner also beats the current best by `epsilon`
-- passing-but-stagnant candidates do not get written back as failure memory
-
-## Memory Design
-
-Memory is prompt-ready, not a generic log dump.
-
-Each experience stores fields such as:
-
-- `failure_pattern`
-- `strategy_hypothesis`
-- `successful_strategy`
-- `prompt_fragment`
-- `tool_trace_summary`
-- `delta_J`
-- `proposal_model`
-- `candidate_summary`
-- `experience_outcome`
-- `verifier_status`
-
-Important properties:
-
-- memory persists across runs and is not reset to seeds each time
-- retrieval prefers **success** experiences and caps failure fragments
-- failure memory is reserved for informative verifier failures or execution errors
-- duplicate memory fragments are suppressed before write-back
-- markdown output is an auditable ledger, but the UI also surfaces run-local fragments directly
+- engine, verifier, selection, and handoff design:
+  [app/codegen/README.md](/Users/david/coding/2026/autoresearcher-MA/app/codegen/README.md)
+- memory layout and write-back rules:
+  [app/memory/README.md](/Users/david/coding/2026/autoresearcher-MA/app/memory/README.md)
+- benchmark registry and task layout:
+  [benchmark/README.md](/Users/david/coding/2026/autoresearcher-MA/benchmark/README.md)
 
 ## Configuration
 
@@ -145,109 +80,16 @@ See [.env.example](/Users/david/coding/2026/autoresearcher-MA/.env.example).
 
 ## Benchmarks
 
-The active registry lives in [benchmark/registry.json](/Users/david/coding/2026/autoresearcher-MA/benchmark/registry.json). Each task lives in its own directory with:
+The active registry lives in [benchmark/registry.json](/Users/david/coding/2026/autoresearcher-MA/benchmark/registry.json).
 
-- `task.json`
-- `editable.py`
-- `verifier.py`
-- `data/`
-- `README.md`
+For benchmark layout, dataset-task metadata, and how to add a new real dataset, see:
+[benchmark/README.md](/Users/david/coding/2026/autoresearcher-MA/benchmark/README.md)
 
-Current `comparable` tracks:
-
-- `benchmark/math_verified/`
-- `benchmark/planning_verified/`
-- `benchmark/multihop_qa_snapshot/`
-- `benchmark/terminal_verified/`
-
-Current `experiment` tasks live under [benchmark/small_experiments/](/Users/david/coding/2026/autoresearcher-MA/benchmark/small_experiments).
-
-## Add A New Benchmark Task
-
-To add a task, register it in [benchmark/registry.json](/Users/david/coding/2026/autoresearcher-MA/benchmark/registry.json) and define at minimum:
-
-- `benchmark_tier`
-- `track`
-- `answer_metric`
-- `editable_file`
-- `entry_symbol`
-
-The current engine assumes:
-
-- a single editable file emitted by the model as `file_body`
-- deterministic verification and scoring
-- no multi-file edits
-- no live web or Docker-heavy execution in this phase
-
-For longer experiments, you can override budgets from the CLI without editing the catalog:
+You can cap how many real dataset items a run fans out into:
 
 ```bash
-python3 -m app.entries.discrete_demo --task count-n-queens --generation-budget 20
+python3 -m app.entries.discrete_demo --task olymmath --max-items 100
 ```
-
-The current runtime is especially good for:
-
-- heuristic improvement
-- constructive heuristics
-- local search steps
-- order-sensitive data transforms
-- search / counting / numeric kernels
-
-## Next Task Families
-
-### Directly compatible with the current engine
-
-- **Route / tour**
-  `tsp_nearest_neighbor_tour`, `tsp_two_opt_pass`, `tour_length`
-- **Scheduling**
-  `interval_schedule`, `list_schedule_makespan`, `weighted_job_order`
-- **Selection / portfolio**
-  `knapsack_select`, `budgeted_project_pick`, `portfolio_greedy_rebalance`
-- **Search / graph / numeric**
-  `connected_components_label`, `top_k_frequent`, `merge_intervals`, `shortest_path_relaxation_step`
-
-### Require runtime v2
-
-These are not “just another task” in the current engine:
-
-- tiny-dataset pretrain / fine-tune with `loss` or `PPL`
-- model-eval-driven tasks with checkpoints
-- tasks that need dataset loading, training steps, optimizer state, or runtime budgeting beyond a pure function call
-
-Those need a different verifier contract:
-
-- training harness
-- dataset loader
-- checkpoint/temp workspace lifecycle
-- objective based on `loss`, `PPL`, or eval score
-- runtime and cost budgets that are explicit in the task schema
-
-## Example Specs For Near-Term Roadmap
-
-### `tsp_two_opt_pass(route, distance_matrix)`
-
-- goal: reduce total tour length while preserving tour validity
-- correctness: output is a legal permutation / tour
-- objective: relative tour-length improvement with runtime tradeoff
-- benchmark: fixed matrix sizes and deterministic candidate tours
-
-### `interval_schedule(intervals)`
-
-- goal: maximize the number of non-overlapping intervals
-- correctness: returned intervals are valid and mutually non-overlapping
-- objective: throughput plus runtime
-
-### `list_schedule_makespan(job_lengths, machine_count)`
-
-- goal: minimize makespan
-- correctness: each job is assigned exactly once
-- objective: schedule quality plus runtime
-
-### `knapsack_select(items, capacity)`
-
-- goal: maximize value without exceeding capacity
-- correctness: feasible subset only
-- objective: value quality plus runtime
 
 ## API And Artifacts
 
@@ -257,64 +99,27 @@ Useful endpoints:
 curl http://127.0.0.1:8000/api/tasks
 curl http://127.0.0.1:8000/api/latest-run
 curl http://127.0.0.1:8000/api/runtime
-curl -X POST "http://127.0.0.1:8000/api/run-task?task_id=contains-duplicates"
+curl -X POST "http://127.0.0.1:8000/api/run-task?task_id=olymmath&max_items=100"
 curl -X POST "http://127.0.0.1:8000/api/run-sequence"
 ```
 
 Successful runs emit artifacts under `runs/`, including:
 
-- payload JSON
-- `trace.jsonl`
-- `llm_trace.jsonl`
-- `memory.md`
-- `objective_curve.json`
-- task-specific SVG improvement report
-- task-specific improvement table JSON
-- materialized candidate source trees
+- dataset-level payload and manifest JSON
+- per-question `items/<item_id>.json` summaries
+- per-question `item_runs/<item_id>/trace.jsonl`, `llm_trace.jsonl`, `memory.md`, `objective_curve.json`, and `result.json`
+- materialized candidate source trees under `runs/workspace/`
 
 ## Run The Project
 
 Run one task from the CLI:
 
 ```bash
-python3 -m app.entries.discrete_demo --task contains-duplicates
+python3 -m app.entries.discrete_demo --task olymmath --max-items 25
 ```
 
 Run the full sequence:
 
 ```bash
-python3 -m app.entries.discrete_demo
+python3 -m app.entries.discrete_demo --max-items 100
 ```
-
-Build the frontend:
-
-```bash
-cd ui
-npm install
-npm run build
-```
-
-Frontend-only development:
-
-```bash
-cd ui
-npm run dev
-```
-
-Run the Python server:
-
-```bash
-python3 -m app.entries.server
-```
-
-Then open [http://127.0.0.1:8000](http://127.0.0.1:8000).
-
-## Current Direction After This Commit
-
-The next visual pass will keep backend-generated SVG reports as canonical artifacts, while modernizing the frontend around:
-
-- better run summary charts
-- memory growth / fragment visualizations
-- repo-aligned titles and section naming
-- light / dark mode
-- a more intentional research-workbench layout

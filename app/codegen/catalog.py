@@ -54,15 +54,26 @@ def _normalize_task(task: dict[str, Any]) -> dict[str, Any]:
     normalized["track"] = str(normalized["track"]).strip()
     normalized["answer_metric"] = str(normalized["answer_metric"]).strip()
     normalized["dataset_id"] = str(normalized.get("dataset_id") or normalized["id"])
+    normalized["dataset_size"] = int(normalized.get("dataset_size") or 0)
     normalized["entry_symbol"] = str(normalized.get("entry_symbol") or normalized.get("function_name") or "solve")
     normalized["function_name"] = str(normalized.get("function_name") or normalized["entry_symbol"])
     normalized["editable_file"] = str(normalized.get("editable_file") or "editable.py")
     normalized["editable_filename"] = Path(normalized["editable_file"]).name
     normalized["included_in_main_comparison"] = normalized["benchmark_tier"] == "comparable"
     normalized["source_type"] = str(normalized.get("source_type") or "benchmark-task")
+    normalized["local_dataset_only"] = bool(normalized.get("local_dataset_only"))
+    split = normalized.get("split")
+    normalized["split"] = str(split).strip() if isinstance(split, str) and split.strip() else None
+    item_manifest = normalized.get("item_manifest")
+    normalized["item_manifest"] = str(item_manifest).strip() if isinstance(item_manifest, str) and item_manifest.strip() else None
     normalized["prompt_context"] = str(normalized.get("prompt_context") or "")
     normalized["verifier_path"] = str(normalized["verifier_path"])
     normalized["editable_path"] = str(normalized["editable_path"])
+    if normalized["local_dataset_only"]:
+        if normalized["dataset_size"] <= 0:
+            raise ValueError(f"Dataset task {normalized['id']} must declare dataset_size > 0.")
+        if normalized["item_manifest"] is None:
+            raise ValueError(f"Dataset task {normalized['id']} must declare item_manifest.")
     return normalized
 
 
@@ -100,6 +111,12 @@ def _load_task(entry: dict[str, Any]) -> dict[str, Any]:
         raise FileNotFoundError(f"Editable file not found: {merged['editable_path']}")
     if not Path(merged["verifier_path"]).exists():
         raise FileNotFoundError(f"Verifier file not found: {merged['verifier_path']}")
+    item_manifest = task.get("item_manifest")
+    if isinstance(item_manifest, str) and item_manifest.strip():
+        item_manifest_path = task_dir / item_manifest
+        if not item_manifest_path.exists():
+            raise FileNotFoundError(f"Question manifest not found: {item_manifest_path}")
+        merged["item_manifest_path"] = str(item_manifest_path)
     data_file = task.get("data_file")
     if isinstance(data_file, str) and data_file.strip():
         merged["data_path"] = str(task_dir / data_file)
@@ -200,6 +217,9 @@ def list_codegen_task_summaries() -> list[dict[str, Any]]:
             "benchmark_tier": task["benchmark_tier"],
             "track": task["track"],
             "dataset_id": task["dataset_id"],
+            "dataset_size": task["dataset_size"],
+            "local_dataset_only": task["local_dataset_only"],
+            "split": task["split"],
             "included_in_main_comparison": task["included_in_main_comparison"],
         }
         for task in load_codegen_tasks()

@@ -4,6 +4,7 @@ import { loadJob, loadLatestRun, loadRuntime, loadTasks, startJob } from "./api"
 import type {
   Branch,
   Candidate,
+  ItemRun,
   ErrorPayload,
   Generation,
   JSpec,
@@ -62,6 +63,23 @@ function artifactUrl(path?: string | null): string | null {
     return null;
   }
   return `/api/artifact?path=${encodeURIComponent(path)}`;
+}
+
+function questionPreview(prompt: string | undefined | null, limit = 140): string {
+  const text = String(prompt ?? "").replace(/\s+/g, " ").trim();
+  if (text.length <= limit) {
+    return text || "Question preview unavailable.";
+  }
+  return `${text.slice(0, limit - 3).trimEnd()}...`;
+}
+
+function artifactLink(label: string, path?: string | null) {
+  const href = artifactUrl(path);
+  return href ? (
+    <a className="badge" href={href} key={`${label}-${path}`} target="_blank" rel="noreferrer">
+      {label}
+    </a>
+  ) : null;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -680,9 +698,70 @@ function liveTaskSection(task: LiveTaskCard, isOpen: boolean, onToggle: () => vo
   );
 }
 
+function itemRunCard(itemRun: ItemRun, objectiveSpec: ObjectiveSpec) {
+  const objectiveUnit = objectiveSpec.unit ? ` ${objectiveSpec.unit}` : "";
+  return (
+    <details className="detail-card generation-card" key={itemRun.item_id}>
+      <summary className="detail-summary">
+        <div>
+          <strong>{itemRun.item_name}</strong>
+          <div className="detail-summary-copy">{questionPreview(itemRun.question.prompt)}</div>
+        </div>
+        <div className="badge-row">
+          <span className={`badge ${itemRun.winner.metrics.verifier_status === "pass" ? "good" : "warn"}`}>
+            {itemRun.winner.metrics.verifier_status ?? "n/a"}
+          </span>
+          <span className="badge">
+            {objectiveLabel(objectiveSpec)} {formatValue(itemRun.winner.metrics.objective, objectiveUnit)}
+          </span>
+          <span className={`badge ${numeric(itemRun.run_delta_J ?? itemRun.delta_J) >= 0 ? "good" : "warn"}`}>
+            delta_J {formatSigned(itemRun.run_delta_J ?? itemRun.delta_J, 4)}
+          </span>
+        </div>
+      </summary>
+      <div className="detail-body stack">
+        <div className="metric-grid compact-metrics">
+          {metric("question id", itemRun.item_id)}
+          {metric("baseline", itemRun.baseline.metrics.verifier_status ?? "n/a")}
+          {metric("winner", itemRun.winner.metrics.verifier_status ?? "n/a")}
+          {metric("generations", itemRun.generations.length)}
+          {metric("memory", `${itemRun.memory_before_count ?? "n/a"} → ${itemRun.memory_after_count ?? "n/a"}`)}
+          {metric("expected", String(itemRun.question.expected_answer))}
+        </div>
+        <p className="small">{itemRun.selection_reason}</p>
+        {itemRun.question.context ? (
+          <pre className="code-block compact"><code>{JSON.stringify(itemRun.question.context, null, 2)}</code></pre>
+        ) : null}
+        {itemRun.question.choices?.length ? (
+          <div className="badge-row">
+            {itemRun.question.choices.map((choice) => (
+              <span className="badge" key={`${itemRun.item_id}-${choice}`}>
+                {choice}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <div className="split-grid">
+          {candidateCard(itemRun.baseline, objectiveSpec, "candidate")}
+          {candidateCard(itemRun.winner, objectiveSpec, "winner")}
+        </div>
+        <div className="badge-row">
+          {artifactLink("item summary", itemRun.artifact_paths?.summary)}
+          {artifactLink("item manifest", itemRun.artifact_paths?.manifest)}
+          {artifactLink("trace", itemRun.artifact_paths?.trace)}
+          {artifactLink("llm trace", itemRun.artifact_paths?.llm_trace_jsonl)}
+          {artifactLink("memory", itemRun.artifact_paths?.memory_markdown)}
+          {artifactLink("result", itemRun.artifact_paths?.result)}
+        </div>
+      </div>
+    </details>
+  );
+}
+
 function runCard(run: Run, jSpec: JSpec, isOpen: boolean, onToggle: () => void) {
   const reportSvg = artifactUrl(run.handoff_bundle?.manifest?.artifact_paths.report_svg);
   const objectiveSpec = run.task.objective_spec;
+  const isDatasetRun = Array.isArray(run.item_runs) && run.item_runs.length > 0;
   return (
     <article className="task-card completed-card" key={run.task.id}>
       <button className="accordion-toggle" onClick={onToggle} type="button">
@@ -694,9 +773,15 @@ function runCard(run: Run, jSpec: JSpec, isOpen: boolean, onToggle: () => void) 
         <div className="accordion-meta">
           <span className="badge">{run.active_model}</span>
           <span className="badge">branching {run.task.branching_factor}</span>
-          <span className="badge">
-            {objectiveLabel(objectiveSpec)} {formatValue(run.winner.metrics.objective, objectiveSpec.unit ? ` ${objectiveSpec.unit}` : "")}
-          </span>
+          {isDatasetRun ? (
+            <span className="badge">
+              questions {run.dataset_summary?.winner_passed ?? 0}/{run.dataset_summary?.total_items ?? run.item_runs?.length ?? 0}
+            </span>
+          ) : (
+            <span className="badge">
+              {objectiveLabel(objectiveSpec)} {formatValue(run.winner.metrics.objective, objectiveSpec.unit ? ` ${objectiveSpec.unit}` : "")}
+            </span>
+          )}
           <span className={`badge ${numeric(run.run_delta_J ?? run.delta_J) >= 0 ? "good" : "warn"}`}>
             run_delta_J {formatSigned(run.run_delta_J ?? run.delta_J, 4)}
           </span>
@@ -717,52 +802,76 @@ function runCard(run: Run, jSpec: JSpec, isOpen: boolean, onToggle: () => void) 
             {metric("baseline objective", formatValue(run.baseline.metrics.objective, objectiveSpec.unit ? ` ${objectiveSpec.unit}` : ""))}
             {metric("winner objective", formatValue(run.winner.metrics.objective, objectiveSpec.unit ? ` ${objectiveSpec.unit}` : ""))}
             {metric("run_delta_J", formatSigned(run.run_delta_J ?? run.delta_J, 4))}
-            {metric("generations", run.generations.length)}
+            {metric(isDatasetRun ? "questions" : "generations", isDatasetRun ? run.dataset_summary?.total_items ?? run.item_runs?.length ?? 0 : run.generations.length)}
             {metric("write-backs", run.added_experiences?.length ?? 0)}
             {metric("memory", `${run.memory_before_count ?? "n/a"} → ${run.memory_after_count ?? "n/a"}`)}
           </div>
 
-          <div className="split-grid">
-            {candidateCard(run.baseline, objectiveSpec, "candidate")}
-            {candidateCard(run.winner, objectiveSpec, "winner")}
-          </div>
-
-          <div className="split-grid report-grid">
+          {isDatasetRun ? (
             <section className="subpanel">
               <div className="subpanel-header">
                 <div>
-                  <p className="eyebrow">objective + J</p>
-                  <h4>Generational deltas</h4>
+                  <p className="eyebrow">dataset summary</p>
+                  <h4>Per-question results</h4>
                 </div>
               </div>
-              {deltaChart(run)}
-            </section>
-            <section className="subpanel">
-              <div className="subpanel-header">
-                <div>
-                  <p className="eyebrow">memory delta</p>
-                  <h4>Per-generation net change</h4>
-                </div>
+              <div className="metric-grid compact-metrics">
+                {metric("dataset total questions", run.dataset_summary?.total_items ?? 0)}
+                {metric("baseline pass", run.dataset_summary?.baseline_passed ?? 0)}
+                {metric("winner pass", run.dataset_summary?.winner_passed ?? 0)}
+                {metric("solved ratio", formatValue(run.dataset_summary?.solved_ratio))}
+                {metric("avg winner objective", formatValue(run.dataset_summary?.avg_winner_objective))}
+                {metric("failures", run.dataset_summary?.failure_count ?? 0)}
               </div>
-              {memoryDeltaChart(run)}
+              <section className="stack">
+                {run.item_runs?.map((itemRun) => itemRunCard(itemRun, objectiveSpec))}
+              </section>
             </section>
-          </div>
+          ) : (
+            <>
+              <div className="split-grid">
+                {candidateCard(run.baseline, objectiveSpec, "candidate")}
+                {candidateCard(run.winner, objectiveSpec, "winner")}
+              </div>
 
-          <section className="subpanel">
-            <div className="subpanel-header">
-              <div>
-                <p className="eyebrow">report</p>
-                <h4>SVG summary</h4>
+              <div className="split-grid report-grid">
+                <section className="subpanel">
+                  <div className="subpanel-header">
+                    <div>
+                      <p className="eyebrow">objective + J</p>
+                      <h4>Generational deltas</h4>
+                    </div>
+                  </div>
+                  {deltaChart(run)}
+                </section>
+                <section className="subpanel">
+                  <div className="subpanel-header">
+                    <div>
+                      <p className="eyebrow">memory delta</p>
+                      <h4>Per-generation net change</h4>
+                    </div>
+                  </div>
+                  {memoryDeltaChart(run)}
+                </section>
               </div>
-            </div>
-            {reportSvg ? <img className="report-figure" src={reportSvg} alt={`${run.task.id} report`} /> : deltaChart(run)}
-          </section>
+
+              <section className="subpanel">
+                <div className="subpanel-header">
+                  <div>
+                    <p className="eyebrow">report</p>
+                    <h4>SVG summary</h4>
+                  </div>
+                </div>
+                {reportSvg ? <img className="report-figure" src={reportSvg} alt={`${run.task.id} report`} /> : deltaChart(run)}
+              </section>
+            </>
+          )}
 
           <section className="subpanel">
             <div className="subpanel-header">
               <div>
                 <p className="eyebrow">artifacts</p>
-                <h4>Manifest and memory ledger</h4>
+                <h4>{isDatasetRun ? "Dataset manifest and item artifacts" : "Manifest and memory ledger"}</h4>
               </div>
             </div>
             <div className="artifact-grid">
@@ -771,14 +880,26 @@ function runCard(run: Run, jSpec: JSpec, isOpen: boolean, onToggle: () => void) 
               {metric("trace", shortPath(run.handoff_bundle?.manifest?.artifact_paths.trace))}
               {metric("llm trace", shortPath(run.handoff_bundle?.manifest?.artifact_paths.llm_trace_jsonl))}
               {metric("memory markdown", shortPath(run.handoff_bundle?.manifest?.artifact_paths.memory_markdown))}
-              {metric("report svg", shortPath(run.handoff_bundle?.manifest?.artifact_paths.report_svg))}
+              {metric("baseline items", shortPath(run.handoff_bundle?.manifest?.artifact_paths.baseline_items))}
+              {metric("winner items", shortPath(run.handoff_bundle?.manifest?.artifact_paths.winner_items))}
+              {!isDatasetRun ? metric("report svg", shortPath(run.handoff_bundle?.manifest?.artifact_paths.report_svg)) : null}
             </div>
-            <pre className="code-block compact"><code>{run.memory_markdown}</code></pre>
+            {isDatasetRun ? (
+              <div className="badge-row">
+                {Object.entries(run.handoff_bundle?.manifest?.item_artifact_paths ?? {}).map(([itemId, path]) =>
+                  artifactLink(itemId, path),
+                )}
+              </div>
+            ) : (
+              <pre className="code-block compact"><code>{run.memory_markdown}</code></pre>
+            )}
           </section>
 
-          <section className="stack">
-            {run.generations.map((generation, index) => generationCard(generation, objectiveSpec, index === run.generations.length - 1))}
-          </section>
+          {!isDatasetRun ? (
+            <section className="stack">
+              {run.generations.map((generation, index) => generationCard(generation, objectiveSpec, index === run.generations.length - 1))}
+            </section>
+          ) : null}
         </div>
       ) : null}
     </article>
@@ -795,6 +916,7 @@ export function App() {
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
   const [branchingFactorInput, setBranchingFactorInput] = useState("4");
+  const [maxItemsInput, setMaxItemsInput] = useState("");
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
   const [liveJob, setLiveJob] = useState<JobState | null>({
     status: "loading",
@@ -956,6 +1078,7 @@ export function App() {
   async function runTask(taskId: string | null) {
     const model = selectedModel || runtimeInfo.active_model;
     const branchingFactor = Math.max(1, Math.floor(numeric(branchingFactorInput || selectedTask?.branching_factor || 4)));
+    const maxItems = maxItemsInput.trim() ? Math.max(1, Math.floor(numeric(maxItemsInput))) : null;
     pollToken.current += 1;
     const token = pollToken.current;
     setError(null);
@@ -964,11 +1087,17 @@ export function App() {
       taskId,
       model,
       branching_factor: branchingFactor,
-      events: [{ phase: "queued", message: `Starting ${taskId ?? "full sequence"} with ${model}.` }],
+      max_items: maxItems,
+      events: [
+        {
+          phase: "queued",
+          message: `Starting ${taskId ?? "full sequence"} with ${model}${maxItems ? ` (max_items=${maxItems})` : ""}.`,
+        },
+      ],
     });
 
     try {
-      const start = await startJob(taskId, model, branchingFactor);
+      const start = await startJob(taskId, model, branchingFactor, maxItems);
       let job = await loadJob(start.job_id);
       while (job.status === "running" && token === pollToken.current) {
         setLiveJob(job);
@@ -1089,6 +1218,18 @@ export function App() {
             <span className="field-label">Branching Factor</span>
             <input className="control" type="number" min={1} step={1} value={branchingFactorInput} onChange={(event) => setBranchingFactorInput(event.target.value)} />
           </label>
+          <label className="field">
+            <span className="field-label">Max Items</span>
+            <input
+              className="control"
+              type="number"
+              min={1}
+              step={1}
+              placeholder={selectedTask?.dataset_size ? String(selectedTask.dataset_size) : "all"}
+              value={maxItemsInput}
+              onChange={(event) => setMaxItemsInput(event.target.value)}
+            />
+          </label>
         </div>
 
         <div className="button-row">
@@ -1099,7 +1240,7 @@ export function App() {
             Run main benchmark sequence
           </button>
         </div>
-        <p className="small muted">The default sequence runs only comparable benchmark tasks. Small experiments stay manual and out of the main comparison lane.</p>
+        <p className="small muted">The default sequence runs only comparable benchmark tasks. Use Max Items to cap how many real dataset questions each dataset task fans out into for this run.</p>
 
         {selectedTask ? (
           <div className="task-preview">

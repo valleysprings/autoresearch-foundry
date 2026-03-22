@@ -1,0 +1,157 @@
+from __future__ import annotations
+
+import json
+import re
+from pathlib import Path
+from typing import Any
+
+
+QUESTION_PREVIEW_LIMIT = 180
+
+
+def is_dataset_task(task: dict[str, Any]) -> bool:
+    return bool(task.get("local_dataset_only")) and str(task.get("source_type") or "") == "dataset-task"
+
+
+def _slugify(value: str) -> str:
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", value.strip()).strip("-").lower()
+    return slug or "item"
+
+
+def _preview(text: str, *, limit: int = QUESTION_PREVIEW_LIMIT) -> str:
+    normalized = " ".join(text.split())
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[: limit - 3].rstrip() + "..."
+
+
+def load_question_manifest(task: dict[str, Any]) -> list[dict[str, Any]]:
+    manifest_path_raw = task.get("item_manifest_path")
+    if not isinstance(manifest_path_raw, str) or not manifest_path_raw.strip():
+        raise FileNotFoundError(f"Task {task.get('id') or '<unknown>'} is missing item_manifest_path.")
+
+    manifest_path = Path(manifest_path_raw)
+    if not manifest_path.exists():
+        raise FileNotFoundError(f"Question manifest not found: {manifest_path}")
+
+    payload = json.loads(manifest_path.read_text())
+    raw_items = payload["items"] if isinstance(payload, dict) and "items" in payload else payload
+    if not isinstance(raw_items, list):
+        raise ValueError(f"Question manifest must contain a list of items: {manifest_path}")
+
+    normalized: list[dict[str, Any]] = []
+    for index, raw_item in enumerate(raw_items, start=1):
+        if not isinstance(raw_item, dict):
+            raise ValueError(f"Question manifest item {index} must be an object: {manifest_path}")
+        prompt = raw_item.get("prompt")
+        expected = raw_item.get("expected_answer")
+        if not isinstance(prompt, str) or not prompt.strip():
+            raise ValueError(f"Question manifest item {index} is missing prompt: {manifest_path}")
+        if expected is None:
+            raise ValueError(f"Question manifest item {index} is missing expected_answer: {manifest_path}")
+        item_id = str(raw_item.get("item_id") or raw_item.get("name") or f"item-{index}")
+        normalized.append(
+            {
+                "item_id": _slugify(item_id),
+                "raw_item_id": item_id,
+                "name": str(raw_item.get("name") or item_id),
+                "prompt": prompt.strip(),
+                "context": raw_item.get("context"),
+                "choices": list(raw_item.get("choices") or []),
+                "expected_answer": expected,
+                "metadata": dict(raw_item.get("metadata") or {}),
+            }
+        )
+    return normalized
+
+
+def micro_task_id(dataset_task_id: str, item_id: str) -> str:
+    return f"{dataset_task_id}-{_slugify(item_id)}"
+
+
+def question_prompt_context(task: dict[str, Any], item: dict[str, Any]) -> str:
+    sections = [str(task.get("prompt_context") or "").strip()]
+    sections.append(f"Dataset question id: {item['item_id']}")
+    sections.append(f"Question prompt: {item['prompt']}")
+    context = item.get("context")
+    if context:
+        sections.append(f"Question context: {json.dumps(context, ensure_ascii=True)}")
+    choices = item.get("choices") or []
+    if choices:
+        sections.append(f"Choices: {json.dumps(choices, ensure_ascii=True)}")
+    sections.append(
+        "This run evaluates exactly one dataset question. Preserve the declared entry symbol and solve this question only."
+    )
+    return "\n".join(section for section in sections if section)
+
+
+def build_micro_task(task: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
+    micro_task = dict(task)
+    micro_id = micro_task_id(str(task["id"]), str(item["item_id"]))
+    preview = _preview(item["prompt"])
+    micro_task.update(
+        {
+            "id": micro_id,
+            "dataset_task_id": task["id"],
+            "dataset_task_title": task["title"],
+            "title": f"{task['title']} / {item['name']}",
+            "description": preview,
+            "question_item": item,
+            "prompt_context": question_prompt_context(task, item),
+        }
+    )
+    return micro_task
+
+
+def aggregate_dataset_metrics(item_runs: list[dict[str, Any]]) -> dict[str, Any]:
+    total_items = len(item_runs)
+    baseline_passed = sum(1 for item in item_runs if item["baseline"]["metrics"]["verifier_status"] == "pass")
+    winner_passed = sum(1 for item in item_runs if item["winner"]["metrics"]["verifier_status"] == "pass")
+    baseline_objective = sum(float(item["baseline"]["metrics"]["objective"] or 0.0) for item in item_runs)
+    winner_objective = sum(float(item["winner"]["metrics"]["objective"] or 0.0) for item in item_runs)
+    avg_delta_j = sum(float(item.get("run_delta_J") or item.get("delta_J") or 0.0) for item in item_runs)
+    failure_count = total_items - winner_passed
+
+    if total_items:
+        baseline_objective /= total_items
+        winner_objective /= total_items
+        avg_delta_j /= total_items
+
+    return {
+        "total_items": total_items,
+        "baseline_passed": baseline_passed,
+        "winner_passed": winner_passed,
+        "failure_count": failure_count,
+        "solved_ratio": round((winner_passed / total_items) if total_items else 0.0, 6),
+        "avg_baseline_objective": round(baseline_objective, 6),
+        "avg_winner_objective": round(winner_objective, 6),
+        "avg_delta_J": round(avg_delta_j, 6),
+    }
+
+
+def aggregate_candidate(role: str, item_runs: list[dict[str, Any]], objective_label: str) -> dict[str, Any]:
+    objective_total = sum(float(item[role]["metrics"]["objective"] or 0.0) for item in item_runs)
+    j_total = sum(float(item[role]["metrics"]["J"] or 0.0) for item in item_runs)
+    objective_score_total = sum(float(item[role]["metrics"].get("objective_score") or 0.0) for item in item_runs)
+    total_items = len(item_runs)
+    if total_items:
+        objective_total /= total_items
+        j_total /= total_items
+        objective_score_total /= total_items
+    label = "Dataset baseline aggregate" if role == "baseline" else "Dataset winner aggregate"
+    return {
+        "agent": role,
+        "label": label,
+        "strategy": f"Aggregate {role} summary across dataset questions.",
+        "rationale": f"Dataset-level aggregate for {objective_label}.",
+        "candidate_summary": label,
+        "proposal_model": None,
+        "source_code": "",
+        "metrics": {
+            "objective": round(objective_total, 6),
+            "objective_score": round(objective_score_total, 6),
+            "J": round(j_total, 6),
+            "verifier_status": "pass",
+            "status": "pass",
+        },
+    }

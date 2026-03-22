@@ -10,6 +10,8 @@ from unittest.mock import patch
 
 from app.codegen.errors import ConfigError, LlmResponseError, LlmTransportError
 from app.codegen.catalog import load_codegen_tasks, seed_strategy_experiences
+from app.codegen.dataset_runner import run_dataset_task
+from app.codegen.dataset_support import load_question_manifest
 from app.codegen.trainer import run_codegen_task
 from app.entries.discrete_demo import generate_discrete_payload, write_discrete_artifacts
 from app.memory.store import MemoryStore
@@ -168,6 +170,38 @@ FULL_FILE_PROPOSAL_PAYLOAD = {
             "imports": [],
             "file_body": _file_with_entry("contains_duplicates", "values", "return len(values) != len(set(values))"),
             "candidate_summary": "Set-cardinality duplicate detector returned as a full editable file.",
+        }
+    ]
+}
+
+QUESTION_SOLVER_PROPOSAL_PAYLOAD = {
+    "candidates": [
+        {
+            "name": "Prompt matcher",
+            "strategy": "Use prompt keywords from the normalized question schema.",
+            "rationale": "Each dataset question run is independent, so a prompt-targeted full-file rewrite can solve the active question.",
+            "imports": [],
+            "file_body": (
+                "def solve(question: dict) -> str:\n"
+                "    prompt = str(question.get('prompt') or '').lower()\n"
+                "    if 'remainder 1 when divided by 2, 3, 4, 5, and 6' in prompt:\n"
+                "        return '301'\n"
+                "    if '13, 14, and 15' in prompt:\n"
+                "        return '84'\n"
+                "    if 'positive divisors does 360 have' in prompt:\n"
+                "        return '24'\n"
+                "    if 'x + 1/x = 3' in prompt:\n"
+                "        return '7'\n"
+                "    if 'natural selection' in prompt:\n"
+                "        return 'darwin'\n"
+                "    if 'linear sequence' in prompt and 'acids' in prompt:\n"
+                "        return 'amino'\n"
+                "    if 'frameshift mutation' in prompt:\n"
+                "        return 'nucleotides'\n"
+                "    choices = question.get('choices') or []\n"
+                "    return str(choices[0]) if choices else ''\n"
+            ),
+            "candidate_summary": "Keyword-based solver over the normalized question dict.",
         }
     ]
 }
@@ -494,39 +528,122 @@ class CodegenRunnerTest(unittest.TestCase):
             self.assertTrue(result["generations"][0]["winner_accepted"])
 
     def test_full_sequence_only_runs_comparable_tasks(self) -> None:
-        comparable_tasks = load_codegen_tasks(included_in_main_comparison=True)
+        comparable_tasks = [dict(task) for task in load_codegen_tasks(included_in_main_comparison=True)]
+        for task in comparable_tasks:
+            task["generation_budget"] = 1
+            task["candidate_budget"] = 1
+            task["branching_factor"] = 1
+            task["item_workers"] = 1
         runtime = make_runtime(
             [
-                chat_response(
-                    {
-                        "candidates": [
-                            {
-                                "name": f"No-op {task['id']}",
-                                "strategy": "Return the checked-in editable file so the task can run through the comparable lane.",
-                                "rationale": "This smoke test only verifies catalog wiring and comparable-task sequencing.",
-                                "imports": [],
-                                "file_body": Path(task["editable_path"]).read_text(),
-                                "candidate_summary": f"No-op comparable smoke candidate for {task['id']}.",
-                            }
-                        ]
-                    }
-                )
+                response
                 for task in comparable_tasks
+                for response in (
+                    chat_response(QUESTION_SOLVER_PROPOSAL_PAYLOAD),
+                    chat_response(REFLECTION_PAYLOAD),
+                )
             ]
         )
         with tempfile.TemporaryDirectory() as tmp_dir:
-            payload = generate_discrete_payload(
-                proposal_runtime=runtime,
-                runs_root=Path(tmp_dir),
-                generation_budget=1,
-                candidate_budget=1,
-                branching_factor=1,
-            )
+            with patch("app.entries.discrete_demo.load_codegen_tasks", return_value=comparable_tasks):
+                payload = generate_discrete_payload(
+                    proposal_runtime=runtime,
+                    runs_root=Path(tmp_dir),
+                    generation_budget=1,
+                    candidate_budget=1,
+                    branching_factor=1,
+                    max_items=1,
+                )
         self.assertEqual(payload["summary"]["num_tasks"], len(comparable_tasks))
         self.assertEqual(payload["summary"]["total_runs"], len(comparable_tasks))
         self.assertEqual(payload["summary"]["experiment_runs"], 0)
         self.assertTrue(payload["runs"])
         self.assertTrue(all(run["included_in_main_comparison"] for run in payload["runs"]))
+
+    def test_dataset_task_fanout_runs_each_question_independently(self) -> None:
+        runtime = make_runtime(
+            [
+                chat_response(QUESTION_SOLVER_PROPOSAL_PAYLOAD),
+                chat_response(REFLECTION_PAYLOAD),
+                chat_response(QUESTION_SOLVER_PROPOSAL_PAYLOAD),
+                chat_response(REFLECTION_PAYLOAD),
+            ]
+        )
+        task = next(item for item in load_codegen_tasks() if item["id"] == "olymmath")
+        task = dict(task)
+        task["generation_budget"] = 1
+        task["candidate_budget"] = 1
+        task["branching_factor"] = 1
+        task["item_workers"] = 1
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            items = load_question_manifest(task)[:2]
+            manifest = tmp / "questions.json"
+            manifest.write_text(json.dumps(items, indent=2))
+            task["item_manifest_path"] = str(manifest)
+            task["dataset_size"] = len(items)
+            events: list[dict[str, object]] = []
+            result = run_dataset_task(
+                task,
+                proposal_runtime=runtime,
+                workspace_root=tmp / "workspace",
+                memory_root=tmp / "item-memory",
+                session_id="dataset-fanout",
+                progress_callback=events.append,
+            )
+            self.assertEqual(result["dataset_summary"]["total_items"], 2)
+            self.assertEqual(result["dataset_summary"]["winner_passed"], 2)
+            self.assertEqual(len(result["item_runs"]), 2)
+            self.assertEqual({item_run["item_id"] for item_run in result["item_runs"]}, {item["item_id"] for item in items})
+            self.assertTrue(all(item_run["winner"]["metrics"]["status"] == "pass" for item_run in result["item_runs"]))
+            self.assertTrue(all(item_run["memory_before_count"] == 2 for item_run in result["item_runs"]))
+            self.assertTrue(any(event.get("item_id") == items[0]["item_id"] for event in events))
+            self.assertTrue(any(event.get("item_id") == items[1]["item_id"] for event in events))
+
+    def test_dataset_artifacts_include_item_runs_and_item_summaries(self) -> None:
+        runtime = make_runtime(
+            [
+                chat_response(QUESTION_SOLVER_PROPOSAL_PAYLOAD),
+                chat_response(REFLECTION_PAYLOAD),
+            ]
+        )
+        task = next(item for item in load_codegen_tasks() if item["id"] == "sciq")
+        task = dict(task)
+        task["generation_budget"] = 1
+        task["candidate_budget"] = 1
+        task["branching_factor"] = 1
+        task["item_workers"] = 1
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            items = load_question_manifest(task)[:2]
+            manifest = tmp / "questions.json"
+            manifest.write_text(json.dumps(items, indent=2))
+            task["item_manifest_path"] = str(manifest)
+            task["dataset_size"] = len(items)
+            with patch("app.entries.discrete_demo.load_codegen_tasks", return_value=[task]):
+                artifact_path = write_discrete_artifacts(
+                    task_id="sciq",
+                    proposal_runtime=runtime,
+                    runs_root=tmp,
+                    generation_budget=1,
+                    candidate_budget=1,
+                    branching_factor=1,
+                    max_items=1,
+                )
+            payload = json.loads(artifact_path.read_text())
+            run = payload["runs"][0]
+            self.assertEqual(run["dataset_summary"]["total_items"], 1)
+            self.assertEqual(len(run["item_runs"]), 1)
+            manifest_path = Path(tmp) / run["handoff_bundle"]["manifest_path"]
+            dataset_manifest = json.loads(manifest_path.read_text())
+            self.assertEqual(set(dataset_manifest["item_artifact_paths"]), {items[0]["item_id"]})
+            for item_id in dataset_manifest["item_artifact_paths"]:
+                item_summary_path = Path(tmp) / dataset_manifest["item_artifact_paths"][item_id]
+                self.assertTrue(item_summary_path.exists())
+                item_summary = json.loads(item_summary_path.read_text())
+                self.assertEqual(item_summary["item_id"], item_id)
+                item_result_path = Path(tmp) / item_summary["artifact_paths"]["result"]
+                self.assertTrue(item_result_path.exists())
 
 
 if __name__ == "__main__":

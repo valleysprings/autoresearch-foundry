@@ -94,15 +94,17 @@ class ServerApiTest(unittest.TestCase):
             status, payload = _fetch_json(f"http://127.0.0.1:{httpd.server_port}/api/tasks")
             self.assertEqual(status, 200)
             contains_duplicates = next(task for task in payload["tasks"] if task["id"] == "contains-duplicates")
-            planbench = next(task for task in payload["tasks"] if task["id"] == "planbench-lite")
+            olymmath = next(task for task in payload["tasks"] if task["id"] == "olymmath")
+            sciq = next(task for task in payload["tasks"] if task["id"] == "sciq")
             self.assertEqual(contains_duplicates["benchmark_tier"], "experiment")
             self.assertEqual(contains_duplicates["track"], "small_experiments")
             self.assertEqual(contains_duplicates["dataset_id"], "contains-duplicates-v1")
             self.assertFalse(contains_duplicates["included_in_main_comparison"])
-            self.assertEqual(planbench["benchmark_tier"], "comparable")
-            self.assertEqual(planbench["track"], "planning_verified")
-            self.assertEqual(planbench["dataset_id"], "planbench_lite_v1")
-            self.assertTrue(planbench["included_in_main_comparison"])
+            self.assertEqual(olymmath["dataset_id"], "olymmath")
+            self.assertEqual(olymmath["dataset_size"], 4)
+            self.assertTrue(olymmath["local_dataset_only"])
+            self.assertEqual(sciq["track"], "science_verified")
+            self.assertEqual(sciq["split"], "validation")
         finally:
             httpd.shutdown()
             httpd.server_close()
@@ -150,6 +152,37 @@ class ServerApiTest(unittest.TestCase):
                     self.assertEqual(completed["status"], "completed")
                     self.assertEqual(completed["branching_factor"], 6)
                     self.assertEqual(write_artifacts.call_args.kwargs["branching_factor"], 6)
+                finally:
+                    httpd.shutdown()
+                    httpd.server_close()
+                    thread.join(timeout=5)
+
+    def test_max_items_is_forwarded_to_job_runner(self) -> None:
+        payload = {"summary": {"generated_at": "now"}, "runs": [], "task_catalog": []}
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            artifact_path = Path(tmp_dir) / "payload.json"
+            artifact_path.write_text(json.dumps(payload))
+            with (
+                patch.object(server.ProposalRuntime, "from_env", return_value=make_runtime([])),
+                patch.object(server, "write_discrete_artifacts", return_value=artifact_path) as write_artifacts,
+            ):
+                httpd, thread = self._serve()
+                try:
+                    status, start_payload = _fetch_json(
+                        f"http://127.0.0.1:{httpd.server_port}/api/run-task?task_id=olymmath&max_items=100",
+                        method="POST",
+                    )
+                    self.assertEqual(status, 202)
+                    job_id = start_payload["job_id"]
+                    deadline = time.time() + 5
+                    while time.time() < deadline:
+                        _, completed = _fetch_json(f"http://127.0.0.1:{httpd.server_port}/api/job?job_id={job_id}")
+                        if completed["status"] != "running":
+                            break
+                        time.sleep(0.05)
+                    self.assertEqual(completed["status"], "completed")
+                    self.assertEqual(completed["max_items"], 100)
+                    self.assertEqual(write_artifacts.call_args.kwargs["max_items"], 100)
                 finally:
                     httpd.shutdown()
                     httpd.server_close()

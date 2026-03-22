@@ -22,7 +22,7 @@ class CodegenCatalogTest(unittest.TestCase):
         self.assertTrue(all(not task["included_in_main_comparison"] for task in experiment_tasks))
         self.assertEqual(
             {task["track"] for task in comparable_tasks},
-            {"math_verified", "planning_verified", "multihop_qa_snapshot", "terminal_verified"},
+            {"math_verified", "science_verified"},
         )
         self.assertTrue(all(task["included_in_main_comparison"] for task in comparable_tasks))
 
@@ -35,17 +35,19 @@ class CodegenCatalogTest(unittest.TestCase):
     def test_task_summaries_include_benchmark_metadata(self) -> None:
         summaries = list_codegen_task_summaries()
         contains_duplicates = next(task for task in summaries if task["id"] == "contains-duplicates")
-        planbench = next(task for task in summaries if task["id"] == "planbench-lite")
+        olymmath = next(task for task in summaries if task["id"] == "olymmath")
+        sciq = next(task for task in summaries if task["id"] == "sciq")
 
         self.assertEqual(contains_duplicates["benchmark_tier"], "experiment")
         self.assertEqual(contains_duplicates["track"], "small_experiments")
         self.assertEqual(contains_duplicates["answer_metric"], "speedup_vs_baseline")
         self.assertFalse(contains_duplicates["included_in_main_comparison"])
 
-        self.assertEqual(planbench["benchmark_tier"], "comparable")
-        self.assertEqual(planbench["track"], "planning_verified")
-        self.assertEqual(planbench["answer_metric"], "plan_validity")
-        self.assertTrue(planbench["included_in_main_comparison"])
+        self.assertTrue(olymmath["local_dataset_only"])
+        self.assertEqual(olymmath["dataset_size"], 4)
+        self.assertEqual(olymmath["split"], "numeric_verified_seed")
+        self.assertEqual(sciq["track"], "science_verified")
+        self.assertEqual(sciq["split"], "validation")
 
     def test_missing_local_benchmark_assets_are_skipped(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

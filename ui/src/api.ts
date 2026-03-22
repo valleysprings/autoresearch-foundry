@@ -36,6 +36,7 @@ export async function startJob(
   taskId: string | null,
   model: string,
   branchingFactor?: number | null,
+  maxItems?: number | null,
 ): Promise<{ job_id: string; model: string }> {
   const params = new URLSearchParams();
   if (model) {
@@ -46,6 +47,9 @@ export async function startJob(
   }
   if (typeof branchingFactor === "number" && Number.isFinite(branchingFactor)) {
     params.set("branching_factor", String(Math.max(1, Math.floor(branchingFactor))));
+  }
+  if (typeof maxItems === "number" && Number.isFinite(maxItems)) {
+    params.set("max_items", String(Math.max(1, Math.floor(maxItems))));
   }
   const suffix = params.toString() ? `?${params.toString()}` : "";
   const url = taskId ? `/api/run-task${suffix}` : `/api/run-sequence${suffix}`;

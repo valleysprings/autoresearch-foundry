@@ -46,24 +46,29 @@
       "enabled": true
     },
     {
-      "id": "olymmath-numeric-small",
-      "path": "math_verified/olymmath-numeric-small",
+      "id": "olymmath",
+      "path": "math_verified/olymmath",
+      "enabled": true
+    },
+    {
+      "id": "sciq",
+      "path": "science_verified/sciq",
       "enabled": true
     },
     {
       "id": "planbench-lite",
       "path": "planning_verified/planbench-lite",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "multihop-snapshot-small",
       "path": "multihop_qa_snapshot/multihop-snapshot-small",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "tbench-lite",
       "path": "terminal_verified/tbench-lite",
-      "enabled": true
+      "enabled": false
     }
   ]
 }

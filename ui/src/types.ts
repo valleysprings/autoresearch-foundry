@@ -43,6 +43,9 @@ export type TaskSummary = {
   benchmark_tier: string;
   track: string;
   dataset_id: string;
+  dataset_size?: number;
+  local_dataset_only?: boolean;
+  split?: string | null;
   included_in_main_comparison: boolean;
 };
 
@@ -157,6 +160,9 @@ export type RunTask = {
   benchmark_tier: string;
   track: string;
   dataset_id: string;
+  dataset_size?: number;
+  local_dataset_only?: boolean;
+  split?: string | null;
   included_in_main_comparison: boolean;
 };
 
@@ -167,7 +173,64 @@ export type ArtifactManifest = {
     llm_trace_jsonl: string;
     memory_markdown: string;
     report_svg?: string;
+    baseline_items?: string;
+    winner_items?: string;
   };
+  item_artifact_paths?: Record<string, string>;
+};
+
+export type DatasetSummary = {
+  total_items: number;
+  baseline_passed: number;
+  winner_passed: number;
+  failure_count: number;
+  solved_ratio: number | string;
+  avg_baseline_objective: number | string;
+  avg_winner_objective: number | string;
+  avg_delta_J: number | string;
+};
+
+export type QuestionRecord = {
+  item_id: string;
+  name: string;
+  prompt: string;
+  context?: unknown;
+  choices?: string[];
+  expected_answer: unknown;
+  metadata?: Record<string, unknown>;
+};
+
+export type ItemArtifactPaths = {
+  summary?: string;
+  manifest?: string;
+  trace?: string;
+  llm_trace_jsonl?: string;
+  memory_markdown?: string;
+  objective_curve?: string;
+  result?: string;
+};
+
+export type ItemRun = {
+  item_id: string;
+  item_name: string;
+  question: QuestionRecord;
+  baseline: Candidate;
+  winner: Candidate;
+  delta_J: number | string;
+  run_delta_J?: number | string;
+  run_delta_objective?: number | string;
+  generations: Generation[];
+  objective_curve: ObjectivePoint[];
+  llm_traces: Array<Record<string, unknown>>;
+  memory_before_count?: number | string;
+  memory_after_count?: number | string;
+  positive_experiences_added?: number | string;
+  negative_experiences_added?: number | string;
+  added_experiences?: AddedExperience[];
+  memory_markdown: string;
+  selection_reason: string;
+  artifact_paths?: ItemArtifactPaths;
+  manifest_path?: string;
 };
 
 export type Run = {
@@ -182,6 +245,8 @@ export type Run = {
   task: RunTask;
   baseline: Candidate;
   winner: Candidate;
+  dataset_summary?: DatasetSummary;
+  item_runs?: ItemRun[];
   delta_J: number | string;
   run_delta_J?: number | string;
   run_delta_objective?: number | string;
@@ -266,6 +331,7 @@ export type JobState = {
   task_id?: string | null;
   taskId?: string | null;
   branching_factor?: number | null;
+  max_items?: number | null;
   terminal?: boolean;
   error_type?: string | null;
   error?: string | null;

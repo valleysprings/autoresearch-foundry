@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from app.codegen.catalog import load_codegen_tasks
+from app.codegen.dataset_support import build_micro_task, load_question_manifest
 from app.codegen.verifier import evaluate_materialized_candidate, materialize_candidate
 
 
@@ -163,32 +164,36 @@ class CodegenVerifierTest(unittest.TestCase):
             self.assertEqual(metrics["status"], "pass")
             self.assertGreater(metrics["speedup_vs_baseline"], 1.0)
 
-    def test_each_comparable_track_baseline_verifies(self) -> None:
+    def test_legacy_comparable_tracks_are_not_in_active_research_lane(self) -> None:
         comparable_tasks = load_codegen_tasks(included_in_main_comparison=True)
-        tracks = {task["track"] for task in comparable_tasks}
-        self.assertEqual(
-            tracks,
-            {"math_verified", "planning_verified", "multihop_qa_snapshot", "terminal_verified"},
-        )
+        comparable_tasks = [task for task in comparable_tasks if not task.get("local_dataset_only")]
+        self.assertEqual(comparable_tasks, [])
+
+    def test_dataset_question_microtasks_generate_item_level_records(self) -> None:
+        dataset_tasks = [task for task in load_codegen_tasks(included_in_main_comparison=True) if task.get("local_dataset_only")]
+        self.assertEqual({task["id"] for task in dataset_tasks}, {"olymmath", "sciq"})
         with tempfile.TemporaryDirectory() as tmp_dir:
             workspace = Path(tmp_dir)
-            for task in comparable_tasks:
+            for task in dataset_tasks:
+                items = load_question_manifest(task)
+                micro_task = build_micro_task(task, items[0])
                 source = Path(task["editable_path"]).read_text()
                 candidate_path, candidate_code = materialize_candidate(
-                    task=task,
+                    task=micro_task,
                     workspace_root=workspace / task["id"],
                     candidate_id="baseline",
                     file_body=source,
                 )
                 metrics = evaluate_materialized_candidate(
-                    task=task,
+                    task=micro_task,
                     source_path=candidate_path,
                     source_code=candidate_code,
                     baseline_metrics=None,
                     memory_applied=False,
                 )
-                self.assertEqual(metrics["status"], "pass", msg=task["id"])
-                self.assertEqual(metrics["verifier_status"], "pass", msg=task["id"])
+                self.assertEqual(metrics["total_tests"], 1)
+                self.assertEqual(len(metrics["test_results"]), 1)
+                self.assertEqual(metrics["test_results"][0]["name"], items[0]["name"])
 
 
 if __name__ == "__main__":

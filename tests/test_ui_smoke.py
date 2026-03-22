@@ -21,6 +21,10 @@ class UiSmokeTest(unittest.TestCase):
         self.assertIn("Small Experiments", source)
         self.assertIn("Theme mode", source)
         self.assertIn("Generational deltas", source)
+        self.assertIn("Per-question results", source)
+        self.assertIn("dataset total questions", source)
+        self.assertIn("Dataset manifest and item artifacts", source)
+        self.assertIn("Max Items", source)
 
     def test_index_loads_react_entry(self) -> None:
         source = (ROOT / "ui" / "index.html").read_text()
