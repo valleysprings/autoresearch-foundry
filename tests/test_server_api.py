@@ -88,6 +88,26 @@ class ServerApiTest(unittest.TestCase):
                 httpd.server_close()
                 thread.join(timeout=5)
 
+    def test_tasks_endpoint_returns_benchmark_metadata(self) -> None:
+        httpd, thread = self._serve()
+        try:
+            status, payload = _fetch_json(f"http://127.0.0.1:{httpd.server_port}/api/tasks")
+            self.assertEqual(status, 200)
+            contains_duplicates = next(task for task in payload["tasks"] if task["id"] == "contains-duplicates")
+            planbench = next(task for task in payload["tasks"] if task["id"] == "planbench-lite")
+            self.assertEqual(contains_duplicates["benchmark_tier"], "experiment")
+            self.assertEqual(contains_duplicates["track"], "small_experiments")
+            self.assertEqual(contains_duplicates["dataset_id"], "contains-duplicates-v1")
+            self.assertFalse(contains_duplicates["included_in_main_comparison"])
+            self.assertEqual(planbench["benchmark_tier"], "comparable")
+            self.assertEqual(planbench["track"], "planning_verified")
+            self.assertEqual(planbench["dataset_id"], "planbench_lite_v1")
+            self.assertTrue(planbench["included_in_main_comparison"])
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+            thread.join(timeout=5)
+
     def test_invalid_model_override_fails_fast(self) -> None:
         with patch.object(server.ProposalRuntime, "from_env", return_value=make_runtime([])):
             httpd, thread = self._serve()
@@ -195,6 +215,38 @@ class ServerApiTest(unittest.TestCase):
                     httpd.shutdown()
                     httpd.server_close()
                     thread.join(timeout=5)
+
+    def test_latest_run_payload_preserves_main_and_experiment_summary_split(self) -> None:
+        cached_payload = {
+            "summary": {
+                "generated_at": "cached",
+                "num_tasks": 1,
+                "total_runs": 2,
+                "experiment_runs": 1,
+                "total_generations": 3,
+                "write_backs": 2,
+                "experiment_write_backs": -1,
+            },
+            "runs": [
+                {"task": {"id": "planbench-lite"}, "included_in_main_comparison": True},
+                {"task": {"id": "contains-duplicates"}, "included_in_main_comparison": False},
+            ],
+            "task_catalog": [],
+        }
+        with patch.object(server, "load_cached_discrete_payload", return_value=cached_payload):
+            httpd, thread = self._serve()
+            try:
+                status, payload = _fetch_json(f"http://127.0.0.1:{httpd.server_port}/api/latest-run")
+                self.assertEqual(status, 200)
+                self.assertEqual(payload["summary"]["num_tasks"], 1)
+                self.assertEqual(payload["summary"]["total_runs"], 2)
+                self.assertEqual(payload["summary"]["experiment_runs"], 1)
+                self.assertEqual(payload["summary"]["write_backs"], 2)
+                self.assertEqual(payload["summary"]["experiment_write_backs"], -1)
+            finally:
+                httpd.shutdown()
+                httpd.server_close()
+                thread.join(timeout=5)
 
 
 if __name__ == "__main__":

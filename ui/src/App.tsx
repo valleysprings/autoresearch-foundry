@@ -125,10 +125,13 @@ function emptyPayload(taskCatalog: TaskSummary[] = []): Payload {
       run_mode: "llm-required",
       active_model: "n/a",
       num_tasks: 0,
+      total_runs: 0,
+      experiment_runs: 0,
       total_generations: 0,
       initial_memory_count: 0,
       memory_size_after_run: 0,
       write_backs: 0,
+      experiment_write_backs: 0,
       source_repo: "n/a",
       git_commit: "n/a",
       upstream_target: "n/a",
@@ -185,6 +188,14 @@ function metric(label: string, value: string | number) {
 
 function objectiveLabel(spec: ObjectiveSpec): string {
   return spec.display_name || "Objective";
+}
+
+function benchmarkTierLabel(includedInMainComparison: boolean): string {
+  return includedInMainComparison ? "main benchmark" : "small experiment";
+}
+
+function trackLabel(track: string): string {
+  return track.replace(/_/g, " ");
 }
 
 function summarizeLiveTasks(
@@ -693,6 +704,8 @@ function runCard(run: Run, jSpec: JSpec, isOpen: boolean, onToggle: () => void) 
       </button>
       <div className="task-summary-row">
         <span className="summary-pill">{run.task.id}</span>
+        <span className="summary-pill">{benchmarkTierLabel(run.included_in_main_comparison)}</span>
+        <span className="summary-pill">{trackLabel(run.track)}</span>
         <span className="summary-pill">{directionCopy(objectiveSpec.direction)}</span>
         <span className="summary-pill">{run.selection_reason}</span>
       </div>
@@ -797,9 +810,29 @@ export function App() {
     [payload.task_catalog, selectedTaskId],
   );
 
+  const comparableTasks = useMemo(
+    () => payload.task_catalog.filter((task) => task.included_in_main_comparison),
+    [payload.task_catalog],
+  );
+
+  const experimentTasks = useMemo(
+    () => payload.task_catalog.filter((task) => !task.included_in_main_comparison),
+    [payload.task_catalog],
+  );
+
   const liveTasks = useMemo(
     () => summarizeLiveTasks(liveJob?.events ?? [], payload.task_catalog, liveJob, payload.runs),
     [liveJob, payload.task_catalog, payload.runs],
+  );
+
+  const comparableRuns = useMemo(
+    () => payload.runs.filter((run) => run.included_in_main_comparison),
+    [payload.runs],
+  );
+
+  const experimentRuns = useMemo(
+    () => payload.runs.filter((run) => !run.included_in_main_comparison),
+    [payload.runs],
   );
 
   useEffect(() => {
@@ -833,8 +866,9 @@ export function App() {
         setRuntimeInfo(runtime);
         setSelectedModel(runtime.active_model);
         setPayload(emptyPayload(tasks));
-        setSelectedTaskId(tasks[0]?.id ?? "");
-        setBranchingFactorInput(String(tasks[0]?.branching_factor ?? 4));
+        const defaultTask = tasks.find((task) => task.included_in_main_comparison) ?? tasks[0] ?? null;
+        setSelectedTaskId(defaultTask?.id ?? "");
+        setBranchingFactorInput(String(defaultTask?.branching_factor ?? 4));
         setLiveJob({
           status: "loading",
           events: [{ phase: "boot", message: "Loading latest cached run." }],
@@ -1021,11 +1055,24 @@ export function App() {
           <label className="field">
             <span className="field-label">Task</span>
             <select className="control" value={selectedTask?.id ?? ""} onChange={(event) => setSelectedTaskId(event.target.value)}>
-              {payload.task_catalog.map((task) => (
-                <option key={task.id} value={task.id}>
-                  {task.id}
-                </option>
-              ))}
+              {comparableTasks.length ? (
+                <optgroup label="Main benchmark">
+                  {comparableTasks.map((task) => (
+                    <option key={task.id} value={task.id}>
+                      {task.id}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null}
+              {experimentTasks.length ? (
+                <optgroup label="Small experiments">
+                  {experimentTasks.map((task) => (
+                    <option key={task.id} value={task.id}>
+                      {task.id}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : null}
             </select>
           </label>
           <label className="field">
@@ -1049,14 +1096,17 @@ export function App() {
             Run selected task
           </button>
           <button className="action" onClick={() => void runTask(null)} type="button">
-            Run full sequence
+            Run main benchmark sequence
           </button>
         </div>
+        <p className="small muted">The default sequence runs only comparable benchmark tasks. Small experiments stay manual and out of the main comparison lane.</p>
 
         {selectedTask ? (
           <div className="task-preview">
             <div className="task-summary-row">
-              <span className="summary-pill">{selectedTask.family}</span>
+              <span className="summary-pill">{benchmarkTierLabel(selectedTask.included_in_main_comparison)}</span>
+              <span className="summary-pill">{trackLabel(selectedTask.track)}</span>
+              <span className="summary-pill">{selectedTask.answer_metric}</span>
               <span className="summary-pill">{selectedTask.function_name}</span>
               <span className="summary-pill">
                 {selectedTask.generation_budget} generations × {selectedTask.candidate_budget} candidates × branching {branchingFactorInput}
@@ -1093,9 +1143,12 @@ export function App() {
         </div>
         <div className="metric-grid">
           {metric("cached runs", payload.runs.length)}
+          {metric("main runs", comparableRuns.length)}
+          {metric("experiment runs", experimentRuns.length)}
           {metric("latest generated", payload.summary.generated_at)}
           {metric("memory size", payload.summary.memory_size_after_run)}
-          {metric("write backs", payload.summary.write_backs)}
+          {metric("main write backs", payload.summary.write_backs)}
+          {metric("experiment write backs", payload.summary.experiment_write_backs)}
           {metric("temperature", runtimeInfo.temperature)}
           {metric("max tokens", runtimeInfo.max_tokens)}
         </div>
@@ -1130,17 +1183,51 @@ export function App() {
           </div>
           <div className="badge-row">
             <span className="badge">{payload.summary.active_model}</span>
-            <span className="badge">{payload.summary.num_tasks} tasks</span>
+            <span className="badge">{payload.summary.num_tasks} main tasks</span>
+            <span className="badge">{payload.summary.experiment_runs} experiment runs</span>
           </div>
         </div>
-        {payload.runs.length ? (
-          payload.runs.map((run) => runCard(run, taskJSpec, Boolean(openCompletedTasks[run.task.id]), () => toggleCompletedTask(run.task.id)))
-        ) : (
-          <section className="empty-state">
-            <h3>No completed run yet</h3>
-            <p className="muted">Once a run finishes, each task will appear here as an independent card with its own description, metric template, charts, and branch history.</p>
-          </section>
-        )}
+        <section className="subpanel stack">
+          <div className="subpanel-header">
+            <div>
+              <p className="eyebrow">main benchmark</p>
+              <h4>Main benchmark comparison</h4>
+            </div>
+            <div className="badge-row">
+              <span className="badge">{comparableTasks.length} registered</span>
+              <span className="badge">{comparableRuns.length} cached</span>
+            </div>
+          </div>
+          {comparableRuns.length ? (
+            comparableRuns.map((run) => runCard(run, taskJSpec, Boolean(openCompletedTasks[run.task.id]), () => toggleCompletedTask(run.task.id)))
+          ) : (
+            <section className="empty-state">
+              <h3>No main benchmark run yet</h3>
+              <p className="muted">Full-sequence runs land here, and only comparable tasks contribute to the default benchmark lane.</p>
+            </section>
+          )}
+        </section>
+
+        <section className="subpanel stack">
+          <div className="subpanel-header">
+            <div>
+              <p className="eyebrow">small experiments</p>
+              <h4>Small Experiments</h4>
+            </div>
+            <div className="badge-row">
+              <span className="badge">{experimentTasks.length} registered</span>
+              <span className="badge">{experimentRuns.length} cached</span>
+            </div>
+          </div>
+          {experimentRuns.length ? (
+            experimentRuns.map((run) => runCard(run, taskJSpec, Boolean(openCompletedTasks[run.task.id]), () => toggleCompletedTask(run.task.id)))
+          ) : (
+            <section className="empty-state">
+              <h3>No small experiment run yet</h3>
+              <p className="muted">Manual smoke and regression runs stay here and never enter the default comparable benchmark summary.</p>
+            </section>
+          )}
+        </section>
       </section>
     </main>
   );

@@ -100,8 +100,7 @@ If the user needs a local demo fast, keep the UI read-only and let the backend g
 
 The generated repo should usually contain:
 
-- `app/engine.py`
-- `app/evaluator.py`
+- `app/codegen/`
 - `app/memory_store.py`
 - `app/demo_run.py`
 - `ui/index.html`

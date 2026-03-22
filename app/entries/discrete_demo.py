@@ -22,7 +22,7 @@ WORKING_MEMORY_MD_NAME = "codegen_working_memory.md"
 ProgressCallback = Callable[[dict[str, Any]], None]
 
 J_FORMULA = (
-    "J = 1.20 * correctness + 0.95 * speed_score + 0.20 * memory_bonus "
+    "J = 1.20 * correctness + 0.95 * objective_signal + 0.20 * memory_bonus "
     "+ 0.15 * stability - 0.18 * complexity - 0.05 * (line_count / 10)"
 )
 OBJECTIVE_FORMULA = "objective is task-specific; see task.objective_spec.formula"
@@ -59,11 +59,12 @@ def generate_discrete_payload(
     candidate_budget: int | None = None,
     branching_factor: int | None = None,
 ) -> dict[str, Any]:
-    tasks = load_codegen_tasks()
     if task_id is not None:
-        tasks = [task for task in tasks if task["id"] == task_id]
+        tasks = load_codegen_tasks(task_id)
         if not tasks:
             raise ValueError(f"Unknown task id: {task_id}")
+    else:
+        tasks = load_codegen_tasks(included_in_main_comparison=True)
     if generation_budget is not None or candidate_budget is not None or branching_factor is not None:
         overridden_tasks: list[dict[str, Any]] = []
         for task in tasks:
@@ -91,6 +92,9 @@ def generate_discrete_payload(
     runs = []
     write_backs = 0
     total_generations = 0
+    experiment_write_backs = 0
+    total_run_count = 0
+    experiment_run_count = 0
     for task in tasks:
         before_count = store.count()
         result = run_codegen_task(
@@ -103,8 +107,14 @@ def generate_discrete_payload(
             pace_ms=pace_ms,
         )
         after_count = store.count()
-        write_backs += after_count - before_count
-        total_generations += len(result["generations"])
+        delta = after_count - before_count
+        total_run_count += 1
+        if result["included_in_main_comparison"]:
+            write_backs += delta
+            total_generations += len(result["generations"])
+        else:
+            experiment_run_count += 1
+            experiment_write_backs += delta
         result["memory_before_count"] = before_count
         result["memory_after_count"] = after_count
         result["memory_markdown"] = store.load_markdown()
@@ -124,7 +134,7 @@ def generate_discrete_payload(
                 }
             )
 
-    winners = Counter(run["winner"]["agent"] for run in runs)
+    winners = Counter(run["winner"]["agent"] for run in runs if run["included_in_main_comparison"])
     return {
         "run_mode": "llm-required",
         "summary": {
@@ -135,11 +145,14 @@ def generate_discrete_payload(
             "upstream_target": UPSTREAM_TARGET,
             "run_mode": "llm-required",
             "active_model": runtime.active_model,
-            "num_tasks": len(runs),
+            "num_tasks": len([run for run in runs if run["included_in_main_comparison"]]),
+            "total_runs": total_run_count,
+            "experiment_runs": experiment_run_count,
             "total_generations": total_generations,
             "initial_memory_count": len(initial_memories),
             "memory_size_after_run": store.count(),
             "write_backs": write_backs,
+            "experiment_write_backs": experiment_write_backs,
             "winner_candidates": dict(winners),
             "proposal_engine": runtime.describe(),
             "flywheel": FLYWHEEL_STEPS,
@@ -187,10 +200,13 @@ def empty_discrete_payload(
             "run_mode": "llm-required",
             "active_model": runtime.active_model,
             "num_tasks": 0,
+            "total_runs": 0,
+            "experiment_runs": 0,
             "total_generations": 0,
             "initial_memory_count": 0,
             "memory_size_after_run": 0,
             "write_backs": 0,
+            "experiment_write_backs": 0,
             "winner_candidates": {},
             "proposal_engine": runtime.describe(),
             "flywheel": FLYWHEEL_STEPS,
@@ -284,12 +300,18 @@ def _write_handoff_bundle(
             "git_commit": payload["summary"]["git_commit"],
             "session_id": session_id,
             "task_id": task_id,
-            "function_name": run["task"]["function_name"],
+            "entry_symbol": run["task"]["entry_symbol"],
+            "editable_file": run["task"]["editable_file"],
+            "answer_metric": run["task"]["answer_metric"],
             "objective_label": run["task"]["objective_label"],
             "objective_direction": run["task"]["objective_direction"],
             "objective_spec": run["task"]["objective_spec"],
             "run_mode": "llm-required",
             "active_model": payload["summary"]["active_model"],
+            "benchmark_tier": run["benchmark_tier"],
+            "track": run["track"],
+            "dataset_id": run["dataset_id"],
+            "included_in_main_comparison": run["included_in_main_comparison"],
             "baseline_objective": run["baseline"]["metrics"]["objective"],
             "winner_objective": run["winner"]["metrics"]["objective"],
             "delta_J": run["delta_J"],

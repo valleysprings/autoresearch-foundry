@@ -17,6 +17,8 @@ class UiSmokeTest(unittest.TestCase):
         self.assertIn("Per-generation net change", source)
         self.assertIn("Task-scoped runtime trace", source)
         self.assertIn("Task summaries and generation details", source)
+        self.assertIn("Main benchmark comparison", source)
+        self.assertIn("Small Experiments", source)
         self.assertIn("Theme mode", source)
         self.assertIn("Generational deltas", source)
 

@@ -1,14 +1,23 @@
 from __future__ import annotations
 
-import textwrap
+import json
+from pathlib import Path
 from typing import Any
 
 
-def _body(source: str) -> str:
-    return textwrap.dedent(source).strip("\n")
-
-
+ROOT = Path(__file__).resolve().parents[2]
+BENCHMARK_ROOT = ROOT / "benchmark"
+REGISTRY_PATH = BENCHMARK_ROOT / "registry.json"
 DEFAULT_BRANCHING_FACTOR = 4
+VALID_BENCHMARK_TIERS = {"experiment", "comparable"}
+REQUIRED_TASK_FIELDS = (
+    "benchmark_tier",
+    "track",
+    "answer_metric",
+    "editable_file",
+    "entry_symbol",
+    "verifier",
+)
 
 
 def _speedup_objective_spec() -> dict[str, str]:
@@ -23,6 +32,17 @@ def _speedup_objective_spec() -> dict[str, str]:
 
 def _normalize_task(task: dict[str, Any]) -> dict[str, Any]:
     normalized = dict(task)
+    missing = [field for field in REQUIRED_TASK_FIELDS if not isinstance(normalized.get(field), str) or not str(normalized.get(field)).strip()]
+    if missing:
+        raise ValueError(f"Task {normalized.get('id') or '<unknown>'} is missing required fields: {', '.join(missing)}")
+
+    benchmark_tier = str(normalized["benchmark_tier"]).strip()
+    if benchmark_tier not in VALID_BENCHMARK_TIERS:
+        raise ValueError(
+            f"Task {normalized.get('id') or '<unknown>'} has invalid benchmark_tier={benchmark_tier!r}; "
+            f"expected one of {sorted(VALID_BENCHMARK_TIERS)}."
+        )
+
     objective_spec = dict(task.get("objective_spec") or {})
     if not objective_spec:
         objective_spec = _speedup_objective_spec()
@@ -30,7 +50,68 @@ def _normalize_task(task: dict[str, Any]) -> dict[str, Any]:
     normalized["objective_label"] = normalized.get("objective_label") or objective_spec["display_name"]
     normalized["objective_direction"] = normalized.get("objective_direction") or objective_spec["direction"]
     normalized["branching_factor"] = int(normalized.get("branching_factor", DEFAULT_BRANCHING_FACTOR))
+    normalized["benchmark_tier"] = benchmark_tier
+    normalized["track"] = str(normalized["track"]).strip()
+    normalized["answer_metric"] = str(normalized["answer_metric"]).strip()
+    normalized["dataset_id"] = str(normalized.get("dataset_id") or normalized["id"])
+    normalized["entry_symbol"] = str(normalized.get("entry_symbol") or normalized.get("function_name") or "solve")
+    normalized["function_name"] = str(normalized.get("function_name") or normalized["entry_symbol"])
+    normalized["editable_file"] = str(normalized.get("editable_file") or "editable.py")
+    normalized["editable_filename"] = Path(normalized["editable_file"]).name
+    normalized["included_in_main_comparison"] = normalized["benchmark_tier"] == "comparable"
+    normalized["source_type"] = str(normalized.get("source_type") or "benchmark-task")
+    normalized["prompt_context"] = str(normalized.get("prompt_context") or "")
+    normalized["verifier_path"] = str(normalized["verifier_path"])
+    normalized["editable_path"] = str(normalized["editable_path"])
     return normalized
+
+
+def _registry_entries() -> list[dict[str, Any]]:
+    if not REGISTRY_PATH.exists():
+        raise FileNotFoundError(f"Benchmark registry is missing: {REGISTRY_PATH}")
+    payload = json.loads(REGISTRY_PATH.read_text())
+    entries = payload.get("tasks")
+    if not isinstance(entries, list):
+        raise ValueError("benchmark/registry.json must contain a top-level 'tasks' list.")
+    return [dict(entry) for entry in entries]
+
+
+def _load_task(entry: dict[str, Any]) -> dict[str, Any]:
+    relative_path = entry.get("path")
+    if not isinstance(relative_path, str) or not relative_path.strip():
+        raise ValueError("Every benchmark registry entry must declare a non-empty path.")
+    task_dir = BENCHMARK_ROOT / relative_path
+    task_path = task_dir / "task.json"
+    if not task_path.exists():
+        raise FileNotFoundError(f"Task spec not found: {task_path}")
+    task = json.loads(task_path.read_text())
+    if not isinstance(task, dict):
+        raise ValueError(f"Task spec must be a JSON object: {task_path}")
+    track_from_path = Path(relative_path).parts[0]
+    if isinstance(task.get("track"), str) and task["track"] != track_from_path:
+        raise ValueError(
+            f"Task {task.get('id') or '<unknown>'} declares track={task['track']!r} "
+            f"but registry path lives under {track_from_path!r}."
+        )
+    merged = {**task, "task_dir": str(task_dir), "task_path": str(task_path)}
+    merged["editable_path"] = str(task_dir / str(task.get("editable_file") or ""))
+    merged["verifier_path"] = str(task_dir / str(task.get("verifier") or ""))
+    if not Path(merged["editable_path"]).exists():
+        raise FileNotFoundError(f"Editable file not found: {merged['editable_path']}")
+    if not Path(merged["verifier_path"]).exists():
+        raise FileNotFoundError(f"Verifier file not found: {merged['verifier_path']}")
+    data_file = task.get("data_file")
+    if isinstance(data_file, str) and data_file.strip():
+        merged["data_path"] = str(task_dir / data_file)
+        merged["data"] = json.loads((task_dir / data_file).read_text())
+    readme_path = task_dir / "README.md"
+    if readme_path.exists():
+        merged["readme_path"] = str(readme_path)
+    return _normalize_task(merged)
+
+
+def _sort_key(task: dict[str, Any]) -> tuple[int, str, str]:
+    return (0 if task["included_in_main_comparison"] else 1, task["track"], task["id"])
 
 
 SEED_STRATEGY_EXPERIENCES: list[dict[str, Any]] = [
@@ -41,18 +122,18 @@ SEED_STRATEGY_EXPERIENCES: list[dict[str, Any]] = [
         "source_task": "seed",
         "source_session_id": "seed-catalog",
         "family": "agnostic",
-        "task_signature": ["python-codegen", "deterministic-eval", "correctness-first"],
+        "task_signature": ["single-file-optimization", "deterministic-eval", "correctness-first"],
         "verifier_status": "pass",
         "rejection_reason": "",
         "failure_pattern": "benchmark-only selection promoted fast but incorrect candidates",
-        "strategy_hypothesis": "Run deterministic correctness gates before trusting benchmark improvements.",
-        "successful_strategy": "compile the candidate, run fixed correctness tests, and benchmark only the passing variants",
-        "prompt_fragment": "Preserve task semantics first, then optimize runtime only on candidates that pass every fixed test.",
-        "tool_trace_summary": "candidate source -> compile -> deterministic tests -> median benchmark -> score -> selective write-back",
+        "strategy_hypothesis": "Run deterministic correctness gates before trusting optimization gains.",
+        "successful_strategy": "preserve the public contract first, then optimize the editable file under the verifier",
+        "prompt_fragment": "Preserve correctness first, then optimize only under the deterministic verifier contract.",
+        "tool_trace_summary": "materialize candidate file -> deterministic verifier -> score -> selective write-back",
         "delta_J": 0.18,
         "proposal_model": "seed",
-        "candidate_summary": "Valid candidates only enter the benchmark lane.",
-        "reusable_rules": ["correctness_first", "benchmark_after_tests", "deterministic_scoring"],
+        "candidate_summary": "Valid candidates only enter the comparison lane.",
+        "reusable_rules": ["correctness_first", "deterministic_scoring", "single_file_mutation"],
         "supporting_memory_ids": [],
     },
     {
@@ -62,370 +143,41 @@ SEED_STRATEGY_EXPERIENCES: list[dict[str, Any]] = [
         "source_task": "seed",
         "source_session_id": "seed-catalog",
         "family": "agnostic",
-        "task_signature": ["python-codegen", "deterministic-eval", "semantics-preservation"],
+        "task_signature": ["single-file-optimization", "deterministic-eval", "semantics-preservation"],
         "verifier_status": "fail",
-        "rejection_reason": "A fast shortcut changed ordering semantics and failed the deterministic tests.",
-        "failure_pattern": "Sort- or set-based shortcuts broke stable-order or first-hit semantics while looking faster on the benchmark.",
-        "strategy_hypothesis": "When the task depends on encounter order, optimize with streaming state instead of reordering the input.",
-        "successful_strategy": "Prefer a streaming hash-based or counted approach that preserves the original traversal semantics.",
-        "prompt_fragment": "Do not trade away order-sensitive semantics for a reordering shortcut; keep the original traversal contract intact.",
-        "tool_trace_summary": "reordering shortcut -> deterministic test failure -> reject -> switch to stateful streaming strategy",
+        "rejection_reason": "A shortcut violated the contract and failed the deterministic checks.",
+        "failure_pattern": "Aggressive rewrites improved one metric while breaking task semantics.",
+        "strategy_hypothesis": "When the verifier is strict, local semantics-preserving rewrites dominate speculative shortcuts.",
+        "successful_strategy": "Keep the contract fixed and prefer rewrites that remain faithful to the benchmark spec.",
+        "prompt_fragment": "Do not trade away task semantics for a shortcut; keep the benchmark contract intact.",
+        "tool_trace_summary": "shortcut rewrite -> deterministic failure -> reject -> prefer semantics-preserving rewrite",
         "delta_J": -0.24,
         "proposal_model": "seed",
-        "candidate_summary": "A seemingly fast reordering shortcut that violated the task contract.",
-        "reusable_rules": ["preserve_semantics", "avoid_order_breaking_shortcuts"],
+        "candidate_summary": "A fast-looking rewrite that violated the verifier contract.",
+        "reusable_rules": ["preserve_semantics", "respect_verifier_contract"],
         "supporting_memory_ids": [],
     },
 ]
 
 
-CODEGEN_TASKS: list[dict[str, Any]] = [
-    {
-        "id": "contains-duplicates",
-        "title": "Optimize contains_duplicates",
-        "description": "Improve a naive quadratic duplicate detector with deterministic correctness checks and a real benchmark.",
-        "family": "set-logic",
-        "function_name": "contains_duplicates",
-        "function_signature": "def contains_duplicates(values):",
-        "objective_label": "speedup_vs_baseline",
-        "objective_direction": "max",
-        "task_signature": ["python-codegen", "set-logic", "duplicate-detection"],
-        "source_type": "embedded-codegen-task",
-        "generation_budget": 3,
-        "candidate_budget": 3,
-        "epsilon": 0.20,
-        "baseline_imports": [],
-        "baseline_body": _body(
-            """
-            for index, left in enumerate(values):
-                for right in values[index + 1 :]:
-                    if left == right:
-                        return True
-            return False
-            """
-        ),
-        "baseline_summary": "Nested-loop duplicate detection with O(n^2) behavior.",
-        "benchmark": {"kind": "contains_duplicates", "repeats": 14},
-        "tests": [
-            {"name": "unique-values", "args": [[1, 2, 3, 4]], "expected": False},
-            {"name": "has-duplicate", "args": [[1, 2, 3, 2]], "expected": True},
-            {"name": "empty", "args": [[]], "expected": False},
-            {"name": "pair", "args": [[7, 7]], "expected": True},
-        ],
-    },
-    {
-        "id": "first-repeated-value",
-        "title": "Optimize first_repeated_value",
-        "description": "Preserve correctness for the first repeated item while replacing the quadratic scan with a streaming strategy.",
-        "family": "set-logic",
-        "function_name": "first_repeated_value",
-        "function_signature": "def first_repeated_value(values):",
-        "objective_label": "speedup_vs_baseline",
-        "objective_direction": "max",
-        "task_signature": ["python-codegen", "set-logic", "first-repeat"],
-        "source_type": "embedded-codegen-task",
-        "generation_budget": 3,
-        "candidate_budget": 3,
-        "epsilon": 0.20,
-        "baseline_imports": [],
-        "baseline_body": _body(
-            """
-            for index, left in enumerate(values):
-                for right in values[index + 1 :]:
-                    if left == right:
-                        return left
-            return None
-            """
-        ),
-        "baseline_summary": "Quadratic scan that returns the first value with a later duplicate.",
-        "benchmark": {"kind": "first_repeated_value", "repeats": 12},
-        "tests": [
-            {"name": "basic-repeat", "args": [[1, 2, 3, 2, 4]], "expected": 2},
-            {"name": "first-repeat-matters", "args": [[5, 1, 5, 1]], "expected": 5},
-            {"name": "no-repeat", "args": [[1, 2, 3]], "expected": None},
-            {"name": "repeat-at-start", "args": [[9, 9, 1]], "expected": 9},
-        ],
-    },
-    {
-        "id": "has-overlap",
-        "title": "Optimize has_overlap",
-        "description": "Turn a nested-loop overlap check into a real set-based benchmarked optimization.",
-        "family": "set-logic",
-        "function_name": "has_overlap",
-        "function_signature": "def has_overlap(left, right):",
-        "objective_label": "speedup_vs_baseline",
-        "objective_direction": "max",
-        "task_signature": ["python-codegen", "set-logic", "overlap-detection"],
-        "source_type": "embedded-codegen-task",
-        "generation_budget": 3,
-        "candidate_budget": 3,
-        "epsilon": 0.20,
-        "baseline_imports": [],
-        "baseline_body": _body(
-            """
-            for left_value in left:
-                for right_value in right:
-                    if left_value == right_value:
-                        return True
-            return False
-            """
-        ),
-        "baseline_summary": "Quadratic overlap check over both collections.",
-        "benchmark": {"kind": "has_overlap", "repeats": 16},
-        "tests": [
-            {"name": "disjoint", "args": [[1, 2, 3], [4, 5]], "expected": False},
-            {"name": "has-overlap", "args": [[1, 2, 3], [3, 4]], "expected": True},
-            {"name": "empty-left", "args": [[], [1]], "expected": False},
-            {"name": "single-match", "args": [[5], [5]], "expected": True},
-        ],
-    },
-    {
-        "id": "most-frequent-item",
-        "title": "Optimize most_frequent_item",
-        "description": "Replace a quadratic mode finder with counted architectures and compare one-pass versus two-pass strategies.",
-        "family": "counting",
-        "function_name": "most_frequent_item",
-        "function_signature": "def most_frequent_item(values):",
-        "objective_label": "speedup_vs_baseline",
-        "objective_direction": "max",
-        "task_signature": ["python-codegen", "counting", "mode-finding"],
-        "source_type": "embedded-codegen-task",
-        "generation_budget": 3,
-        "candidate_budget": 3,
-        "epsilon": 0.20,
-        "baseline_imports": [],
-        "baseline_body": _body(
-            """
-            best_value = None
-            best_count = -1
-            for value in values:
-                count = 0
-                for other in values:
-                    if other == value:
-                        count += 1
-                if count > best_count:
-                    best_value = value
-                    best_count = count
-            return best_value
-            """
-        ),
-        "baseline_summary": "Quadratic recounting loop for every candidate value.",
-        "benchmark": {"kind": "most_frequent_item", "repeats": 10},
-        "tests": [
-            {"name": "simple-mode", "args": [[1, 2, 2, 3]], "expected": 2},
-            {"name": "string-mode", "args": [["a", "b", "b", "a", "b"]], "expected": "b"},
-            {"name": "single-item", "args": [[7]], "expected": 7},
-            {"name": "late-mode", "args": [[3, 3, 2, 2, 2]], "expected": 2},
-        ],
-    },
-    {
-        "id": "deduplicate-preserve-order",
-        "title": "Optimize deduplicate_preserve_order",
-        "description": "Keep original order while removing duplicates, and compare hash-based versus order-breaking architectures.",
-        "family": "set-logic",
-        "function_name": "deduplicate_preserve_order",
-        "function_signature": "def deduplicate_preserve_order(values):",
-        "objective_label": "speedup_vs_baseline",
-        "objective_direction": "max",
-        "task_signature": ["python-codegen", "set-logic", "stable-deduplication"],
-        "source_type": "embedded-codegen-task",
-        "generation_budget": 3,
-        "candidate_budget": 3,
-        "epsilon": 0.20,
-        "baseline_imports": [],
-        "baseline_body": _body(
-            """
-            result = []
-            for value in values:
-                seen = False
-                for existing in result:
-                    if existing == value:
-                        seen = True
-                        break
-                if not seen:
-                    result.append(value)
-            return result
-            """
-        ),
-        "baseline_summary": "Nested-loop stable deduplication that rescans the output buffer.",
-        "benchmark": {"kind": "deduplicate_preserve_order", "repeats": 12},
-        "tests": [
-            {"name": "basic-dedup", "args": [[1, 2, 1, 3, 2]], "expected": [1, 2, 3]},
-            {"name": "already-unique", "args": [[1, 2, 3]], "expected": [1, 2, 3]},
-            {"name": "strings", "args": [["a", "b", "a", "c"]], "expected": ["a", "b", "c"]},
-            {"name": "empty", "args": [[]], "expected": []},
-        ],
-    },
-    {
-        "id": "missing-number",
-        "title": "Optimize missing_number",
-        "description": "Find the missing integer with architecture families that mimic search, sorting, and arithmetic reasoning.",
-        "family": "numeric",
-        "function_name": "missing_number",
-        "function_signature": "def missing_number(values):",
-        "objective_label": "speedup_vs_baseline",
-        "objective_direction": "max",
-        "task_signature": ["python-codegen", "numeric", "missing-value"],
-        "source_type": "embedded-codegen-task",
-        "generation_budget": 3,
-        "candidate_budget": 3,
-        "epsilon": 0.20,
-        "baseline_imports": [],
-        "baseline_body": _body(
-            """
-            upper = len(values) + 1
-            for candidate in range(upper):
-                present = False
-                for value in values:
-                    if value == candidate:
-                        present = True
-                        break
-                if not present:
-                    return candidate
-            return None
-            """
-        ),
-        "baseline_summary": "Repeated full-list membership scans to find the missing value.",
-        "benchmark": {"kind": "missing_number", "repeats": 16},
-        "tests": [
-            {"name": "missing-middle", "args": [[0, 1, 3]], "expected": 2},
-            {"name": "missing-zero", "args": [[1, 2, 3]], "expected": 0},
-            {"name": "missing-end", "args": [[0, 1, 2]], "expected": 3},
-            {"name": "unordered-input", "args": [[4, 2, 1, 0]], "expected": 3},
-        ],
-    },
-    {
-        "id": "count-primes-up-to",
-        "title": "Optimize count_primes_up_to",
-        "description": "Count primes up to a limit on a deterministic math benchmark where trial division and sieve families compete.",
-        "family": "math",
-        "function_name": "count_primes_up_to",
-        "function_signature": "def count_primes_up_to(limit):",
-        "objective_label": "speedup_vs_baseline",
-        "objective_direction": "max",
-        "task_signature": ["python-codegen", "math", "prime-counting"],
-        "source_type": "embedded-codegen-task",
-        "generation_budget": 6,
-        "candidate_budget": 3,
-        "epsilon": 0.15,
-        "baseline_imports": [],
-        "baseline_body": _body(
-            """
-            count = 0
-            for candidate in range(2, limit + 1):
-                is_prime = True
-                divisor = 2
-                while divisor < candidate:
-                    if candidate % divisor == 0:
-                        is_prime = False
-                        break
-                    divisor += 1
-                if is_prime:
-                    count += 1
-            return count
-            """
-        ),
-        "baseline_summary": "Naive trial division for every candidate integer.",
-        "benchmark": {"kind": "count_primes_up_to", "repeats": 8},
-        "tests": [
-            {"name": "below-two", "args": [1], "expected": 0},
-            {"name": "two", "args": [2], "expected": 1},
-            {"name": "ten", "args": [10], "expected": 4},
-            {"name": "thirty", "args": [30], "expected": 10},
-        ],
-    },
-    {
-        "id": "count-change-ways",
-        "title": "Optimize count_change_ways",
-        "description": "Tackle a harder combinatorics problem where exponential recursion should evolve toward dynamic programming.",
-        "family": "math",
-        "function_name": "count_change_ways",
-        "function_signature": "def count_change_ways(total, coins):",
-        "objective_label": "speedup_vs_baseline",
-        "objective_direction": "max",
-        "task_signature": ["python-codegen", "math", "coin-change"],
-        "source_type": "embedded-codegen-task",
-        "generation_budget": 6,
-        "candidate_budget": 3,
-        "epsilon": 0.15,
-        "baseline_imports": [],
-        "baseline_body": _body(
-            """
-            def search(remaining, index):
-                if remaining == 0:
-                    return 1
-                if remaining < 0 or index >= len(coins):
-                    return 0
-                return search(remaining - coins[index], index) + search(remaining, index + 1)
-
-            return search(total, 0)
-            """
-        ),
-        "baseline_summary": "Exponential recursive coin-change counting without memoization.",
-        "benchmark": {"kind": "count_change_ways", "repeats": 5},
-        "tests": [
-            {"name": "zero-total", "args": [0, [1, 2]], "expected": 1},
-            {"name": "simple", "args": [4, [1, 2, 3]], "expected": 4},
-            {"name": "classic", "args": [10, [2, 5, 3, 6]], "expected": 5},
-            {"name": "single-coin", "args": [5, [5]], "expected": 1},
-        ],
-    },
-    {
-        "id": "count-n-queens",
-        "title": "Optimize count_n_queens",
-        "description": "Benchmark combinatorial search on a harder math workload where better state encoding should unlock deeper improvements.",
-        "family": "math",
-        "function_name": "count_n_queens",
-        "function_signature": "def count_n_queens(size):",
-        "objective_label": "speedup_vs_baseline",
-        "objective_direction": "max",
-        "task_signature": ["python-codegen", "math", "n-queens"],
-        "source_type": "embedded-codegen-task",
-        "generation_budget": 6,
-        "candidate_budget": 3,
-        "epsilon": 0.15,
-        "baseline_imports": [],
-        "baseline_body": _body(
-            """
-            placements = []
-
-            def conflicts(column):
-                row = len(placements)
-                for previous_row, previous_column in enumerate(placements):
-                    if previous_column == column or abs(previous_column - column) == row - previous_row:
-                        return True
-                return False
-
-            def search():
-                row = len(placements)
-                if row == size:
-                    return 1
-                total = 0
-                for column in range(size):
-                    if conflicts(column):
-                        continue
-                    placements.append(column)
-                    total += search()
-                    placements.pop()
-                return total
-
-            return search()
-            """
-        ),
-        "baseline_summary": "Plain backtracking with linear conflict checks at every placement.",
-        "benchmark": {"kind": "count_n_queens", "repeats": 4},
-        "tests": [
-            {"name": "one", "args": [1], "expected": 1},
-            {"name": "four", "args": [4], "expected": 2},
-            {"name": "five", "args": [5], "expected": 10},
-            {"name": "six", "args": [6], "expected": 4},
-        ],
-    },
-]
-
-
-def load_codegen_tasks() -> list[dict[str, Any]]:
-    return [_normalize_task(task) for task in CODEGEN_TASKS]
+def load_codegen_tasks(
+    task_id: str | None = None,
+    *,
+    included_in_main_comparison: bool | None = None,
+) -> list[dict[str, Any]]:
+    tasks: list[dict[str, Any]] = []
+    for entry in _registry_entries():
+        if not bool(entry.get("enabled", True)):
+            continue
+        try:
+            tasks.append(_load_task(entry))
+        except FileNotFoundError:
+            continue
+    if task_id is not None:
+        tasks = [task for task in tasks if task["id"] == task_id]
+    if included_in_main_comparison is not None:
+        tasks = [task for task in tasks if task["included_in_main_comparison"] == included_in_main_comparison]
+    return sorted(tasks, key=_sort_key)
 
 
 def list_codegen_task_summaries() -> list[dict[str, Any]]:
@@ -436,12 +188,19 @@ def list_codegen_task_summaries() -> list[dict[str, Any]]:
             "description": task["description"],
             "family": task["family"],
             "function_name": task["function_name"],
+            "entry_symbol": task["entry_symbol"],
+            "editable_file": task["editable_file"],
+            "answer_metric": task["answer_metric"],
             "objective_label": task["objective_label"],
             "objective_direction": task["objective_direction"],
             "objective_spec": task["objective_spec"],
             "generation_budget": task["generation_budget"],
             "candidate_budget": task["candidate_budget"],
             "branching_factor": task["branching_factor"],
+            "benchmark_tier": task["benchmark_tier"],
+            "track": task["track"],
+            "dataset_id": task["dataset_id"],
+            "included_in_main_comparison": task["included_in_main_comparison"],
         }
         for task in load_codegen_tasks()
     ]

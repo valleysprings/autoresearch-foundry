@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import textwrap
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -13,6 +14,10 @@ from app.codegen.trainer import run_codegen_task
 from app.entries.discrete_demo import generate_discrete_payload, write_discrete_artifacts
 from app.memory.store import MemoryStore
 from tests.helpers import chat_response, make_runtime
+
+
+def _file_with_entry(symbol: str, args: str, body: str) -> str:
+    return f"def {symbol}({args}):\n{textwrap.indent(body.strip(), '    ')}\n"
 
 
 def raw_content_response(content: str, *, model: str = "deepseek-chat") -> str:
@@ -45,7 +50,7 @@ PROPOSAL_PAYLOAD = {
             "strategy": "Use a set cardinality check.",
             "rationale": "The runtime can detect duplicates by comparing lengths.",
             "imports": [],
-            "function_body": "return len(values) != len(set(values))",
+            "file_body": _file_with_entry("contains_duplicates", "values", "return len(values) != len(set(values))"),
             "candidate_summary": "Single-pass set cardinality duplicate detection.",
         },
         {
@@ -53,7 +58,11 @@ PROPOSAL_PAYLOAD = {
             "strategy": "Stream through the list with a seen set.",
             "rationale": "Early exit preserves correctness and still removes quadratic scans.",
             "imports": [],
-            "function_body": "seen = set()\nfor value in values:\n    if value in seen:\n        return True\n    seen.add(value)\nreturn False",
+            "file_body": _file_with_entry(
+                "contains_duplicates",
+                "values",
+                "seen = set()\nfor value in values:\n    if value in seen:\n        return True\n    seen.add(value)\nreturn False",
+            ),
             "candidate_summary": "Streaming duplicate detection with early exit.",
         },
         {
@@ -61,7 +70,11 @@ PROPOSAL_PAYLOAD = {
             "strategy": "Sort then scan neighbors.",
             "rationale": "Sorting avoids quadratic pair comparisons.",
             "imports": [],
-            "function_body": "ordered = sorted(values)\nfor index in range(1, len(ordered)):\n    if ordered[index] == ordered[index - 1]:\n        return True\nreturn False",
+            "file_body": _file_with_entry(
+                "contains_duplicates",
+                "values",
+                "ordered = sorted(values)\nfor index in range(1, len(ordered)):\n    if ordered[index] == ordered[index - 1]:\n        return True\nreturn False",
+            ),
             "candidate_summary": "Sort-based duplicate detection.",
         },
     ]
@@ -74,7 +87,11 @@ PARALLEL_PROPOSAL_PAYLOAD = {
             "strategy": "Stream through the list with a seen set.",
             "rationale": "Early exit preserves correctness and removes quadratic scans.",
             "imports": [],
-            "function_body": "seen = set()\nfor value in values:\n    if value in seen:\n        return True\n    seen.add(value)\nreturn False",
+            "file_body": _file_with_entry(
+                "contains_duplicates",
+                "values",
+                "seen = set()\nfor value in values:\n    if value in seen:\n        return True\n    seen.add(value)\nreturn False",
+            ),
             "candidate_summary": "Streaming duplicate detection with early exit.",
         }
     ]
@@ -87,7 +104,7 @@ FAILURE_PROPOSAL_PAYLOAD = {
             "strategy": "Return a constant false value.",
             "rationale": "This is intentionally incorrect and should fail deterministic tests.",
             "imports": [],
-            "function_body": "return False",
+            "file_body": _file_with_entry("contains_duplicates", "values", "return False"),
             "candidate_summary": "Incorrect constant-false duplicate detector.",
         },
         {
@@ -95,7 +112,7 @@ FAILURE_PROPOSAL_PAYLOAD = {
             "strategy": "Return a constant true value.",
             "rationale": "This is intentionally incorrect and should fail deterministic tests.",
             "imports": [],
-            "function_body": "return True",
+            "file_body": _file_with_entry("contains_duplicates", "values", "return True"),
             "candidate_summary": "Incorrect constant-true duplicate detector.",
         },
         {
@@ -103,7 +120,7 @@ FAILURE_PROPOSAL_PAYLOAD = {
             "strategy": "Use an obviously wrong shortcut.",
             "rationale": "This is intentionally incorrect and should fail deterministic tests.",
             "imports": [],
-            "function_body": "return len(values) > 3",
+            "file_body": _file_with_entry("contains_duplicates", "values", "return len(values) > 3"),
             "candidate_summary": "Incorrect heuristic duplicate detector.",
         },
     ]
@@ -132,21 +149,25 @@ NON_IMPROVING_PASS_PROPOSAL_PAYLOAD = {
             "strategy": "Sort then scan neighbors.",
             "rationale": "This stays correct but should trail the already accepted set-based winner.",
             "imports": [],
-            "function_body": "ordered = sorted(values)\nfor index in range(1, len(ordered)):\n    if ordered[index] == ordered[index - 1]:\n        return True\nreturn False",
+            "file_body": _file_with_entry(
+                "contains_duplicates",
+                "values",
+                "ordered = sorted(values)\nfor index in range(1, len(ordered)):\n    if ordered[index] == ordered[index - 1]:\n        return True\nreturn False",
+            ),
             "candidate_summary": "Correct but weaker sorted duplicate detection.",
         }
     ]
 }
 
-FULL_FUNCTION_PROPOSAL_PAYLOAD = {
+FULL_FILE_PROPOSAL_PAYLOAD = {
     "candidates": [
         {
-            "name": "Wrapped definition",
-            "strategy": "Return the full function even though the parser asked for only the body.",
-            "rationale": "The runtime should strip the wrapper and keep going.",
+            "name": "Full editable file",
+            "strategy": "Return the entire editable file as required by the single-file benchmark contract.",
+            "rationale": "The runtime should accept a full file_body payload without any extra wrapping logic.",
             "imports": [],
-            "function_body": "def contains_duplicates(values):\n    return len(values) != len(set(values))",
-            "candidate_summary": "Set-cardinality duplicate detector returned with a def wrapper.",
+            "file_body": _file_with_entry("contains_duplicates", "values", "return len(values) != len(set(values))"),
+            "candidate_summary": "Set-cardinality duplicate detector returned as a full editable file.",
         }
     ]
 }
@@ -201,7 +222,8 @@ class CodegenRunnerTest(unittest.TestCase):
             self.assertTrue((Path(tmp_dir) / manifest["artifact_paths"]["report_svg"]).exists())
             self.assertIn(manifest["session_id"], run["handoff_bundle"]["manifest_path"])
             self.assertEqual(run["session_id"], manifest["session_id"])
-            self.assertEqual(payload["summary"]["write_backs"], 2)
+            self.assertEqual(payload["summary"]["write_backs"], 0)
+            self.assertEqual(payload["summary"]["experiment_write_backs"], 2)
             self.assertEqual(run["memory_before_count"], 2)
             self.assertEqual(run["memory_after_count"], 4)
             self.assertEqual(run["positive_experiences_added"], 1)
@@ -289,10 +311,10 @@ class CodegenRunnerTest(unittest.TestCase):
             self.assertEqual(result["generations"][1]["experience_outcome"], "failure")
             self.assertEqual(len(result["llm_traces"]), 3)
 
-    def test_full_function_wrappers_are_stripped_from_candidate_payloads(self) -> None:
+    def test_full_editable_file_payloads_are_accepted(self) -> None:
         runtime = make_runtime(
             [
-                chat_response(FULL_FUNCTION_PROPOSAL_PAYLOAD),
+                chat_response(FULL_FILE_PROPOSAL_PAYLOAD),
                 chat_response(REFLECTION_PAYLOAD),
             ]
         )
@@ -318,7 +340,7 @@ class CodegenRunnerTest(unittest.TestCase):
         runtime = make_runtime(
             [
                 raw_content_response("not valid json content"),
-                chat_response(FULL_FUNCTION_PROPOSAL_PAYLOAD),
+                chat_response(FULL_FILE_PROPOSAL_PAYLOAD),
                 chat_response(REFLECTION_PAYLOAD),
             ]
         )
@@ -376,34 +398,6 @@ class CodegenRunnerTest(unittest.TestCase):
             self.assertTrue(any(event.get("branch_id") == "g2-b2" for event in events))
 
     def test_min_objective_uses_normalized_objective_score_for_selection(self) -> None:
-        task = {
-            "id": "synthetic-min-task",
-            "title": "Synthetic min task",
-            "description": "Select lower objective values by normalized score.",
-            "family": "numeric",
-            "function_name": "solve",
-            "function_signature": "def solve(values):",
-            "objective_label": "latency_ms",
-            "objective_direction": "min",
-            "objective_spec": {
-                "display_name": "Latency",
-                "direction": "min",
-                "unit": "ms",
-                "summary_template": "Lower latency is better.",
-                "formula": "latency_ms = elapsed_ms",
-            },
-            "task_signature": ["python-codegen", "synthetic", "min-objective"],
-            "source_type": "embedded-codegen-task",
-            "generation_budget": 1,
-            "candidate_budget": 1,
-            "branching_factor": 1,
-            "epsilon": 0.0,
-            "baseline_imports": [],
-            "baseline_body": "return values[0]",
-            "baseline_summary": "Baseline synthetic solver.",
-            "benchmark": {"kind": "contains_duplicates", "repeats": 1},
-            "tests": [{"name": "identity", "args": [[1]], "expected": 1}],
-        }
         baseline_metrics = {
             "status": "pass",
             "verifier_status": "pass",
@@ -426,14 +420,67 @@ class CodegenRunnerTest(unittest.TestCase):
             "total_tests": 1,
             "speedup_vs_baseline": 1.0,
         }
-        runtime = make_runtime([chat_response({"candidates": [PROPOSAL_PAYLOAD["candidates"][0]]}), chat_response(REFLECTION_PAYLOAD)])
+        runtime = make_runtime(
+            [
+                chat_response(
+                    {
+                        "candidates": [
+                            {
+                                "name": "Lower latency path",
+                                "strategy": "Return a full file candidate for the synthetic min-objective task.",
+                                "rationale": "Selection should rely on normalized objective_score for min-direction tasks.",
+                                "imports": [],
+                                "file_body": _file_with_entry("solve", "values", "return values[0]"),
+                                "candidate_summary": "Synthetic min-objective candidate.",
+                            }
+                        ]
+                    }
+                ),
+                chat_response(REFLECTION_PAYLOAD),
+            ]
+        )
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp = Path(tmp_dir)
+            editable_path = tmp / "editable.py"
+            editable_path.write_text(_file_with_entry("solve", "values", "return values[0]"))
+            task = {
+                "id": "synthetic-min-task",
+                "title": "Synthetic min task",
+                "description": "Select lower objective values by normalized score.",
+                "family": "numeric",
+                "function_name": "solve",
+                "entry_symbol": "solve",
+                "editable_file": "editable.py",
+                "editable_filename": "editable.py",
+                "editable_path": str(editable_path),
+                "verifier_path": str(editable_path),
+                "answer_metric": "latency_ms",
+                "benchmark_tier": "comparable",
+                "track": "synthetic",
+                "dataset_id": "synthetic_min_v1",
+                "included_in_main_comparison": True,
+                "objective_label": "latency_ms",
+                "objective_direction": "min",
+                "objective_spec": {
+                    "display_name": "Latency",
+                    "direction": "min",
+                    "unit": "ms",
+                    "summary_template": "Lower latency is better.",
+                    "formula": "latency_ms = elapsed_ms",
+                },
+                "task_signature": ["python-codegen", "synthetic", "min-objective"],
+                "source_type": "benchmark-task",
+                "generation_budget": 1,
+                "candidate_budget": 1,
+                "branching_factor": 1,
+                "epsilon": 0.0,
+                "baseline_summary": "Baseline synthetic solver.",
+            }
             store = MemoryStore(tmp / "memory.json", markdown_path=tmp / "memory.md")
             store.ensure_seed_records(seed_strategy_experiences())
             with (
                 patch("app.codegen.trainer.evaluate_materialized_candidate", side_effect=[baseline_metrics, candidate_metrics]),
-                patch("app.codegen.trainer.materialize_candidate", return_value=(tmp / "candidate.py", "def solve(values):\n    return values[0]\n")),
+                patch("app.codegen.trainer.materialize_candidate", return_value=(tmp / "candidate.py", _file_with_entry("solve", "values", "return values[0]"))),
             ):
                 result = run_codegen_task(
                     task,
@@ -445,6 +492,41 @@ class CodegenRunnerTest(unittest.TestCase):
             self.assertEqual(result["winner"]["metrics"]["objective"], 6.0)
             self.assertEqual(result["winner"]["metrics"]["objective_score"], -6.0)
             self.assertTrue(result["generations"][0]["winner_accepted"])
+
+    def test_full_sequence_only_runs_comparable_tasks(self) -> None:
+        comparable_tasks = load_codegen_tasks(included_in_main_comparison=True)
+        runtime = make_runtime(
+            [
+                chat_response(
+                    {
+                        "candidates": [
+                            {
+                                "name": f"No-op {task['id']}",
+                                "strategy": "Return the checked-in editable file so the task can run through the comparable lane.",
+                                "rationale": "This smoke test only verifies catalog wiring and comparable-task sequencing.",
+                                "imports": [],
+                                "file_body": Path(task["editable_path"]).read_text(),
+                                "candidate_summary": f"No-op comparable smoke candidate for {task['id']}.",
+                            }
+                        ]
+                    }
+                )
+                for task in comparable_tasks
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            payload = generate_discrete_payload(
+                proposal_runtime=runtime,
+                runs_root=Path(tmp_dir),
+                generation_budget=1,
+                candidate_budget=1,
+                branching_factor=1,
+            )
+        self.assertEqual(payload["summary"]["num_tasks"], len(comparable_tasks))
+        self.assertEqual(payload["summary"]["total_runs"], len(comparable_tasks))
+        self.assertEqual(payload["summary"]["experiment_runs"], 0)
+        self.assertTrue(payload["runs"])
+        self.assertTrue(all(run["included_in_main_comparison"] for run in payload["runs"]))
 
 
 if __name__ == "__main__":

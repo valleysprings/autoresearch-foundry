@@ -31,12 +31,19 @@ export type TaskSummary = {
   description: string;
   family: string;
   function_name: string;
+  entry_symbol: string;
+  editable_file: string;
+  answer_metric: string;
   objective_label: string;
   objective_direction: string;
   objective_spec: ObjectiveSpec;
   generation_budget: number;
   candidate_budget: number;
   branching_factor: number;
+  benchmark_tier: string;
+  track: string;
+  dataset_id: string;
+  included_in_main_comparison: boolean;
 };
 
 export type CandidateMetrics = {
@@ -137,7 +144,9 @@ export type RunTask = {
   description: string;
   family: string;
   function_name: string;
-  function_signature: string;
+  entry_symbol: string;
+  editable_file: string;
+  answer_metric: string;
   objective_label: string;
   objective_direction: string;
   objective_spec: ObjectiveSpec;
@@ -145,6 +154,10 @@ export type RunTask = {
   candidate_budget: number;
   branching_factor: number;
   source_type: string;
+  benchmark_tier: string;
+  track: string;
+  dataset_id: string;
+  included_in_main_comparison: boolean;
 };
 
 export type ArtifactManifest = {
@@ -160,6 +173,10 @@ export type ArtifactManifest = {
 export type Run = {
   run_mode: string;
   active_model: string;
+  benchmark_tier: string;
+  track: string;
+  dataset_id: string;
+  included_in_main_comparison: boolean;
   session_id?: string;
   generated_at?: string;
   task: RunTask;
@@ -190,10 +207,13 @@ export type PayloadSummary = {
   run_mode: string;
   active_model: string;
   num_tasks: number;
+  total_runs: number;
+  experiment_runs: number;
   total_generations: number;
   initial_memory_count: number;
   memory_size_after_run: number;
   write_backs: number;
+  experiment_write_backs: number;
   source_repo: string;
   git_commit: string;
   upstream_target: string;

@@ -24,6 +24,15 @@ This repo is a small autoresearch workbench around one idea:
 
 The current implementation is intentionally biased toward pure-function, deterministic tasks because that keeps correctness, benchmarking, and experience replay legible.
 
+The benchmark source of truth now lives under [benchmark/](/Users/david/coding/2026/autoresearcher-MA/benchmark), split into two tiers:
+
+- `benchmark_tier=comparable`
+  the four default tracks used for main runs, leaderboard-style summaries, and primary charts
+- `benchmark_tier=experiment`
+  small experiments used for smoke, regression, and manual runs without polluting the main comparison lane
+
+In git, only [benchmark/registry.json](/Users/david/coding/2026/autoresearcher-MA/benchmark/registry.json) is intended to sync by default. The task assets under `benchmark/` can remain local-only.
+
 ## 5-Layer Architecture
 
 1. **UI / workbench**
@@ -37,7 +46,7 @@ The current implementation is intentionally biased toward pure-function, determi
 5. **Config / runtime**
    Repo-root `.env` plus shell env override the runtime model settings. The configured model is required for every proposal and memory reflection step.
 
-[app/engine.py](/Users/david/coding/2026/autoresearcher-MA/app/engine.py) and [app/evaluator.py](/Users/david/coding/2026/autoresearcher-MA/app/evaluator.py) are compatibility shims. The active implementation path is [app/codegen/](/Users/david/coding/2026/autoresearcher-MA/app/codegen).
+The active implementation path is [app/codegen/](/Users/david/coding/2026/autoresearcher-MA/app/codegen).
 
 ## Engine Design
 
@@ -45,7 +54,7 @@ The current implementation is intentionally biased toward pure-function, determi
 
 - loads strict model config from `.env` or shell env
 - sends one-model OpenAI-compatible chat requests
-- expects strict JSON candidates with `function_body`, not operator plans
+- expects strict JSON candidates with `file_body`, not operator plans
 
 ### Trainer
 
@@ -56,7 +65,7 @@ The current implementation is intentionally biased toward pure-function, determi
 
 ### Verifier
 
-- builds a concrete Python module from the candidate body
+- materializes a single editable file from `file_body`
 - imports and executes the target function
 - runs fixed correctness tests first
 - benchmarks only verified candidates
@@ -134,50 +143,41 @@ Optional:
 
 See [.env.example](/Users/david/coding/2026/autoresearcher-MA/.env.example).
 
-## Current Examples
+## Benchmarks
 
-Current embedded examples live in [app/codegen/catalog.py](/Users/david/coding/2026/autoresearcher-MA/app/codegen/catalog.py).
+The active registry lives in [benchmark/registry.json](/Users/david/coding/2026/autoresearcher-MA/benchmark/registry.json). Each task lives in its own directory with:
 
-They are all pure-function deterministic tasks:
+- `task.json`
+- `editable.py`
+- `verifier.py`
+- `data/`
+- `README.md`
 
-- `contains-duplicates`
-- `first-repeated-value`
-- `has-overlap`
-- `most-frequent-item`
-- `deduplicate-preserve-order`
-- `missing-number`
-- `count-primes-up-to`
-- `count-change-ways`
-- `count-n-queens`
+Current `comparable` tracks:
 
-Why they fit well:
+- `benchmark/math_verified/`
+- `benchmark/planning_verified/`
+- `benchmark/multihop_qa_snapshot/`
+- `benchmark/terminal_verified/`
 
-- one function signature
-- fixed tests
-- fixed deterministic benchmark inputs
-- objective and correctness are easy to evaluate without human judgment
+Current `experiment` tasks live under [benchmark/small_experiments/](/Users/david/coding/2026/autoresearcher-MA/benchmark/small_experiments).
 
-## Add A New Example / Task
+## Add A New Benchmark Task
 
-To add a new embedded task in the current engine, define:
+To add a task, register it in [benchmark/registry.json](/Users/david/coding/2026/autoresearcher-MA/benchmark/registry.json) and define at minimum:
 
-- `id`, `title`, `description`, `family`
-- `function_name`, `function_signature`
-- `objective_label`, `objective_direction`
-- `task_signature`
-- `generation_budget`, `candidate_budget`, `epsilon`
-- `baseline_imports`, `baseline_body`, `baseline_summary`
-- `benchmark`
-- `tests`
+- `benchmark_tier`
+- `track`
+- `answer_metric`
+- `editable_file`
+- `entry_symbol`
 
-Use the current engine when the task can be represented as:
+The current engine assumes:
 
-- a single Python function body
-- deterministic tests
-- deterministic benchmark inputs
-- a measurable objective like runtime, quality, or both
-
-Add a new benchmark kind when the task needs a new deterministic input generator or score fixture in [app/codegen/verifier.py](/Users/david/coding/2026/autoresearcher-MA/app/codegen/verifier.py).
+- a single editable file emitted by the model as `file_body`
+- deterministic verification and scoring
+- no multi-file edits
+- no live web or Docker-heavy execution in this phase
 
 For longer experiments, you can override budgets from the CLI without editing the catalog:
 

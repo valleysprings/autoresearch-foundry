@@ -63,29 +63,29 @@ def _candidate_snapshot(candidate: dict[str, Any]) -> dict[str, Any]:
 
 
 def _baseline_candidate(task: dict[str, Any], workspace_root: Path) -> dict[str, Any]:
+    baseline_file = Path(str(task["editable_path"]))
+    baseline_source = baseline_file.read_text()
     source_path, source_code = materialize_candidate(
         task=task,
         workspace_root=workspace_root,
         candidate_id="baseline",
-        imports=task.get("baseline_imports", []),
-        function_body=task["baseline_body"],
+        file_body=baseline_source,
     )
     metrics = evaluate_materialized_candidate(
         task=task,
         source_path=source_path,
         source_code=source_code,
-        imports=task.get("baseline_imports", []),
-        baseline_ms=None,
+        baseline_metrics=None,
         memory_applied=False,
     )
     return {
         "candidate_id": f"{task['id']}-baseline",
         "agent": "baseline",
         "label": "Checked-in baseline",
-        "strategy": "Use the embedded baseline implementation without any mutation.",
+        "strategy": "Use the checked-in editable file without any mutation.",
         "rationale": "This is the deterministic reference point that every candidate must beat.",
-        "imports": task.get("baseline_imports", []),
-        "function_body": task["baseline_body"],
+        "imports": [],
+        "file_body": baseline_source,
         "source_code": source_code,
         "baseline_source": source_code,
         "candidate_summary": task["baseline_summary"],
@@ -251,7 +251,6 @@ def run_codegen_task(
 ) -> dict[str, Any]:
     _emit(progress_callback, pace_ms, phase="task_loaded", task_id=task["id"], message=f"Loaded task {task['id']}")
     baseline = _baseline_candidate(task, workspace_root / task["id"])
-    baseline_ms = baseline["metrics"]["benchmark_ms"]
     current_best = baseline
     frontier = [baseline]
     accepted_history: list[dict[str, Any]] = []
@@ -399,15 +398,13 @@ def run_codegen_task(
                     task=task,
                     workspace_root=workspace_root / task["id"] / f"generation-{generation}" / branch_id,
                     candidate_id=candidate_id,
-                    imports=spec["imports"],
-                    function_body=spec["function_body"],
+                    file_body=spec["file_body"],
                 )
                 metrics = evaluate_materialized_candidate(
                     task=task,
                     source_path=source_path,
                     source_code=source_code,
-                    imports=spec["imports"],
-                    baseline_ms=baseline_ms,
+                    baseline_metrics=baseline["metrics"],
                     memory_applied=bool(retrieved),
                 )
                 candidate = {
@@ -664,7 +661,7 @@ def run_codegen_task(
             "display_name": "Internal selection score J",
             "direction": "max",
             "summary_template": "J is the always-max internal selection score used to rank verified candidates across tasks.",
-            "formula": "J = 1.20 * correctness + 0.95 * speed_score + 0.20 * memory_bonus + 0.15 * stability - 0.18 * complexity - 0.05 * (line_count / 10)",
+            "formula": "J = 1.20 * correctness + 0.95 * objective_signal + 0.20 * memory_bonus + 0.15 * stability - 0.18 * complexity - 0.05 * (line_count / 10)",
             "delta_template": "delta_J compares the generation winner against the selected parent; run_delta_J compares the final winner against the baseline.",
         },
         "task": {
@@ -673,7 +670,9 @@ def run_codegen_task(
             "description": task["description"],
             "family": task["family"],
             "function_name": task["function_name"],
-            "function_signature": task["function_signature"],
+            "entry_symbol": task["entry_symbol"],
+            "editable_file": task["editable_file"],
+            "answer_metric": task["answer_metric"],
             "objective_label": task["objective_label"],
             "objective_direction": task["objective_direction"],
             "objective_spec": task["objective_spec"],
@@ -681,6 +680,10 @@ def run_codegen_task(
             "candidate_budget": task["candidate_budget"],
             "branching_factor": branching_factor,
             "source_type": task["source_type"],
+            "benchmark_tier": task["benchmark_tier"],
+            "track": task["track"],
+            "dataset_id": task["dataset_id"],
+            "included_in_main_comparison": task["included_in_main_comparison"],
         },
         "baseline": baseline,
         "initial_retrieved_memories": initial_retrieved,
@@ -696,6 +699,10 @@ def run_codegen_task(
         "memory_events": memory_events,
         "llm_traces": llm_traces,
         "proposal_engine": proposal_runtime.describe(),
+        "benchmark_tier": task["benchmark_tier"],
+        "track": task["track"],
+        "dataset_id": task["dataset_id"],
+        "included_in_main_comparison": task["included_in_main_comparison"],
         "selection_reason": (
             f"{current_best['label']} reached { _objective_label(task) }={current_best['metrics']['objective']} "
             f"with J={current_best['metrics']['J']} after {len(generations)} generations."

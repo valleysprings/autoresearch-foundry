@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import statistics
 import textwrap
 import time
@@ -11,9 +12,9 @@ def _line_count(code: str) -> int:
     return sum(1 for line in code.splitlines() if line.strip())
 
 
-def _estimate_complexity(source_code: str, imports: list[str]) -> float:
+def _estimate_complexity(source_code: str) -> float:
     line_cost = _line_count(source_code) / 28.0
-    import_cost = len(imports) * 0.04
+    import_cost = source_code.count("\nimport ") * 0.04 + source_code.count("\nfrom ") * 0.04
     branch_cost = source_code.count(" for ") * 0.03 + source_code.count(" while ") * 0.04 + source_code.count(" if ") * 0.02
     return round(min(0.12 + line_cost + import_cost + branch_cost, 0.95), 2)
 
@@ -26,6 +27,10 @@ def _objective_direction(task: dict[str, Any]) -> str:
 def _objective_score(task: dict[str, Any], objective: float) -> float:
     direction = _objective_direction(task)
     return objective if direction == "max" else -objective
+
+
+def _clamp01(value: float) -> float:
+    return max(0.0, min(value, 1.0))
 
 
 def indent_function_body(function_body: str) -> str:
@@ -44,29 +49,49 @@ def build_candidate_source(task: dict[str, Any], imports: list[str], function_bo
     return "\n\n".join(sections).rstrip() + "\n"
 
 
+def normalize_file_body(file_body: str) -> str:
+    normalized = file_body.strip("\n")
+    if not normalized.strip():
+        raise ValueError("file_body must not be empty.")
+    return normalized.rstrip() + "\n"
+
+
 def materialize_candidate(
     *,
     task: dict[str, Any],
     workspace_root: Path,
     candidate_id: str,
-    imports: list[str],
-    function_body: str,
+    file_body: str | None = None,
+    imports: list[str] | None = None,
+    function_body: str | None = None,
 ) -> tuple[Path, str]:
     candidate_dir = workspace_root / candidate_id
     candidate_dir.mkdir(parents=True, exist_ok=True)
-    source_path = candidate_dir / "candidate.py"
-    source_code = build_candidate_source(task, imports, function_body)
+    filename = str(task.get("editable_filename") or Path(str(task.get("editable_file") or "candidate.py")).name)
+    source_path = candidate_dir / filename
+    if file_body is None:
+        source_code = build_candidate_source(task, imports or [], function_body or "")
+    else:
+        source_code = normalize_file_body(file_body)
     source_path.write_text(source_code)
     return source_path, source_code
 
 
-def _load_function_from_path(path: Path, function_name: str):
-    namespace: dict[str, Any] = {}
-    source = path.read_text()
-    exec(compile(source, str(path), "exec"), namespace)
-    function = namespace.get(function_name)
+def _load_module_from_path(path: Path, module_name: str):
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        raise ValueError(f"Unable to import module from {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_callable_from_path(path: Path, symbol: str):
+    module_name = f"candidate_{path.parent.name}_{path.stem}".replace("-", "_")
+    module = _load_module_from_path(path, module_name)
+    function = getattr(module, symbol, None)
     if not callable(function):
-        raise ValueError(f"{function_name} was not defined by the candidate")
+        raise ValueError(f"{symbol} was not defined by the candidate")
     return function
 
 
@@ -103,93 +128,159 @@ def _benchmark_args(kind: str) -> tuple[Any, ...]:
     raise ValueError(f"Unknown benchmark kind: {kind}")
 
 
-def _run_tests(function, tests: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    results = []
-    for test in tests:
-        actual = function(*test["args"])
-        results.append(
-            {
-                "name": test["name"],
-                "expected": test["expected"],
-                "actual": actual,
-                "passed": actual == test["expected"],
-            }
-        )
-    return results
-
-
-def _error_metrics(*, task: dict[str, Any], source_code: str, imports: list[str], error: str) -> dict[str, Any]:
-    objective = 0.0
-    return {
-        "status": "error",
-        "verifier_status": "error",
-        "correctness": 0.0,
-        "passed_tests": 0,
-        "total_tests": len(task["tests"]),
-        "benchmark_ms": None,
-        "benchmark_samples_ms": [],
-        "speedup_vs_baseline": 0.0,
-        "speed_score": 0.0,
-        "stability": 0.0,
-        "complexity": _estimate_complexity(source_code, imports),
-        "line_count": _line_count(source_code),
-        "objective": objective,
-        "objective_score": _objective_score(task, objective),
-        "error": error,
-        "test_results": [],
-        "J": -1.0,
-    }
-
-
-def evaluate_materialized_candidate(
+def finalize_candidate_metrics(
     *,
     task: dict[str, Any],
-    source_path: Path,
     source_code: str,
-    imports: list[str],
-    baseline_ms: float | None,
     memory_applied: bool,
+    raw_metrics: dict[str, Any],
 ) -> dict[str, Any]:
-    complexity = _estimate_complexity(source_code, imports)
-    try:
-        function = _load_function_from_path(source_path, task["function_name"])
-    except Exception as exc:  # noqa: BLE001
-        return _error_metrics(task=task, source_code=source_code, imports=imports, error=str(exc))
+    status = str(raw_metrics.get("status") or "pass")
+    verifier_status = str(raw_metrics.get("verifier_status") or status)
+    objective = float(raw_metrics.get("objective") or 0.0)
+    objective_score = float(raw_metrics.get("objective_score") or _objective_score(task, objective))
+    objective_signal = float(
+        raw_metrics.get(
+            "objective_signal",
+            raw_metrics.get("speed_score", _clamp01(objective_score if objective_score >= 0 else 0.0)),
+        )
+    )
+    correctness = float(raw_metrics.get("correctness") or 0.0)
+    stability = float(raw_metrics.get("stability") or (1.0 if status == "pass" else 0.0))
+    complexity = float(raw_metrics.get("complexity") or _estimate_complexity(source_code))
+    line_count = int(raw_metrics.get("line_count") or _line_count(source_code))
+    memory_bonus = 1.0 if memory_applied else 0.0
 
-    try:
-        test_results = _run_tests(function, task["tests"])
-    except Exception as exc:  # noqa: BLE001
-        return _error_metrics(task=task, source_code=source_code, imports=imports, error=str(exc))
-    passed_tests = sum(1 for result in test_results if result["passed"])
-    total_tests = len(test_results)
-    correctness = 1.0 if passed_tests == total_tests else 0.0
-    line_count = _line_count(source_code)
+    if status == "error":
+        score = -1.0
+    else:
+        score = (
+            1.20 * correctness
+            + 0.95 * objective_signal
+            + 0.20 * memory_bonus
+            + 0.15 * stability
+            - 0.18 * complexity
+            - 0.05 * (line_count / 10.0)
+        )
 
-    if correctness == 0.0:
-        objective = 0.0
-        return {
-            "status": "fail",
-            "verifier_status": "fail",
+    metrics = {
+        "status": status,
+        "verifier_status": verifier_status,
+        "correctness": correctness,
+        "passed_tests": int(raw_metrics.get("passed_tests") or 0),
+        "total_tests": int(raw_metrics.get("total_tests") or 0),
+        "benchmark_ms": raw_metrics.get("benchmark_ms"),
+        "benchmark_samples_ms": list(raw_metrics.get("benchmark_samples_ms") or []),
+        "speedup_vs_baseline": raw_metrics.get("speedup_vs_baseline", 0.0),
+        "speed_score": raw_metrics.get("speed_score", 0.0),
+        "stability": round(stability, 3),
+        "complexity": round(complexity, 3),
+        "line_count": line_count,
+        "objective": round(objective, 6),
+        "objective_score": round(objective_score, 6),
+        "objective_signal": round(objective_signal, 6),
+        "error": raw_metrics.get("error"),
+        "test_results": list(raw_metrics.get("test_results") or []),
+        "J": round(float(raw_metrics.get("J", score)), 4),
+    }
+    for key, value in raw_metrics.items():
+        if key not in metrics:
+            metrics[key] = value
+    return metrics
+
+
+def error_candidate_metrics(
+    *,
+    task: dict[str, Any],
+    source_code: str,
+    error: str,
+) -> dict[str, Any]:
+    return finalize_candidate_metrics(
+        task=task,
+        source_code=source_code,
+        memory_applied=False,
+        raw_metrics={
+            "status": "error",
+            "verifier_status": "error",
             "correctness": 0.0,
-            "passed_tests": passed_tests,
-            "total_tests": total_tests,
+            "passed_tests": 0,
+            "total_tests": 0,
             "benchmark_ms": None,
             "benchmark_samples_ms": [],
             "speedup_vs_baseline": 0.0,
             "speed_score": 0.0,
             "stability": 0.0,
-            "complexity": complexity,
-            "line_count": line_count,
-            "objective": objective,
-            "objective_score": _objective_score(task, objective),
-            "error": None,
-            "test_results": test_results,
-            "J": round(0.45 - 0.25 * complexity, 4),
-        }
+            "objective": 0.0,
+            "objective_score": 0.0,
+            "objective_signal": 0.0,
+            "error": error,
+            "test_results": [],
+            "J": -1.0,
+        },
+    )
 
+
+def evaluate_python_function_candidate(
+    *,
+    task: dict[str, Any],
+    candidate_path: Path,
+    source_code: str,
+    baseline_metrics: dict[str, Any] | None,
+    memory_applied: bool,
+) -> dict[str, Any]:
+    try:
+        function = load_callable_from_path(candidate_path, str(task["entry_symbol"]))
+    except Exception as exc:  # noqa: BLE001
+        return error_candidate_metrics(task=task, source_code=source_code, error=str(exc))
+
+    verifier_config = dict(task.get("data") or {})
+    tests = list(verifier_config.get("tests") or [])
+    results: list[dict[str, Any]] = []
+    try:
+        for test in tests:
+            actual = function(*test["args"])
+            results.append(
+                {
+                    "name": test["name"],
+                    "expected": test["expected"],
+                    "actual": actual,
+                    "passed": actual == test["expected"],
+                }
+            )
+    except Exception as exc:  # noqa: BLE001
+        return error_candidate_metrics(task=task, source_code=source_code, error=str(exc))
+
+    passed_tests = sum(1 for result in results if result["passed"])
+    total_tests = len(results)
+    correctness = 1.0 if total_tests and passed_tests == total_tests else 0.0
+    if correctness == 0.0:
+        return finalize_candidate_metrics(
+            task=task,
+            source_code=source_code,
+            memory_applied=memory_applied,
+            raw_metrics={
+                "status": "fail",
+                "verifier_status": "fail",
+                "correctness": 0.0,
+                "passed_tests": passed_tests,
+                "total_tests": total_tests,
+                "benchmark_ms": None,
+                "benchmark_samples_ms": [],
+                "speedup_vs_baseline": 0.0,
+                "speed_score": 0.0,
+                "stability": 0.0,
+                "objective": 0.0,
+                "objective_score": 0.0,
+                "objective_signal": 0.0,
+                "error": None,
+                "test_results": results,
+            },
+        )
+
+    benchmark = dict(verifier_config.get("benchmark") or {})
+    repeats = int(benchmark.get("repeats", 1))
+    benchmark_args = _benchmark_args(str(benchmark["kind"]))
     samples: list[float] = []
-    repeats = int(task["benchmark"]["repeats"])
-    benchmark_args = _benchmark_args(task["benchmark"]["kind"])
     try:
         for _ in range(3):
             started = time.perf_counter()
@@ -197,38 +288,71 @@ def evaluate_materialized_candidate(
                 function(*benchmark_args)
             samples.append((time.perf_counter() - started) * 1000.0)
     except Exception as exc:  # noqa: BLE001
-        return _error_metrics(task=task, source_code=source_code, imports=imports, error=str(exc))
+        return error_candidate_metrics(task=task, source_code=source_code, error=str(exc))
 
     benchmark_ms = statistics.median(samples)
-    speedup = baseline_ms / benchmark_ms if baseline_ms is not None and benchmark_ms > 0 else 1.0
+    baseline_ms = None if baseline_metrics is None else baseline_metrics.get("benchmark_ms")
+    speedup = float(baseline_ms) / benchmark_ms if baseline_ms and benchmark_ms > 0 else 1.0
     speed_score = min(speedup, 8.0) / 8.0
     stability = min(samples) / max(samples) if max(samples) > 0 else 1.0
-    memory_bonus = 1.0 if memory_applied else 0.0
-    score = (
-        1.20 * correctness
-        + 0.95 * speed_score
-        + 0.20 * memory_bonus
-        + 0.15 * stability
-        - 0.18 * complexity
-        - 0.05 * (line_count / 10.0)
+    return finalize_candidate_metrics(
+        task=task,
+        source_code=source_code,
+        memory_applied=memory_applied,
+        raw_metrics={
+            "status": "pass",
+            "verifier_status": "pass",
+            "correctness": correctness,
+            "passed_tests": passed_tests,
+            "total_tests": total_tests,
+            "benchmark_ms": round(benchmark_ms, 3),
+            "benchmark_samples_ms": [round(sample, 3) for sample in samples],
+            "speedup_vs_baseline": round(speedup, 3),
+            "speed_score": round(speed_score, 3),
+            "stability": round(stability, 3),
+            "objective": round(speedup, 3),
+            "objective_score": round(_objective_score(task, round(speedup, 3)), 3),
+            "objective_signal": round(speed_score, 3),
+            "error": None,
+            "test_results": results,
+        },
     )
-    objective = round(speedup, 3)
-    return {
-        "status": "pass",
-        "verifier_status": "pass",
-        "correctness": correctness,
-        "passed_tests": passed_tests,
-        "total_tests": total_tests,
-        "benchmark_ms": round(benchmark_ms, 3),
-        "benchmark_samples_ms": [round(sample, 3) for sample in samples],
-        "speedup_vs_baseline": round(speedup, 3),
-        "speed_score": round(speed_score, 3),
-        "stability": round(stability, 3),
-        "complexity": complexity,
-        "line_count": line_count,
-        "objective": objective,
-        "objective_score": _objective_score(task, objective),
-        "error": None,
-        "test_results": test_results,
-        "J": round(score, 4),
-    }
+
+
+def _load_task_verifier(task: dict[str, Any]):
+    verifier_path = Path(str(task["verifier_path"]))
+    module_name = f"task_verifier_{task['id'].replace('-', '_')}"
+    module = _load_module_from_path(verifier_path, module_name)
+    evaluator = getattr(module, "evaluate_candidate", None)
+    if not callable(evaluator):
+        raise ValueError(f"{verifier_path} must export callable evaluate_candidate().")
+    return evaluator
+
+
+def evaluate_materialized_candidate(
+    *,
+    task: dict[str, Any],
+    source_path: Path,
+    source_code: str,
+    baseline_metrics: dict[str, Any] | None,
+    memory_applied: bool,
+) -> dict[str, Any]:
+    try:
+        evaluator = _load_task_verifier(task)
+        raw_metrics = evaluator(
+            task=task,
+            candidate_path=source_path,
+            source_code=source_code,
+            baseline_metrics=baseline_metrics,
+            memory_applied=memory_applied,
+        )
+        if not isinstance(raw_metrics, dict):
+            raise ValueError("Task verifier must return a metrics dict.")
+        return finalize_candidate_metrics(
+            task=task,
+            source_code=source_code,
+            memory_applied=memory_applied,
+            raw_metrics=raw_metrics,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return error_candidate_metrics(task=task, source_code=source_code, error=str(exc))

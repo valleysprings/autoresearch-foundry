@@ -5,9 +5,11 @@ __pycache__/
 external/
 runs/
 docs/
-examples/
-data/
-benchmarks/
+/data/
+# Keep only the benchmark registry in git; task assets stay local by default.
+/benchmark/**
+!/benchmark/
+!/benchmark/registry.json
 .pytest_cache/
 node_modules/
 ui/dist/

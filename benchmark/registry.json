@@ -1,0 +1,69 @@
+{
+  "tasks": [
+    {
+      "id": "contains-duplicates",
+      "path": "small_experiments/contains-duplicates",
+      "enabled": true
+    },
+    {
+      "id": "first-repeated-value",
+      "path": "small_experiments/first-repeated-value",
+      "enabled": true
+    },
+    {
+      "id": "has-overlap",
+      "path": "small_experiments/has-overlap",
+      "enabled": true
+    },
+    {
+      "id": "most-frequent-item",
+      "path": "small_experiments/most-frequent-item",
+      "enabled": true
+    },
+    {
+      "id": "deduplicate-preserve-order",
+      "path": "small_experiments/deduplicate-preserve-order",
+      "enabled": true
+    },
+    {
+      "id": "missing-number",
+      "path": "small_experiments/missing-number",
+      "enabled": true
+    },
+    {
+      "id": "count-primes-up-to",
+      "path": "small_experiments/count-primes-up-to",
+      "enabled": true
+    },
+    {
+      "id": "count-change-ways",
+      "path": "small_experiments/count-change-ways",
+      "enabled": true
+    },
+    {
+      "id": "count-n-queens",
+      "path": "small_experiments/count-n-queens",
+      "enabled": true
+    },
+    {
+      "id": "olymmath-numeric-small",
+      "path": "math_verified/olymmath-numeric-small",
+      "enabled": true
+    },
+    {
+      "id": "planbench-lite",
+      "path": "planning_verified/planbench-lite",
+      "enabled": true
+    },
+    {
+      "id": "multihop-snapshot-small",
+      "path": "multihop_qa_snapshot/multihop-snapshot-small",
+      "enabled": true
+    },
+    {
+      "id": "tbench-lite",
+      "path": "terminal_verified/tbench-lite",
+      "enabled": true
+    }
+  ]
+}

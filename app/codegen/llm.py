@@ -51,7 +51,54 @@ def _extract_json_object(text: str) -> dict[str, Any]:
             continue
         if isinstance(parsed, dict):
             return parsed
+
+    for candidate in _balanced_json_objects(normalized):
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict):
+            return parsed
     raise LlmResponseError("Model response did not contain a valid JSON object.")
+
+
+def _balanced_json_objects(text: str) -> list[str]:
+    candidates: list[str] = []
+    start_index: int | None = None
+    depth = 0
+    in_string = False
+    escaped = False
+
+    for index, char in enumerate(text):
+        if start_index is None:
+            if char == "{":
+                start_index = index
+                depth = 1
+                in_string = False
+                escaped = False
+            continue
+
+        if escaped:
+            escaped = False
+            continue
+        if in_string:
+            if char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+            continue
+        if char == "{":
+            depth += 1
+            continue
+        if char == "}":
+            depth -= 1
+            if depth == 0:
+                candidates.append(text[start_index : index + 1])
+                start_index = None
+    return candidates
 
 
 def _trim(value: Any, *, limit: int = 240) -> str:
@@ -86,21 +133,16 @@ def _normalize_candidate_payload(payload: dict[str, Any], task: dict[str, Any], 
     for index, item in enumerate(candidates[:max_candidates], start=1):
         if not isinstance(item, dict):
             raise LlmResponseError("Each candidate must be an object.", model=trace.get("selected_model"))
-        required_keys = ("name", "strategy", "rationale", "function_body", "candidate_summary")
+        required_keys = ("name", "strategy", "rationale", "file_body", "candidate_summary")
         missing = [key for key in required_keys if not isinstance(item.get(key), str) or not item.get(key).strip()]
         if missing:
             raise LlmResponseError(
                 f"Candidate {index} is missing required string fields: {', '.join(missing)}.",
                 model=trace.get("selected_model"),
             )
-        function_body = item["function_body"].strip("\n")
-        if function_body.lstrip().startswith("def "):
-            lines = function_body.splitlines()
-            if len(lines) < 2:
-                raise LlmResponseError("Candidates must return a non-empty function body.", model=trace.get("selected_model"))
-            function_body = textwrap.dedent("\n".join(lines[1:])).strip("\n")
-            if not function_body:
-                raise LlmResponseError("Candidates must return a non-empty function body.", model=trace.get("selected_model"))
+        file_body = item["file_body"].strip("\n")
+        if not file_body.strip():
+            raise LlmResponseError("Candidates must return a non-empty editable file.", model=trace.get("selected_model"))
         normalized.append(
             {
                 "agent": f"candidate-{index}",
@@ -108,7 +150,7 @@ def _normalize_candidate_payload(payload: dict[str, Any], task: dict[str, Any], 
                 "strategy": _trim(item["strategy"]),
                 "rationale": _trim(item["rationale"]),
                 "imports": _normalize_imports(item.get("imports")),
-                "function_body": function_body,
+                "file_body": file_body,
                 "candidate_summary": _trim(item["candidate_summary"]),
                 "run_mode": "llm-required",
                 "proposal_model": trace.get("selected_model"),
@@ -285,22 +327,27 @@ def _proposal_prompt(
         for item in candidate_history[-6:]
     ]
     system_prompt = (
-        "You are the only proposal model in a strict outer-loop Python code optimization system. "
+        "You are the only proposal model in a strict outer-loop single-file Python optimization system. "
         "Return strict JSON with shape "
         '{"candidates":[{"name":"short label","strategy":"one sentence","rationale":"why it should win",'
-        '"imports":["import line"],"function_body":"body only, no def line","candidate_summary":"brief code summary"}]}. '
-        "Return between 1 and 3 candidates. The function_body must contain only the indented body contents, not the signature."
+        '"file_body":"full editable file contents","candidate_summary":"brief code summary"}]}. '
+        "Return between 1 and 3 candidates. file_body must contain the full contents of the editable file and must preserve the declared entry symbol."
     )
     user_prompt = (
         f"Task id: {task['id']}\n"
         f"Title: {task['title']}\n"
         f"Description: {task['description']}\n"
-        f"Function signature: {task['function_signature']}\n"
+        f"Benchmark tier: {task['benchmark_tier']}\n"
+        f"Track: {task['track']}\n"
+        f"Dataset id: {task['dataset_id']}\n"
+        f"Editable file: {task['editable_file']}\n"
+        f"Entry symbol: {task['entry_symbol']}\n"
         f"Objective: {objective_name}\n"
         f"Objective direction: {objective_direction}\n"
         f"Objective formula: {objective_formula}\n"
         f"Objective summary: {objective_summary}\n"
         "J is the always-max internal selection score; improve the selected parent objective first, then raise J without regressing correctness.\n"
+        f"Prompt context: {task.get('prompt_context') or 'n/a'}\n"
         f"Generation: {generation}\n"
         f"Selected parent summary: {parent_candidate['candidate_summary']}\n"
         f"Selected parent objective: {parent_candidate['metrics']['objective']}\n"
@@ -312,17 +359,15 @@ def _proposal_prompt(
         f"Global best J: {current_best['metrics']['J']}\n"
         "Baseline source:\n"
         f"{current_best['baseline_source']}\n"
-        "Selected parent source:\n"
+        "Selected parent editable file:\n"
         f"{parent_candidate['source_code']}\n"
-        "Global best source:\n"
+        "Global best editable file:\n"
         f"{current_best['source_code']}\n"
-        f"Benchmark spec: {json.dumps(task['benchmark'])}\n"
-        f"Tests: {json.dumps(task['tests'])}\n"
         "Retrieved strategy experiences (successful wins and failed attempts to avoid):\n"
         + ("\n".join(memory_lines) if memory_lines else "- none")
         + "\nPrevious candidate summaries:\n"
         + ("\n".join(history_lines) if history_lines else "- none")
-        + "\nGenerate Python candidates that preserve correctness, improve the selected parent, and avoid repeating recent no-op rewrites."
+        + "\nReturn full editable-file rewrites that preserve the public contract, improve the selected parent, and avoid repeating recent no-op rewrites."
     )
     return system_prompt, user_prompt
 
