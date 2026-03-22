@@ -8,6 +8,31 @@ def _body(source: str) -> str:
     return textwrap.dedent(source).strip("\n")
 
 
+DEFAULT_BRANCHING_FACTOR = 4
+
+
+def _speedup_objective_spec() -> dict[str, str]:
+    return {
+        "display_name": "Speedup vs baseline",
+        "direction": "max",
+        "unit": "x",
+        "summary_template": "Higher speedup is better. This task maximizes runtime gain over the checked-in baseline.",
+        "formula": "speedup_vs_baseline = baseline_ms / candidate_ms",
+    }
+
+
+def _normalize_task(task: dict[str, Any]) -> dict[str, Any]:
+    normalized = dict(task)
+    objective_spec = dict(task.get("objective_spec") or {})
+    if not objective_spec:
+        objective_spec = _speedup_objective_spec()
+    normalized["objective_spec"] = objective_spec
+    normalized["objective_label"] = normalized.get("objective_label") or objective_spec["display_name"]
+    normalized["objective_direction"] = normalized.get("objective_direction") or objective_spec["direction"]
+    normalized["branching_factor"] = int(normalized.get("branching_factor", DEFAULT_BRANCHING_FACTOR))
+    return normalized
+
+
 SEED_STRATEGY_EXPERIENCES: list[dict[str, Any]] = [
     {
         "experience_id": "exp-correctness-first",
@@ -400,7 +425,7 @@ CODEGEN_TASKS: list[dict[str, Any]] = [
 
 
 def load_codegen_tasks() -> list[dict[str, Any]]:
-    return [dict(task) for task in CODEGEN_TASKS]
+    return [_normalize_task(task) for task in CODEGEN_TASKS]
 
 
 def list_codegen_task_summaries() -> list[dict[str, Any]]:
@@ -413,8 +438,10 @@ def list_codegen_task_summaries() -> list[dict[str, Any]]:
             "function_name": task["function_name"],
             "objective_label": task["objective_label"],
             "objective_direction": task["objective_direction"],
+            "objective_spec": task["objective_spec"],
             "generation_budget": task["generation_budget"],
             "candidate_budget": task["candidate_budget"],
+            "branching_factor": task["branching_factor"],
         }
         for task in load_codegen_tasks()
     ]

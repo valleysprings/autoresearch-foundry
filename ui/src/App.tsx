@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { loadJob, loadLatestRun, loadRuntime, loadTasks, startJob } from "./api";
 import type {
-  AddedExperience,
+  Branch,
   Candidate,
   ErrorPayload,
   Generation,
-  LiveEvent,
+  JSpec,
   JobState,
+  LiveEvent,
+  ObjectiveSpec,
   Payload,
   Run,
   RuntimeInfo,
@@ -15,6 +17,41 @@ import type {
 } from "./types";
 
 type ThemePreference = "system" | "light" | "dark";
+
+type LiveBranchCard = {
+  branchId: string;
+  branchIndex: number;
+  status: "queued" | "running" | "completed";
+  parentCandidate: string;
+  selectedModel: string | null;
+  candidateMessages: string[];
+  memoryMessage: string | null;
+  acceptedToFrontier: boolean;
+  improvedGlobalBest: boolean;
+  memoryDelta: number;
+};
+
+type LiveGenerationCard = {
+  generation: number;
+  status: "queued" | "running" | "completed";
+  summary: string | null;
+  acceptedCount: number;
+  memoryDelta: number;
+  branches: LiveBranchCard[];
+};
+
+type LiveTaskCard = {
+  taskId: string;
+  title: string;
+  description: string;
+  model: string;
+  branchingFactor: number;
+  generationBudget: number;
+  currentBest: string | null;
+  status: "queued" | "running" | "completed";
+  generations: LiveGenerationCard[];
+  events: LiveEvent[];
+};
 
 function shortPath(path?: string | null): string {
   return path ? path.replace(/^runs\//, "") : "n/a";
@@ -31,6 +68,33 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
+function numeric(value: string | number | undefined | null): number {
+  if (typeof value === "number") {
+    return value;
+  }
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatValue(value: string | number | undefined | null, unit = ""): string {
+  if (typeof value === "number") {
+    return `${value}${unit}`;
+  }
+  if (typeof value === "string" && value.length) {
+    return `${value}${unit}`;
+  }
+  return "n/a";
+}
+
+function formatSigned(value: string | number | undefined | null, digits = 3): string {
+  const amount = numeric(value);
+  return `${amount >= 0 ? "+" : ""}${amount.toFixed(digits)}`;
+}
+
+function directionCopy(direction: string): string {
+  return direction === "min" ? "Lower is better" : "Higher is better";
+}
+
 function emptyRuntime(): RuntimeInfo {
   return {
     mode: "llm-required",
@@ -41,6 +105,16 @@ function emptyRuntime(): RuntimeInfo {
     temperature: "n/a",
     max_tokens: "n/a",
     timeout_s: "n/a",
+  };
+}
+
+function emptyJSpec(): JSpec {
+  return {
+    display_name: "Internal selection score J",
+    direction: "max",
+    summary_template: "J is the always-max internal score used to compare verified candidates.",
+    formula: "",
+    delta_template: "",
   };
 }
 
@@ -65,7 +139,9 @@ function emptyPayload(taskCatalog: TaskSummary[] = []): Payload {
       J: "",
       objective: "",
       delta_J: "",
+      run_delta_J: "",
     },
+    j_spec: emptyJSpec(),
     audit: {
       workspace_root: "n/a",
       session_id: "n/a",
@@ -76,10 +152,12 @@ function emptyPayload(taskCatalog: TaskSummary[] = []): Payload {
 }
 
 function normalizePayload(payload: Payload, fallbackCatalog: TaskSummary[]): Payload {
+  const jSpec = payload.j_spec ?? emptyJSpec();
   return {
     ...payload,
+    j_spec: jSpec,
     task_catalog: payload.task_catalog?.length ? payload.task_catalog : fallbackCatalog,
-    runs: Array.isArray(payload.runs) ? payload.runs : [],
+    runs: Array.isArray(payload.runs) ? payload.runs.map((run) => ({ ...run, j_spec: run.j_spec ?? jSpec })) : [],
   };
 }
 
@@ -105,70 +183,137 @@ function metric(label: string, value: string | number) {
   );
 }
 
-type LiveGenerationCard = {
-  generation: number;
-  status: "queued" | "running" | "completed";
-  retrievedMemories: string | null;
-  selectedModel: string | null;
-  candidateMessages: string[];
-  memoryWriteback: string | null;
-  completion: string | null;
-};
+function objectiveLabel(spec: ObjectiveSpec): string {
+  return spec.display_name || "Objective";
+}
 
-function numeric(value: string | number | undefined): number {
-  if (typeof value === "number") {
-    return value;
+function summarizeLiveTasks(
+  events: LiveEvent[],
+  taskCatalog: TaskSummary[],
+  liveJob: JobState | null,
+  runs: Run[],
+): LiveTaskCard[] {
+  const taskMap = new Map<string, LiveTaskCard>();
+
+  function getTask(taskId: string): LiveTaskCard {
+    const catalogTask = taskCatalog.find((task) => task.id === taskId);
+    const completedRun = runs.find((run) => run.task.id === taskId);
+    const existing = taskMap.get(taskId);
+    if (existing) {
+      return existing;
+    }
+    const entry: LiveTaskCard = {
+      taskId,
+      title: catalogTask?.title ?? completedRun?.task.title ?? taskId,
+      description: catalogTask?.description ?? completedRun?.task.description ?? "Task description unavailable.",
+      model: liveJob?.model ?? completedRun?.active_model ?? "n/a",
+      branchingFactor:
+        liveJob?.branching_factor ?? catalogTask?.branching_factor ?? completedRun?.task.branching_factor ?? 1,
+      generationBudget: catalogTask?.generation_budget ?? completedRun?.task.generation_budget ?? 0,
+      currentBest: null,
+      status: "queued",
+      generations: [],
+      events: [],
+    };
+    taskMap.set(taskId, entry);
+    return entry;
   }
-  const parsed = Number(value ?? 0);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
 
-function themeChoices(): ThemePreference[] {
-  return ["system", "light", "dark"];
-}
-
-function summarizeLiveEvents(events: LiveEvent[]): LiveGenerationCard[] {
-  const cards = new Map<number, LiveGenerationCard>();
   for (const event of events) {
-    const generation = typeof event.generation === "number" ? event.generation : null;
-    if (generation == null) {
+    const taskId = event.task_id ?? liveJob?.task_id ?? liveJob?.taskId ?? null;
+    if (!taskId) {
       continue;
     }
-    const current =
-      cards.get(generation) ??
-      {
-        generation,
+    const task = getTask(taskId);
+    task.events.push(event);
+    const generationNumber = event.generation;
+    if (typeof generationNumber !== "number") {
+      continue;
+    }
+    let generation = task.generations.find((item) => item.generation === generationNumber);
+    if (!generation) {
+      generation = {
+        generation: generationNumber,
         status: "queued",
-        retrievedMemories: null,
+        summary: null,
+        acceptedCount: 0,
+        memoryDelta: 0,
+        branches: [],
+      };
+      task.generations.push(generation);
+    }
+    if (event.phase === "generation_started") {
+      generation.status = "running";
+      generation.summary = event.message ?? null;
+      task.status = "running";
+    }
+    if (event.phase === "generation_finished") {
+      generation.status = "completed";
+      generation.summary = event.message ?? generation.summary;
+      task.currentBest = event.message ?? task.currentBest;
+      task.status = liveJob?.status === "completed" ? "completed" : "running";
+    }
+    if (event.accepted_to_frontier) {
+      generation.acceptedCount += 1;
+    }
+    generation.memoryDelta += event.memory_delta ?? 0;
+
+    if (!event.branch_id) {
+      continue;
+    }
+    let branch = generation.branches.find((item) => item.branchId === event.branch_id);
+    if (!branch) {
+      branch = {
+        branchId: event.branch_id,
+        branchIndex: event.branch_index ?? generation.branches.length + 1,
+        status: "queued",
+        parentCandidate: event.parent_candidate ?? "n/a",
         selectedModel: null,
         candidateMessages: [],
-        memoryWriteback: null,
-        completion: null,
+        memoryMessage: null,
+        acceptedToFrontier: false,
+        improvedGlobalBest: false,
+        memoryDelta: 0,
       };
-    if (event.phase === "generation_started") {
-      current.status = "running";
-      current.retrievedMemories = event.message ?? null;
-    } else if (event.phase === "proposal_generated") {
-      current.selectedModel = event.candidate ?? null;
-    } else if (event.phase === "candidate_verified" && event.message) {
-      current.candidateMessages = [...current.candidateMessages, event.message];
-    } else if (event.phase === "memory_writeback") {
-      current.memoryWriteback = event.message ?? null;
-    } else if (event.phase === "generation_finished") {
-      current.status = "completed";
-      current.completion = event.message ?? null;
+      generation.branches.push(branch);
     }
-    cards.set(generation, current);
+    branch.parentCandidate = event.parent_candidate ?? branch.parentCandidate;
+    if (event.phase === "branch_started") {
+      branch.status = "running";
+    } else if (event.phase === "proposal_generated") {
+      branch.status = "running";
+      branch.selectedModel = event.candidate ?? branch.selectedModel;
+    } else if (event.phase === "candidate_verified" && event.message) {
+      branch.candidateMessages = [...branch.candidateMessages, event.message];
+    } else if (event.phase === "memory_writeback" || event.phase === "memory_skipped") {
+      branch.status = "completed";
+      branch.memoryMessage = event.message ?? branch.memoryMessage;
+      branch.acceptedToFrontier = Boolean(event.accepted_to_frontier);
+      branch.improvedGlobalBest = Boolean(event.improved_global_best);
+      branch.memoryDelta = event.memory_delta ?? branch.memoryDelta;
+    }
   }
-  return [...cards.values()].sort((left, right) => left.generation - right.generation);
+
+  return [...taskMap.values()]
+    .map((task) => ({
+      ...task,
+      generations: task.generations
+        .map((generation) => ({
+          ...generation,
+          branches: [...generation.branches].sort((left, right) => left.branchIndex - right.branchIndex),
+        }))
+        .sort((left, right) => left.generation - right.generation),
+    }))
+    .sort((left, right) => left.taskId.localeCompare(right.taskId));
 }
 
-function runOverviewChart(run: Run) {
+function deltaChart(run: Run) {
   const points = run.objective_curve ?? [];
   if (!points.length) {
     return null;
   }
-
+  const spec = run.task.objective_spec;
+  const label = objectiveLabel(spec);
   const baselineObjective = numeric(points[0].objective);
   const baselineJ = numeric(points[0].J);
   const chartPoints = points.map((point, index) => ({
@@ -176,148 +321,9 @@ function runOverviewChart(run: Run) {
     index,
     objectiveDelta: numeric(point.objective) - baselineObjective,
     jDelta: numeric(point.J) - baselineJ,
-    accepted: point.accepted,
+    acceptedCount: numeric(point.accepted_count ?? 0),
   }));
-
-  const width = 520;
-  const height = 220;
-  const padding = 24;
-  const plotWidth = width - padding * 2;
-  const plotHeight = height - padding * 2;
-  const values = chartPoints.flatMap((point) => [point.objectiveDelta, point.jDelta, 0]);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const x = (index: number) =>
-    padding + (chartPoints.length === 1 ? plotWidth / 2 : (plotWidth * index) / (chartPoints.length - 1));
-  const y = (value: number) => padding + plotHeight - ((value - min) / range) * plotHeight;
-  const linePath = (key: "objectiveDelta" | "jDelta") =>
-    chartPoints.map((point, index) => `${index === 0 ? "M" : "L"} ${x(point.index)} ${y(point[key])}`).join(" ");
-
-  return (
-    <svg className="chart-svg compact-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Run overview chart">
-      {[0.2, 0.4, 0.6, 0.8].map((ratio) => {
-        const lineY = padding + plotHeight * ratio;
-        return <line key={ratio} className="chart-grid-line" x1={padding} x2={width - padding} y1={lineY} y2={lineY} />;
-      })}
-      <line className="chart-axis" x1={padding} x2={width - padding} y1={y(0)} y2={y(0)} />
-      <path className="chart-line objective-line" d={linePath("objectiveDelta")} />
-      <path className="chart-line j-line" d={linePath("jDelta")} />
-      {chartPoints.map((point) => (
-        <g key={`overview-${point.generation}`}>
-          <circle
-            className={`chart-point ${point.accepted ? "accepted" : "candidate"}`}
-            cx={x(point.index)}
-            cy={y(point.objectiveDelta)}
-            r="4.5"
-          />
-          <circle
-            className={`chart-point j-point ${point.accepted ? "accepted" : "candidate"}`}
-            cx={x(point.index)}
-            cy={y(point.jDelta)}
-            r="4.5"
-          />
-          <text className="chart-label" x={x(point.index)} y={height - 6} textAnchor="middle">
-            g{point.generation}
-          </text>
-        </g>
-      ))}
-    </svg>
-  );
-}
-
-function memoryGrowthChart(run: Run) {
-  const generationCount = run.generations.length;
-  if (!generationCount) {
-    return null;
-  }
-
-  const grouped = new Map<number, { positive: number; negative: number }>();
-  for (let generation = 1; generation <= generationCount; generation += 1) {
-    grouped.set(generation, { positive: 0, negative: 0 });
-  }
-  for (const experience of run.added_experiences ?? []) {
-    const row = grouped.get(experience.generation) ?? { positive: 0, negative: 0 };
-    if (experience.experience_outcome === "success") {
-      row.positive += 1;
-    } else if (experience.experience_outcome === "failure") {
-      row.negative += 1;
-    }
-    grouped.set(experience.generation, row);
-  }
-
-  let positiveRunning = 0;
-  let negativeRunning = 0;
-  const rows = [...grouped.entries()].map(([generation, value]) => {
-    positiveRunning += value.positive;
-    negativeRunning += value.negative;
-    return { generation, positive: positiveRunning, negative: negativeRunning };
-  });
-
-  const width = 520;
-  const height = 220;
-  const padding = 24;
-  const plotWidth = width - padding * 2;
-  const plotHeight = height - padding * 2;
-  const maxValue = Math.max(...rows.flatMap((row) => [row.positive, row.negative]), 1);
-  const barWidth = plotWidth / Math.max(rows.length * 2, 2);
-  const x = (index: number, offset: number) => padding + index * barWidth * 2 + offset * barWidth;
-  const barHeight = (value: number) => (value / maxValue) * (plotHeight - 18);
-
-  return (
-    <svg className="chart-svg compact-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Memory growth chart">
-      {[0.2, 0.4, 0.6, 0.8].map((ratio) => {
-        const lineY = padding + plotHeight * ratio;
-        return <line key={ratio} className="chart-grid-line" x1={padding} x2={width - padding} y1={lineY} y2={lineY} />;
-      })}
-      {rows.map((row, index) => {
-        const positiveHeight = barHeight(row.positive);
-        const negativeHeight = barHeight(row.negative);
-        return (
-          <g key={`memory-growth-${row.generation}`}>
-            <rect
-              className="memory-bar positive-bar"
-              x={x(index, 0)}
-              y={height - padding - positiveHeight}
-              width={Math.max(barWidth - 8, 10)}
-              height={positiveHeight}
-              rx="8"
-            />
-            <rect
-              className="memory-bar negative-bar"
-              x={x(index, 1)}
-              y={height - padding - negativeHeight}
-              width={Math.max(barWidth - 8, 10)}
-              height={negativeHeight}
-              rx="8"
-            />
-            <text className="chart-label" x={x(index, 0.5)} y={height - 6} textAnchor="middle">
-              g{row.generation}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-function fallbackImprovementChart(run: Run) {
-  const points = run.objective_curve ?? [];
-  if (!points.length) {
-    return null;
-  }
-
-  const baselineObjective = numeric(points[0].objective);
-  const baselineJ = numeric(points[0].J);
-  const chartPoints = points.map((point, index) => ({
-    generation: point.generation,
-    xIndex: index,
-    objectiveDelta: numeric(point.objective) - baselineObjective,
-    jDelta: numeric(point.J) - baselineJ,
-    accepted: point.accepted,
-  }));
-
-  const width = 680;
+  const width = 700;
   const height = 260;
   const padding = 26;
   const plotWidth = width - padding * 2;
@@ -326,49 +332,35 @@ function fallbackImprovementChart(run: Run) {
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
-
-  const x = (index: number) =>
-    padding + (chartPoints.length === 1 ? plotWidth / 2 : (plotWidth * index) / (chartPoints.length - 1));
+  const x = (index: number) => padding + (chartPoints.length === 1 ? plotWidth / 2 : (plotWidth * index) / (chartPoints.length - 1));
   const y = (value: number) => padding + plotHeight - ((value - min) / range) * plotHeight;
-
-  const makePath = (key: "objectiveDelta" | "jDelta") =>
-    chartPoints.map((point, index) => `${index === 0 ? "M" : "L"} ${x(point.xIndex)} ${y(point[key])}`).join(" ");
+  const pathFor = (key: "objectiveDelta" | "jDelta") =>
+    chartPoints.map((point, index) => `${index === 0 ? "M" : "L"} ${x(point.index)} ${y(point[key])}`).join(" ");
 
   return (
-    <>
-      <svg className="chart-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Improvement curve">
-        {[0.25, 0.5, 0.75].map((ratio) => {
+    <div className="chart-wrap">
+      <svg className="chart-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Generation deltas chart">
+        {[0.2, 0.4, 0.6, 0.8].map((ratio) => {
           const lineY = padding + plotHeight * ratio;
           return <line key={ratio} className="chart-grid-line" x1={padding} x2={width - padding} y1={lineY} y2={lineY} />;
         })}
         <line className="chart-axis" x1={padding} x2={width - padding} y1={y(0)} y2={y(0)} />
-        <path className="chart-line objective-line" d={makePath("objectiveDelta")} />
-        <path className="chart-line j-line" d={makePath("jDelta")} />
+        <path className="chart-line objective-line" d={pathFor("objectiveDelta")} />
+        <path className="chart-line j-line" d={pathFor("jDelta")} />
         {chartPoints.map((point) => (
-          <g key={`objective-${point.generation}`}>
-            <circle
-              className={`chart-point ${point.accepted ? "accepted" : "candidate"}`}
-              cx={x(point.xIndex)}
-              cy={y(point.objectiveDelta)}
-              r="4.5"
-            />
-            <circle
-              className={`chart-point j-point ${point.accepted ? "accepted" : "candidate"}`}
-              cx={x(point.xIndex)}
-              cy={y(point.jDelta)}
-              r="4.5"
-            />
-            <text className="chart-label" x={x(point.xIndex)} y={height - 6} textAnchor="middle">
+          <g key={`chart-${run.task.id}-${point.generation}`}>
+            <circle className={`chart-point ${point.acceptedCount > 0 ? "accepted" : "candidate"}`} cx={x(point.index)} cy={y(point.objectiveDelta)} r="4.6" />
+            <circle className={`chart-point j-point ${point.acceptedCount > 0 ? "accepted" : "candidate"}`} cx={x(point.index)} cy={y(point.jDelta)} r="4.6" />
+            <text className="chart-label" x={x(point.index)} y={height - 8} textAnchor="middle">
               g{point.generation}
             </text>
           </g>
         ))}
       </svg>
-
       <div className="legend">
         <span className="legend-item">
           <span className="legend-swatch objective-line-swatch" />
-          objective delta
+          {label} delta
         </span>
         <span className="legend-item">
           <span className="legend-swatch j-line-swatch" />
@@ -376,58 +368,101 @@ function fallbackImprovementChart(run: Run) {
         </span>
         <span className="legend-item">
           <span className="legend-swatch accepted-swatch" />
-          accepted generation
+          accepted branches in generation
         </span>
       </div>
-    </>
+    </div>
   );
 }
 
-function improvementPanel(run: Run) {
-  const reportSvg = artifactUrl(run.handoff_bundle?.manifest?.artifact_paths.report_svg);
-  const improvementRows = run.improvement_table ?? [];
+function memoryDeltaChart(run: Run) {
+  const rows = run.generations.map((generation) => ({
+    generation: generation.generation,
+    memoryDelta: numeric(generation.memory_delta ?? 0),
+  }));
+  if (!rows.length) {
+    return null;
+  }
+  const width = 700;
+  const height = 230;
+  const padding = 28;
+  const plotWidth = width - padding * 2;
+  const plotHeight = height - padding * 2;
+  const extent = Math.max(...rows.map((row) => Math.abs(row.memoryDelta)), 1);
+  const zeroY = padding + plotHeight / 2;
+  const barWidth = plotWidth / Math.max(rows.length * 1.4, 2);
+  const x = (index: number) => padding + index * (barWidth + 18);
+  const barHeight = (value: number) => (Math.abs(value) / extent) * (plotHeight / 2 - 16);
+
   return (
-    <section className="panel chart-card">
-      <div className="panel-header">
-        <div>
-          <p className="eyebrow">improvement</p>
-          <h3>Task-specific report</h3>
-        </div>
+    <div className="chart-wrap">
+      <svg className="chart-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Memory delta chart">
+        <line className="chart-axis" x1={padding} x2={width - padding} y1={zeroY} y2={zeroY} />
+        {rows.map((row, index) => {
+          const heightValue = barHeight(row.memoryDelta);
+          const positive = row.memoryDelta >= 0;
+          return (
+            <g key={`memory-${run.task.id}-${row.generation}`}>
+              <rect
+                className={`memory-bar ${positive ? "positive-bar" : "negative-bar"}`}
+                x={x(index)}
+                y={positive ? zeroY - heightValue : zeroY}
+                width={Math.max(barWidth, 18)}
+                height={heightValue}
+                rx="10"
+              />
+              <text className="chart-label" x={x(index) + Math.max(barWidth, 18) / 2} y={height - 8} textAnchor="middle">
+                g{row.generation}
+              </text>
+              <text className="chart-value" x={x(index) + Math.max(barWidth, 18) / 2} y={positive ? zeroY - heightValue - 8 : zeroY + heightValue + 16} textAnchor="middle">
+                {row.memoryDelta >= 0 ? `+${row.memoryDelta}` : row.memoryDelta}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+      <div className="legend">
+        <span className="legend-item">
+          <span className="legend-swatch positive-swatch" />
+          positive write-back
+        </span>
+        <span className="legend-item">
+          <span className="legend-swatch negative-swatch" />
+          negative write-back
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function metricTemplate(spec: ObjectiveSpec, jSpec: JSpec) {
+  return (
+    <section className="subpanel">
+      <div className="subpanel-header">
+        <p className="eyebrow">metric template</p>
         <div className="badge-row">
-          <span className="badge">{run.generated_at ?? "n/a"}</span>
-          <span className="badge">{run.active_model}</span>
+          <span className="badge">{directionCopy(spec.direction)}</span>
+          <span className="badge">J always max</span>
         </div>
       </div>
-      {reportSvg ? (
-        <img className="report-figure" src={reportSvg} alt={`${run.task.id} improvement report`} />
-      ) : (
-        fallbackImprovementChart(run)
-      )}
-      {improvementRows.length ? (
-        <div className="improvement-table-wrap">
-          <table className="improvement-table">
-            <thead>
-              <tr>
-                <th>Metric</th>
-                <th>Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              {improvementRows.map((row) => (
-                <tr key={row.label}>
-                  <td>{row.label}</td>
-                  <td>{row.value}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+      <div className="template-grid">
+        <article className="template-card">
+          <div className="template-label">{objectiveLabel(spec)}</div>
+          <p className="small">{spec.summary_template}</p>
+          <p className="template-formula">{spec.formula}</p>
+        </article>
+        <article className="template-card">
+          <div className="template-label">{jSpec.display_name}</div>
+          <p className="small">{jSpec.summary_template}</p>
+          <p className="template-formula">{jSpec.formula}</p>
+          <p className="small">{jSpec.delta_template}</p>
+        </article>
+      </div>
     </section>
   );
 }
 
-function candidateCard(candidate: Candidate, tone: "winner" | "candidate" = "candidate") {
+function candidateCard(candidate: Candidate, objectiveSpec: ObjectiveSpec, tone: "winner" | "candidate" = "candidate") {
   return (
     <details className={`detail-card ${tone}`} key={candidate.candidate_id ?? candidate.agent}>
       <summary className="detail-summary">
@@ -438,15 +473,15 @@ function candidateCard(candidate: Candidate, tone: "winner" | "candidate" = "can
         <div className="badge-row">
           <span className={`badge ${tone === "winner" ? "good" : ""}`}>{tone}</span>
           <span className="badge">{candidate.proposal_model ?? "baseline"}</span>
-          <span className="badge">{candidate.verifier_status ?? candidate.metrics.verifier_status ?? "n/a"}</span>
+          <span className="badge">{candidate.metrics.verifier_status ?? "n/a"}</span>
         </div>
       </summary>
       <div className="detail-body">
-        <div className="metric-grid">
-          {metric("objective", candidate.metrics.objective)}
-          {metric("J", candidate.metrics.J)}
+        <div className="metric-grid compact-metrics">
+          {metric(objectiveLabel(objectiveSpec), formatValue(candidate.metrics.objective, objectiveSpec.unit ? ` ${objectiveSpec.unit}` : ""))}
+          {metric("objective_score", formatValue(candidate.metrics.objective_score))}
+          {metric("J", formatValue(candidate.metrics.J))}
           {metric("benchmark", candidate.metrics.benchmark_ms == null ? "n/a" : `${candidate.metrics.benchmark_ms} ms`)}
-          {metric("speedup", candidate.metrics.speedup_vs_baseline ?? "n/a")}
           {metric("tests", `${candidate.metrics.passed_tests ?? "n/a"}/${candidate.metrics.total_tests ?? "n/a"}`)}
           {metric("workspace", shortPath(candidate.workspace_path))}
         </div>
@@ -458,38 +493,40 @@ function candidateCard(candidate: Candidate, tone: "winner" | "candidate" = "can
   );
 }
 
-function generationSection(generation: Generation, openByDefault: boolean) {
+function branchCard(branch: Branch, objectiveSpec: ObjectiveSpec, openByDefault = false) {
   return (
-    <details className="detail-card generation-card" key={generation.generation} open={openByDefault}>
+    <details className="detail-card branch-card" key={branch.branch_id} open={openByDefault}>
       <summary className="detail-summary">
         <div>
-          <strong>Generation {generation.generation}</strong>
-          <div className="detail-summary-copy">{generation.winner.candidate_summary}</div>
+          <strong>{branch.branch_id}</strong>
+          <div className="detail-summary-copy">
+            parent {branch.parent_candidate.agent} → winner {branch.winner.label}
+          </div>
         </div>
         <div className="badge-row">
-          <span className={`badge ${generation.winner_accepted ? "good" : "warn"}`}>
-            {generation.winner_accepted ? "accepted" : "rejected"}
+          <span className={`badge ${branch.winner_accepted ? "good" : "warn"}`}>{branch.winner_accepted ? "accepted" : "rejected"}</span>
+          <span className={`badge ${branch.memory_delta > 0 ? "good" : branch.memory_delta < 0 ? "warn" : ""}`}>
+            memory {branch.memory_delta > 0 ? `+${branch.memory_delta}` : branch.memory_delta}
           </span>
-          <span className={`badge ${generation.wrote_memory ? "good" : ""}`}>
-            {generation.wrote_memory ? "memory write-back" : "no write-back"}
-          </span>
-          <span className="badge">delta_J {generation.delta_J}</span>
+          <span className="badge">delta_J {formatSigned(branch.delta_J, 4)}</span>
         </div>
       </summary>
       <div className="detail-body stack">
-        <div className="metric-grid">
-          {metric("winner objective", generation.winner.metrics.objective)}
-          {metric("winner J", generation.winner.metrics.J)}
-          {metric("delta_J", generation.delta_J)}
+        <div className="metric-grid compact-metrics">
+          {metric("parent", branch.parent_candidate.agent)}
+          {metric(objectiveLabel(objectiveSpec), formatValue(branch.winner.metrics.objective, objectiveSpec.unit ? ` ${objectiveSpec.unit}` : ""))}
+          {metric("J", formatValue(branch.winner.metrics.J))}
+          {metric("improved global best", String(Boolean(branch.winner_improved_global_best)))}
         </div>
+        {branch.rejection_reason ? <p className="small muted">{branch.rejection_reason}</p> : null}
         <div>
           <div className="section-label">Retrieved memory</div>
           <ul className="dense-list">
-            {generation.retrieved_memories.length ? (
-              generation.retrieved_memories.map((memory) => (
+            {branch.retrieved_memories.length ? (
+              branch.retrieved_memories.map((memory) => (
                 <li key={memory.experience_id}>
                   <strong>{memory.experience_id}</strong>
-                  <div className="small">{memory.prompt_fragment || memory.strategy_hypothesis || "No prompt fragment."}</div>
+                  <div className="small">{memory.prompt_fragment || memory.strategy_hypothesis || "No summary."}</div>
                 </li>
               ))
             ) : (
@@ -498,11 +535,8 @@ function generationSection(generation: Generation, openByDefault: boolean) {
           </ul>
         </div>
         <div className="stack">
-          {generation.candidates.map((candidate) =>
-            candidateCard(
-              candidate,
-              candidate.candidate_id === generation.winner.candidate_id ? "winner" : "candidate",
-            ),
+          {branch.candidates.map((candidate) =>
+            candidateCard(candidate, objectiveSpec, candidate.candidate_id === branch.winner.candidate_id ? "winner" : "candidate"),
           )}
         </div>
       </div>
@@ -510,210 +544,236 @@ function generationSection(generation: Generation, openByDefault: boolean) {
   );
 }
 
-function addedExperienceCard(experience: AddedExperience) {
-  const positive = experience.experience_outcome === "success";
+function generationCard(generation: Generation, objectiveSpec: ObjectiveSpec, openByDefault = false) {
   return (
-    <article className={`memory-fragment-card ${positive ? "positive" : "negative"}`} key={experience.experience_id}>
-      <div className="badge-row">
-        <span className={`badge ${positive ? "good" : "warn"}`}>{positive ? "positive" : "negative"}</span>
-        <span className="badge">g{experience.generation}</span>
-        <span className="badge">{experience.verifier_status}</span>
-        <span className="badge">{experience.proposal_model ?? "n/a"}</span>
+    <details className="detail-card generation-card" key={generation.generation} open={openByDefault}>
+      <summary className="detail-summary">
+        <div>
+          <strong>Generation {generation.generation}</strong>
+          <div className="detail-summary-copy">{generation.winner.candidate_summary}</div>
+        </div>
+        <div className="badge-row">
+          <span className={`badge ${generation.accepted_count ? "good" : "warn"}`}>{generation.accepted_count ?? 0} accepts</span>
+          <span className={`badge ${numeric(generation.memory_delta) > 0 ? "good" : numeric(generation.memory_delta) < 0 ? "warn" : ""}`}>
+            memory {numeric(generation.memory_delta) > 0 ? `+${generation.memory_delta}` : generation.memory_delta ?? 0}
+          </span>
+          <span className="badge">delta_J {formatSigned(generation.delta_J, 4)}</span>
+        </div>
+      </summary>
+      <div className="detail-body stack">
+        <div className="metric-grid compact-metrics">
+          {metric("parents", generation.parents?.length ?? generation.branches.length)}
+          {metric("winner", generation.winner.label)}
+          {metric(objectiveLabel(objectiveSpec), formatValue(generation.winner.metrics.objective, objectiveSpec.unit ? ` ${objectiveSpec.unit}` : ""))}
+          {metric("winner J", formatValue(generation.winner.metrics.J))}
+          {metric("positive write-backs", generation.positive_writebacks ?? 0)}
+          {metric("negative write-backs", generation.negative_writebacks ?? 0)}
+        </div>
+        <div className="stack">
+          {generation.branches.map((branch, index) => branchCard(branch, objectiveSpec, index === 0))}
+        </div>
       </div>
-      <p className="memory-fragment-summary">{experience.candidate_summary}</p>
-      <p className="small"><strong>prompt</strong> {experience.prompt_fragment}</p>
-      <p className="small"><strong>hypothesis</strong> {experience.strategy_hypothesis}</p>
-      <p className="small"><strong>delta_J</strong> {experience.delta_J}</p>
+    </details>
+  );
+}
+
+function liveTaskSection(task: LiveTaskCard, isOpen: boolean, onToggle: () => void) {
+  return (
+    <article className="task-card" key={task.taskId}>
+      <button className="accordion-toggle" onClick={onToggle} type="button">
+        <div className="accordion-copy">
+          <p className="eyebrow">live task</p>
+          <h3>{task.title}</h3>
+          <p className="muted">{task.description}</p>
+        </div>
+        <div className="accordion-meta">
+          <span className={`badge ${task.status === "completed" ? "good" : task.status === "running" ? "warn" : ""}`}>{task.status}</span>
+          <span className="badge">{task.model}</span>
+          <span className="badge">branching {task.branchingFactor}</span>
+          <span className="badge">
+            g{task.generations.length}/{task.generationBudget || "?"}
+          </span>
+        </div>
+      </button>
+      <div className="task-summary-row">
+        <span className="summary-pill">{task.taskId}</span>
+        <span className="summary-pill">{task.currentBest ?? "Current best pending"}</span>
+      </div>
+      {isOpen ? (
+        <div className="accordion-body stack">
+          {task.generations.length ? (
+            task.generations.map((generation) => (
+              <article className="live-generation-card" key={`${task.taskId}-${generation.generation}`}>
+                <div className="panel-header">
+                  <div>
+                    <div className="section-label">Generation {generation.generation}</div>
+                    <p className="small">{generation.summary ?? "Waiting for generation summary."}</p>
+                  </div>
+                  <div className="badge-row">
+                    <span className={`badge ${generation.status === "completed" ? "good" : generation.status === "running" ? "warn" : ""}`}>{generation.status}</span>
+                    <span className="badge">accepts {generation.acceptedCount}</span>
+                    <span className={`badge ${generation.memoryDelta > 0 ? "good" : generation.memoryDelta < 0 ? "warn" : ""}`}>
+                      memory {generation.memoryDelta > 0 ? `+${generation.memoryDelta}` : generation.memoryDelta}
+                    </span>
+                  </div>
+                </div>
+                <div className="branch-grid">
+                  {generation.branches.map((branch) => (
+                    <article className="branch-pill-card" key={branch.branchId}>
+                      <div className="badge-row">
+                        <span className="badge">{branch.branchId}</span>
+                        <span className={`badge ${branch.acceptedToFrontier ? "good" : ""}`}>{branch.selectedModel ?? "awaiting model"}</span>
+                      </div>
+                      <p className="small">
+                        parent <strong>{branch.parentCandidate}</strong>
+                      </p>
+                      <ul className="dense-list compact-list">
+                        {branch.candidateMessages.length ? (
+                          branch.candidateMessages.map((message) => <li key={`${branch.branchId}-${message}`}>{message}</li>)
+                        ) : (
+                          <li>No verified candidates yet.</li>
+                        )}
+                      </ul>
+                      {branch.memoryMessage ? <p className="small">{branch.memoryMessage}</p> : null}
+                    </article>
+                  ))}
+                </div>
+              </article>
+            ))
+          ) : (
+            <p className="small">Waiting for task events.</p>
+          )}
+          <details className="detail-card">
+            <summary className="detail-summary">
+              <div>
+                <strong>Event log</strong>
+                <div className="detail-summary-copy">Raw task-scoped backend events.</div>
+              </div>
+            </summary>
+            <div className="detail-body">
+              <ul className="dense-list">
+                {task.events.map((event, index) => (
+                  <li key={`${task.taskId}-${event.timestamp ?? "t"}-${index}`}>
+                    <strong>{event.phase ?? event.event_type ?? "event"}</strong>
+                    <div className="small">
+                      {[event.timestamp, event.branch_id, event.message].filter(Boolean).join(" · ")}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </details>
+        </div>
+      ) : null}
     </article>
   );
 }
 
-function memoryFragmentsPanel(run: Run) {
-  const addedExperiences = run.added_experiences ?? [];
-  const positiveExperiences = addedExperiences.filter((experience) => experience.experience_outcome === "success");
-  const negativeExperiences = addedExperiences.filter((experience) => experience.experience_outcome === "failure");
-  const positiveCount = numeric(run.positive_experiences_added ?? positiveExperiences.length);
-  const negativeCount = numeric(run.negative_experiences_added ?? negativeExperiences.length);
-  const memoryBefore = run.memory_before_count ?? "n/a";
-  const memoryAfter = run.memory_after_count ?? "n/a";
-
+function runCard(run: Run, jSpec: JSpec, isOpen: boolean, onToggle: () => void) {
+  const reportSvg = artifactUrl(run.handoff_bundle?.manifest?.artifact_paths.report_svg);
+  const objectiveSpec = run.task.objective_spec;
   return (
-    <section className="panel">
-      <div className="panel-header">
-        <div>
-          <p className="eyebrow">memory fragments</p>
-          <h3>Memory fragments written in this run</h3>
-          <p className="muted">Positive and negative fragments are grouped separately so you can see both the winning moves and the dead ends that were recorded for reuse.</p>
-        </div>
-        <div className="badge-row">
-          <span className="badge">initial {memoryBefore}</span>
-          <span className="badge">after {memoryAfter}</span>
-          <span className="badge good">+positive {positiveCount}</span>
-          <span className="badge warn">+negative {negativeCount}</span>
-        </div>
-      </div>
-
-      <div className="metric-grid memory-metric-grid">
-        {metric("initial memory", memoryBefore)}
-        {metric("memory after run", memoryAfter)}
-        {metric("+positive", positiveCount)}
-        {metric("+negative", negativeCount)}
-      </div>
-
-      <div className="memory-fragment-grid">
-        <section className="memory-column positive-column">
-          <div className="memory-column-header">
-            <strong>Positive fragments</strong>
-            <span className="badge good">{positiveCount}</span>
-          </div>
-          <div className="memory-scroll">
-            {positiveExperiences.length ? (
-              positiveExperiences.map((experience) => addedExperienceCard(experience))
-            ) : (
-              <p className="small">No positive fragments were written in this run.</p>
-            )}
-          </div>
-        </section>
-
-        <section className="memory-column negative-column">
-          <div className="memory-column-header">
-            <strong>Negative fragments</strong>
-            <span className="badge warn">{negativeCount}</span>
-          </div>
-          <div className="memory-scroll">
-            {negativeExperiences.length ? (
-              negativeExperiences.map((experience) => addedExperienceCard(experience))
-            ) : (
-              <p className="small">No negative fragments were written in this run.</p>
-            )}
-          </div>
-        </section>
-      </div>
-    </section>
-  );
-}
-
-function runOverviewPanels(run: Run) {
-  return (
-    <div className="split-grid overview-grid">
-      <section className="panel chart-card">
-        <div className="panel-header">
-          <div>
-            <p className="eyebrow">run overview</p>
-            <h3>Objective and J drift by generation</h3>
-          </div>
-          <div className="badge-row">
-            <span className="badge">{run.task.objective_label}</span>
-            <span className="badge">{run.winner.agent}</span>
-          </div>
-        </div>
-        {runOverviewChart(run)}
-      </section>
-
-      <section className="panel chart-card">
-        <div className="panel-header">
-          <div>
-            <p className="eyebrow">memory growth</p>
-            <h3>Cumulative positive and negative write-backs</h3>
-          </div>
-          <div className="badge-row">
-            <span className="badge good">+positive {run.positive_experiences_added ?? 0}</span>
-            <span className="badge warn">+negative {run.negative_experiences_added ?? 0}</span>
-          </div>
-        </div>
-        {memoryGrowthChart(run)}
-      </section>
-    </div>
-  );
-}
-
-function runDetail(run: Run | null) {
-  if (!run) {
-    return (
-      <section className="panel empty-state">
-        <p className="eyebrow">latest run</p>
-        <h2>No completed run yet</h2>
-        <p className="muted">Choose a task, pick a model, and start a run. The frontend will poll the backend job and swap the result into the workbench automatically when it finishes.</p>
-      </section>
-    );
-  }
-
-  const manifest = run.handoff_bundle?.manifest;
-
-  return (
-    <section className="panel stack">
-      <div className="panel-header">
-        <div>
-          <p className="eyebrow">{run.task.id}</p>
-          <h2>{run.task.title}</h2>
+    <article className="task-card completed-card" key={run.task.id}>
+      <button className="accordion-toggle" onClick={onToggle} type="button">
+        <div className="accordion-copy">
+          <p className="eyebrow">completed task</p>
+          <h3>{run.task.title}</h3>
           <p className="muted">{run.task.description}</p>
         </div>
-        <div className="badge-row">
-          <span className="badge">{run.run_mode}</span>
+        <div className="accordion-meta">
           <span className="badge">{run.active_model}</span>
-          <span className="badge">{run.session_id ?? "session n/a"}</span>
-          <span className="badge">{run.llm_traces.length} llm traces</span>
+          <span className="badge">branching {run.task.branching_factor}</span>
+          <span className="badge">
+            {objectiveLabel(objectiveSpec)} {formatValue(run.winner.metrics.objective, objectiveSpec.unit ? ` ${objectiveSpec.unit}` : "")}
+          </span>
+          <span className={`badge ${numeric(run.run_delta_J ?? run.delta_J) >= 0 ? "good" : "warn"}`}>
+            run_delta_J {formatSigned(run.run_delta_J ?? run.delta_J, 4)}
+          </span>
         </div>
+      </button>
+      <div className="task-summary-row">
+        <span className="summary-pill">{run.task.id}</span>
+        <span className="summary-pill">{directionCopy(objectiveSpec.direction)}</span>
+        <span className="summary-pill">{run.selection_reason}</span>
       </div>
+      {isOpen ? (
+        <div className="accordion-body stack">
+          {metricTemplate(objectiveSpec, run.j_spec ?? jSpec)}
 
-      <div className="split-grid">
-        {candidateCard(run.baseline, "candidate")}
-        {candidateCard(run.winner, "winner")}
-      </div>
-
-      <div className="metric-grid">
-        {metric("winner objective", run.winner.metrics.objective)}
-        {metric("winner J", run.winner.metrics.J)}
-        {metric("delta_J", run.delta_J)}
-        {metric("function", run.task.function_name)}
-        {metric("signature", run.task.function_signature)}
-        {metric("source type", run.task.source_type)}
-      </div>
-
-      <div className="metric-grid">
-        {metric("generated", run.generated_at ?? "n/a")}
-        {metric("session", run.session_id ?? "n/a")}
-        {metric("winner candidate", run.winner.agent)}
-      </div>
-
-      {runOverviewPanels(run)}
-
-      {improvementPanel(run)}
-
-      {memoryFragmentsPanel(run)}
-
-      <div className="panel inset-panel">
-        <div className="section-label">Selection reason</div>
-        <p className="muted">{run.selection_reason}</p>
-      </div>
-
-      <details className="detail-card">
-        <summary className="detail-summary">
-          <div>
-            <strong>Artifacts and ledger</strong>
-            <div className="detail-summary-copy">Manifest, trace, llm trace, and prompt-ready memory.</div>
+          <div className="metric-grid">
+            {metric("baseline objective", formatValue(run.baseline.metrics.objective, objectiveSpec.unit ? ` ${objectiveSpec.unit}` : ""))}
+            {metric("winner objective", formatValue(run.winner.metrics.objective, objectiveSpec.unit ? ` ${objectiveSpec.unit}` : ""))}
+            {metric("run_delta_J", formatSigned(run.run_delta_J ?? run.delta_J, 4))}
+            {metric("generations", run.generations.length)}
+            {metric("write-backs", run.added_experiences?.length ?? 0)}
+            {metric("memory", `${run.memory_before_count ?? "n/a"} → ${run.memory_after_count ?? "n/a"}`)}
           </div>
-        </summary>
-        <div className="detail-body stack">
-          <div className="artifact-grid">
-            {metric("manifest", shortPath(run.handoff_bundle?.manifest_path))}
-            {metric("payload", shortPath(manifest?.artifact_paths.payload))}
-            {metric("trace", shortPath(manifest?.artifact_paths.trace))}
-            {metric("llm trace", shortPath(manifest?.artifact_paths.llm_trace_jsonl))}
-            {metric("memory markdown", shortPath(manifest?.artifact_paths.memory_markdown))}
-            {metric("report svg", shortPath(manifest?.artifact_paths.report_svg))}
+
+          <div className="split-grid">
+            {candidateCard(run.baseline, objectiveSpec, "candidate")}
+            {candidateCard(run.winner, objectiveSpec, "winner")}
           </div>
-          <pre className="code-block compact"><code>{run.memory_markdown}</code></pre>
+
+          <div className="split-grid report-grid">
+            <section className="subpanel">
+              <div className="subpanel-header">
+                <div>
+                  <p className="eyebrow">objective + J</p>
+                  <h4>Generational deltas</h4>
+                </div>
+              </div>
+              {deltaChart(run)}
+            </section>
+            <section className="subpanel">
+              <div className="subpanel-header">
+                <div>
+                  <p className="eyebrow">memory delta</p>
+                  <h4>Per-generation net change</h4>
+                </div>
+              </div>
+              {memoryDeltaChart(run)}
+            </section>
+          </div>
+
+          <section className="subpanel">
+            <div className="subpanel-header">
+              <div>
+                <p className="eyebrow">report</p>
+                <h4>SVG summary</h4>
+              </div>
+            </div>
+            {reportSvg ? <img className="report-figure" src={reportSvg} alt={`${run.task.id} report`} /> : deltaChart(run)}
+          </section>
+
+          <section className="subpanel">
+            <div className="subpanel-header">
+              <div>
+                <p className="eyebrow">artifacts</p>
+                <h4>Manifest and memory ledger</h4>
+              </div>
+            </div>
+            <div className="artifact-grid">
+              {metric("manifest", shortPath(run.handoff_bundle?.manifest_path))}
+              {metric("payload", shortPath(run.handoff_bundle?.manifest?.artifact_paths.payload))}
+              {metric("trace", shortPath(run.handoff_bundle?.manifest?.artifact_paths.trace))}
+              {metric("llm trace", shortPath(run.handoff_bundle?.manifest?.artifact_paths.llm_trace_jsonl))}
+              {metric("memory markdown", shortPath(run.handoff_bundle?.manifest?.artifact_paths.memory_markdown))}
+              {metric("report svg", shortPath(run.handoff_bundle?.manifest?.artifact_paths.report_svg))}
+            </div>
+            <pre className="code-block compact"><code>{run.memory_markdown}</code></pre>
+          </section>
+
+          <section className="stack">
+            {run.generations.map((generation, index) => generationCard(generation, objectiveSpec, index === run.generations.length - 1))}
+          </section>
         </div>
-      </details>
-
-      <div className="stack">
-        {run.generations.map((generation, index) =>
-          generationSection(generation, index === run.generations.length - 1),
-        )}
-      </div>
-    </section>
+      ) : null}
+    </article>
   );
+}
+
+function themeChoices(): ThemePreference[] {
+  return ["system", "light", "dark"];
 }
 
 export function App() {
@@ -721,13 +781,15 @@ export function App() {
   const [payload, setPayload] = useState<Payload>(emptyPayload());
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
-  const [selectedRunId, setSelectedRunId] = useState("");
+  const [branchingFactorInput, setBranchingFactorInput] = useState("4");
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
   const [liveJob, setLiveJob] = useState<JobState | null>({
     status: "loading",
     events: [{ phase: "boot", message: "Loading runtime and task catalog." }],
   });
   const [error, setError] = useState<ErrorPayload | null>(null);
+  const [openLiveTasks, setOpenLiveTasks] = useState<Record<string, boolean>>({});
+  const [openCompletedTasks, setOpenCompletedTasks] = useState<Record<string, boolean>>({});
   const pollToken = useRef(0);
 
   const selectedTask = useMemo(
@@ -735,11 +797,10 @@ export function App() {
     [payload.task_catalog, selectedTaskId],
   );
 
-  const selectedRun = useMemo(
-    () => payload.runs.find((run) => run.task.id === selectedRunId) ?? payload.runs[0] ?? null,
-    [payload.runs, selectedRunId],
+  const liveTasks = useMemo(
+    () => summarizeLiveTasks(liveJob?.events ?? [], payload.task_catalog, liveJob, payload.runs),
+    [liveJob, payload.task_catalog, payload.runs],
   );
-  const liveGenerationCards = useMemo(() => summarizeLiveEvents(liveJob?.events ?? []), [liveJob?.events]);
 
   useEffect(() => {
     const stored = window.localStorage.getItem("autoresearch-theme");
@@ -773,18 +834,24 @@ export function App() {
         setSelectedModel(runtime.active_model);
         setPayload(emptyPayload(tasks));
         setSelectedTaskId(tasks[0]?.id ?? "");
+        setBranchingFactorInput(String(tasks[0]?.branching_factor ?? 4));
         setLiveJob({
           status: "loading",
           events: [{ phase: "boot", message: "Loading latest cached run." }],
         });
-
         const latest = await loadLatestRun();
         if (cancelled) {
           return;
         }
         const normalized = normalizePayload(latest, tasks);
         setPayload(normalized);
-        setSelectedRunId(normalized.runs[0]?.task.id ?? "");
+        setOpenCompletedTasks(
+          normalized.runs[0]
+            ? {
+                [normalized.runs[0].task.id]: true,
+              }
+            : {},
+        );
         setLiveJob(null);
         setError(null);
       } catch (caught) {
@@ -802,6 +869,13 @@ export function App() {
       pollToken.current += 1;
     };
   }, []);
+
+  useEffect(() => {
+    if (!selectedTask) {
+      return;
+    }
+    setBranchingFactorInput(String(selectedTask.branching_factor ?? 4));
+  }, [selectedTask?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (liveJob?.status === "running") {
@@ -822,20 +896,45 @@ export function App() {
     };
   }, [liveJob?.status]);
 
+  useEffect(() => {
+    if (!liveTasks.length) {
+      return;
+    }
+    setOpenLiveTasks((previous) => {
+      const next = { ...previous };
+      for (const task of liveTasks) {
+        if (!(task.taskId in next) && task.status !== "queued") {
+          next[task.taskId] = true;
+        }
+      }
+      return next;
+    });
+  }, [liveTasks]);
+
+  function toggleLiveTask(taskId: string) {
+    setOpenLiveTasks((previous) => ({ ...previous, [taskId]: !previous[taskId] }));
+  }
+
+  function toggleCompletedTask(taskId: string) {
+    setOpenCompletedTasks((previous) => ({ ...previous, [taskId]: !previous[taskId] }));
+  }
+
   async function runTask(taskId: string | null) {
     const model = selectedModel || runtimeInfo.active_model;
+    const branchingFactor = Math.max(1, Math.floor(numeric(branchingFactorInput || selectedTask?.branching_factor || 4)));
     pollToken.current += 1;
     const token = pollToken.current;
     setError(null);
     setLiveJob({
       status: "running",
-      taskId: taskId,
+      taskId,
       model,
+      branching_factor: branchingFactor,
       events: [{ phase: "queued", message: `Starting ${taskId ?? "full sequence"} with ${model}.` }],
     });
 
     try {
-      const start = await startJob(taskId, model);
+      const start = await startJob(taskId, model, branchingFactor);
       let job = await loadJob(start.job_id);
       while (job.status === "running" && token === pollToken.current) {
         setLiveJob(job);
@@ -853,7 +952,15 @@ export function App() {
       if (job.payload) {
         const normalized = normalizePayload(job.payload, payload.task_catalog);
         setPayload(normalized);
-        setSelectedRunId(taskId ?? normalized.runs[0]?.task.id ?? "");
+        setOpenCompletedTasks((previous) => {
+          const next = { ...previous };
+          for (const run of normalized.runs) {
+            if (taskId === run.task.id || (!taskId && !(run.task.id in next))) {
+              next[run.task.id] = true;
+            }
+          }
+          return next;
+        });
         setError(null);
       }
     } catch (caught) {
@@ -863,19 +970,22 @@ export function App() {
       setError(asErrorPayload(caught));
       setLiveJob({
         status: "failed",
-        taskId: taskId,
+        taskId,
         model,
+        branching_factor: Math.max(1, Math.floor(numeric(branchingFactorInput || 4))),
         events: [],
       });
     }
   }
+
+  const taskJSpec = payload.j_spec ?? emptyJSpec();
 
   return (
     <main className="app-shell">
       <section className="topbar">
         <div>
           <p className="eyebrow">autoresearch</p>
-          <strong className="topbar-title">LLM-required codegen flywheel</strong>
+          <strong className="topbar-title">Task-centered evolution workbench</strong>
         </div>
         <div className="theme-toggle" role="tablist" aria-label="Theme mode">
           {themeChoices().map((choice) => (
@@ -883,6 +993,7 @@ export function App() {
               key={choice}
               className={`theme-chip ${themePreference === choice ? "active" : ""}`}
               onClick={() => setThemePreference(choice)}
+              type="button"
             >
               {choice}
             </button>
@@ -890,68 +1001,71 @@ export function App() {
         </div>
       </section>
 
-      <section className="hero panel">
-        <div>
-          <p className="eyebrow">strategy memory + deterministic verifier</p>
-          <h1>LLM-required autoresearch around direct code generation.</h1>
-          <p className="muted hero-copy">
-            Launch a selected task, let the backend outer loop run, and inspect the result through one focused workbench:
-            runtime state, live generations, prompt-ready memory, artifacts, and deterministic reports.
-          </p>
+      <section className="panel control-panel">
+        <div className="panel-header">
+          <div>
+            <p className="eyebrow">control room</p>
+            <h1>Branching evolution, task by task.</h1>
+            <p className="muted hero-copy">
+              Each task carries its own description, objective template, and branchable generation trace. The interface stays collapsed until a specific task actually moves.
+            </p>
+          </div>
+          <div className="badge-row">
+            <span className="badge">{runtimeInfo.mode}</span>
+            <span className="badge">runtime {runtimeInfo.active_model}</span>
+            <span className="badge">memory {payload.summary.memory_size_after_run}</span>
+          </div>
         </div>
-        <div className="hero-side">
-          <div className="control-grid">
-            <label className="field">
-              <span className="field-label">Task</span>
-              <select
-                className="control"
-                value={selectedTask?.id ?? ""}
-                onChange={(event) => setSelectedTaskId(event.target.value)}
-              >
-                {payload.task_catalog.map((task) => (
-                  <option key={task.id} value={task.id}>
-                    {task.id}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              <span className="field-label">Model</span>
-              <select
-                className="control"
-                value={selectedModel}
-                onChange={(event) => setSelectedModel(event.target.value)}
-                disabled={!runtimeInfo.available_models.length}
-              >
-                {runtimeInfo.available_models.map((model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <div className="button-row">
-            <button className="action primary" onClick={() => void runTask(selectedTask?.id ?? null)}>
-              Run selected task
-            </button>
-            <button className="action" onClick={() => void runTask(null)}>
-              Run full sequence
-            </button>
-          </div>
-          {selectedTask ? (
-            <div className="task-brief">
-              <div className="badge-row">
-                <span className="badge">{selectedTask.family}</span>
-                <span className="badge">{selectedTask.function_name}</span>
-                <span className="badge">
-                  {selectedTask.generation_budget} x {selectedTask.candidate_budget}
-                </span>
-              </div>
-              <p className="small">{selectedTask.description}</p>
+
+        <div className="control-grid triple">
+          <label className="field">
+            <span className="field-label">Task</span>
+            <select className="control" value={selectedTask?.id ?? ""} onChange={(event) => setSelectedTaskId(event.target.value)}>
+              {payload.task_catalog.map((task) => (
+                <option key={task.id} value={task.id}>
+                  {task.id}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span className="field-label">Model</span>
+            <select className="control" value={selectedModel} onChange={(event) => setSelectedModel(event.target.value)} disabled={!runtimeInfo.available_models.length}>
+              {runtimeInfo.available_models.map((model) => (
+                <option key={model} value={model}>
+                  {model}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span className="field-label">Branching Factor</span>
+            <input className="control" type="number" min={1} step={1} value={branchingFactorInput} onChange={(event) => setBranchingFactorInput(event.target.value)} />
+          </label>
+        </div>
+
+        <div className="button-row">
+          <button className="action primary" onClick={() => void runTask(selectedTask?.id ?? null)} type="button">
+            Run selected task
+          </button>
+          <button className="action" onClick={() => void runTask(null)} type="button">
+            Run full sequence
+          </button>
+        </div>
+
+        {selectedTask ? (
+          <div className="task-preview">
+            <div className="task-summary-row">
+              <span className="summary-pill">{selectedTask.family}</span>
+              <span className="summary-pill">{selectedTask.function_name}</span>
+              <span className="summary-pill">
+                {selectedTask.generation_budget} generations × {selectedTask.candidate_budget} candidates × branching {branchingFactorInput}
+              </span>
             </div>
-          ) : null}
-        </div>
+            <p className="muted">{selectedTask.description}</p>
+            {metricTemplate(selectedTask.objective_spec, taskJSpec)}
+          </div>
+        ) : null}
       </section>
 
       {error ? (
@@ -970,10 +1084,9 @@ export function App() {
         <div className="panel-header">
           <div>
             <p className="eyebrow">runtime</p>
-            <h2>Deterministic verifier and model runtime</h2>
+            <h2>Verifier and proposal runtime</h2>
           </div>
           <div className="badge-row">
-            <span className="badge">{runtimeInfo.mode}</span>
             <span className="badge">primary {runtimeInfo.primary_model}</span>
             <span className="badge">selected {selectedModel || runtimeInfo.active_model}</span>
           </div>
@@ -986,120 +1099,51 @@ export function App() {
           {metric("temperature", runtimeInfo.temperature)}
           {metric("max tokens", runtimeInfo.max_tokens)}
         </div>
-        <div className="split-grid">
-          <div className="panel inset-panel">
-            <div className="section-label">Enabled models</div>
-            <div className="badge-row">
-              {runtimeInfo.available_models.map((model) => (
-                <span className="badge" key={model}>
-                  {model}
-                </span>
-              ))}
-            </div>
-            <p className="small">Mode is intentionally fixed to <code>llm-required</code>. Model choice is dynamic per run, but there is still no automatic fallback.</p>
-          </div>
-          <div className="panel inset-panel">
-            <div className="section-label">Audit</div>
-            <ul className="dense-list">
-              <li>workspace: {payload.audit.workspace_root}</li>
-              <li>session: {payload.audit.session_id ?? "n/a"}</li>
-              <li>api base: {runtimeInfo.api_base}</li>
-              <li>git commit: {payload.summary.git_commit}</li>
-            </ul>
-          </div>
-        </div>
       </section>
 
-      {liveJob ? (
-        <section className="panel">
-          <div className="panel-header">
-            <div>
-              <p className="eyebrow">live run</p>
-              <h2>{liveJob.status === "running" ? "Backend job in progress" : liveJob.status === "loading" ? "Bootstrapping workbench" : "Last job state"}</h2>
-            </div>
-            <div className="badge-row">
-              <span className="badge">{liveJob.status}</span>
-              <span className="badge">{liveJob.model ?? selectedModel ?? "n/a"}</span>
-              <span className="badge">{liveJob.taskId ?? liveJob.task_id ?? "full sequence"}</span>
-            </div>
+      <section className="panel stack">
+        <div className="panel-header">
+          <div>
+            <p className="eyebrow">live tasks</p>
+            <h2>Task-scoped runtime trace</h2>
           </div>
-          {liveGenerationCards.length ? (
-            <div className="live-generation-grid">
-              {liveGenerationCards.map((card) => (
-                <article className={`live-generation-card ${card.status}`} key={card.generation}>
-                  <div className="badge-row">
-                    <span className="badge">g{card.generation}</span>
-                    <span className={`badge ${card.status === "completed" ? "good" : card.status === "running" ? "warn" : ""}`}>
-                      {card.status}
-                    </span>
-                    <span className="badge">{card.selectedModel ?? "awaiting proposal"}</span>
-                  </div>
-                  <p className="small">{card.retrievedMemories ?? "Waiting for generation start."}</p>
-                  <ul className="dense-list compact-list">
-                    {card.candidateMessages.length ? (
-                      card.candidateMessages.map((message) => <li key={message}>{message}</li>)
-                    ) : (
-                      <li>No verified candidates yet.</li>
-                    )}
-                  </ul>
-                  {card.memoryWriteback ? <p className="small">write-back: {card.memoryWriteback}</p> : null}
-                  {card.completion ? <p className="small">done: {card.completion}</p> : null}
-                </article>
-              ))}
-            </div>
-          ) : null}
-          <details className="detail-card">
-            <summary className="detail-summary">
-              <div>
-                <strong>Event log</strong>
-                <div className="detail-summary-copy">Raw backend events for this job.</div>
-              </div>
-            </summary>
-            <div className="detail-body">
-              <ul className="dense-list">
-                {(liveJob.events || []).length ? (
-                  liveJob.events.map((event, index) => (
-                    <li key={`${event.timestamp ?? "t"}-${index}`}>
-                      <strong>{event.phase ?? event.event_type ?? "event"}</strong>
-                      <div className="small">
-                        {[event.timestamp, event.message, event.candidate].filter(Boolean).join(" · ")}
-                      </div>
-                    </li>
-                  ))
-                ) : (
-                  <li>No events yet.</li>
-                )}
-              </ul>
-            </div>
-          </details>
-        </section>
-      ) : null}
-
-      {payload.runs.length ? (
-        <section className="panel">
-          <div className="panel-header">
-            <div>
-              <p className="eyebrow">run history</p>
-              <h2>Focus one run at a time</h2>
-            </div>
+          <div className="badge-row">
+            <span className={`badge ${liveJob?.status === "completed" ? "good" : liveJob?.status === "running" ? "warn" : ""}`}>{liveJob?.status ?? "idle"}</span>
+            <span className="badge">{liveJob?.model ?? selectedModel ?? "n/a"}</span>
           </div>
-          <div className="run-selector">
-            {payload.runs.map((run) => (
-              <button
-                key={run.task.id}
-                className={`selector-chip ${selectedRun?.task.id === run.task.id ? "active" : ""}`}
-                onClick={() => setSelectedRunId(run.task.id)}
-              >
-                <strong>{run.task.id}</strong>
-                <span>{run.winner.metrics.objective}</span>
-              </button>
-            ))}
+        </div>
+        {liveTasks.length ? (
+          liveTasks.map((task) => liveTaskSection(task, Boolean(openLiveTasks[task.taskId]), () => toggleLiveTask(task.taskId)))
+        ) : (
+          <section className="empty-state">
+            <h3>No live task yet</h3>
+            <p className="muted">Start a task or a full sequence and the frontend will group all live events by task, then by generation and branch.</p>
+          </section>
+        )}
+      </section>
+
+      <section className="panel stack">
+        <div className="panel-header">
+          <div>
+            <p className="eyebrow">completed tasks</p>
+            <h2>Task summaries and generation details</h2>
           </div>
-        </section>
-      ) : null}
-
-      {runDetail(selectedRun)}
-
+          <div className="badge-row">
+            <span className="badge">{payload.summary.active_model}</span>
+            <span className="badge">{payload.summary.num_tasks} tasks</span>
+          </div>
+        </div>
+        {payload.runs.length ? (
+          payload.runs.map((run) => runCard(run, taskJSpec, Boolean(openCompletedTasks[run.task.id]), () => toggleCompletedTask(run.task.id)))
+        ) : (
+          <section className="empty-state">
+            <h3>No completed run yet</h3>
+            <p className="muted">Once a run finishes, each task will appear here as an independent card with its own description, metric template, charts, and branch history.</p>
+          </section>
+        )}
+      </section>
     </main>
   );
 }
+
+export default App;

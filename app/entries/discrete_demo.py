@@ -10,7 +10,7 @@ from typing import Any, Callable
 from app.codegen.catalog import list_codegen_task_summaries, load_codegen_tasks, seed_strategy_experiences
 from app.codegen.handoff import UPSTREAM_TARGET, git_commit, git_remote, write_json, write_jsonl
 from app.codegen.llm import ProposalRuntime
-from app.codegen.reporting import build_improvement_table, write_improvement_report_svg
+from app.codegen.reporting import write_improvement_report_svg
 from app.codegen.trainer import run_codegen_task
 from app.memory.store import MemoryStore
 
@@ -25,8 +25,9 @@ J_FORMULA = (
     "J = 1.20 * correctness + 0.95 * speed_score + 0.20 * memory_bonus "
     "+ 0.15 * stability - 0.18 * complexity - 0.05 * (line_count / 10)"
 )
-OBJECTIVE_FORMULA = "objective = speedup_vs_baseline"
-DELTA_FORMULA = "delta_J = J(winner) - J(previous_best)"
+OBJECTIVE_FORMULA = "objective is task-specific; see task.objective_spec.formula"
+DELTA_FORMULA = "delta_J = J(generation_winner) - J(selected_parent)"
+RUN_DELTA_FORMULA = "run_delta_J = J(final_winner) - J(baseline)"
 FLYWHEEL_STEPS = [
     "load strict llm config from shell env or repo-root .env",
     "retrieve strategy memory fragments",
@@ -56,13 +57,14 @@ def generate_discrete_payload(
     session_id: str | None = None,
     generation_budget: int | None = None,
     candidate_budget: int | None = None,
+    branching_factor: int | None = None,
 ) -> dict[str, Any]:
     tasks = load_codegen_tasks()
     if task_id is not None:
         tasks = [task for task in tasks if task["id"] == task_id]
         if not tasks:
             raise ValueError(f"Unknown task id: {task_id}")
-    if generation_budget is not None or candidate_budget is not None:
+    if generation_budget is not None or candidate_budget is not None or branching_factor is not None:
         overridden_tasks: list[dict[str, Any]] = []
         for task in tasks:
             patched = dict(task)
@@ -70,6 +72,8 @@ def generate_discrete_payload(
                 patched["generation_budget"] = generation_budget
             if candidate_budget is not None:
                 patched["candidate_budget"] = candidate_budget
+            if branching_factor is not None:
+                patched["branching_factor"] = branching_factor
             overridden_tasks.append(patched)
         tasks = overridden_tasks
 
@@ -144,6 +148,14 @@ def generate_discrete_payload(
             "J": J_FORMULA,
             "objective": OBJECTIVE_FORMULA,
             "delta_J": DELTA_FORMULA,
+            "run_delta_J": RUN_DELTA_FORMULA,
+        },
+        "j_spec": {
+            "display_name": "Internal selection score J",
+            "direction": "max",
+            "summary_template": "J is the always-max internal score used to compare verified candidates across all tasks.",
+            "formula": J_FORMULA,
+            "delta_template": "delta_J is winner vs selected parent; run_delta_J is final winner vs baseline.",
         },
         "audit": {
             "upstream_target": UPSTREAM_TARGET,
@@ -187,6 +199,14 @@ def empty_discrete_payload(
             "J": J_FORMULA,
             "objective": OBJECTIVE_FORMULA,
             "delta_J": DELTA_FORMULA,
+            "run_delta_J": RUN_DELTA_FORMULA,
+        },
+        "j_spec": {
+            "display_name": "Internal selection score J",
+            "direction": "max",
+            "summary_template": "J is the always-max internal score used to compare verified candidates across all tasks.",
+            "formula": J_FORMULA,
+            "delta_template": "delta_J is winner vs selected parent; run_delta_J is final winner vs baseline.",
         },
         "audit": {
             "upstream_target": UPSTREAM_TARGET,
@@ -241,15 +261,12 @@ def _write_handoff_bundle(
         llm_trace_path = bundle_dir / "llm_trace.jsonl"
         memory_path = bundle_dir / "memory.md"
         report_svg_path = bundle_dir / "improvement_report.svg"
-        improvement_table_path = bundle_dir / "improvement_table.json"
         manifest_path = bundle_dir / "manifest.json"
 
         write_json(objective_curve_path, run["objective_curve"])
         write_jsonl(trace_path, events_by_task.get(task_id, []))
         write_jsonl(llm_trace_path, run["llm_traces"])
         memory_path.write_text(run["memory_markdown"])
-        improvement_table = build_improvement_table(run)
-        write_json(improvement_table_path, improvement_table)
         write_improvement_report_svg(run, report_svg_path)
 
         artifact_paths = {
@@ -259,7 +276,6 @@ def _write_handoff_bundle(
             "memory_markdown": _relative(memory_path),
             "llm_trace_jsonl": _relative(llm_trace_path),
             "report_svg": _relative(report_svg_path),
-            "improvement_table_json": _relative(improvement_table_path),
         }
         manifest = {
             "source_repo": payload["summary"]["source_repo"],
@@ -271,11 +287,13 @@ def _write_handoff_bundle(
             "function_name": run["task"]["function_name"],
             "objective_label": run["task"]["objective_label"],
             "objective_direction": run["task"]["objective_direction"],
+            "objective_spec": run["task"]["objective_spec"],
             "run_mode": "llm-required",
             "active_model": payload["summary"]["active_model"],
             "baseline_objective": run["baseline"]["metrics"]["objective"],
             "winner_objective": run["winner"]["metrics"]["objective"],
             "delta_J": run["delta_J"],
+            "run_delta_J": run["run_delta_J"],
             "winner_candidate": run["winner"]["agent"],
             "winner_strategy_label": run["winner"]["label"],
             "artifact_paths": artifact_paths,
@@ -283,7 +301,6 @@ def _write_handoff_bundle(
         write_json(manifest_path, manifest)
         run["session_id"] = session_id
         run["generated_at"] = generated_at
-        run["improvement_table"] = improvement_table
         run["handoff_bundle"] = {
             "manifest": manifest,
             "manifest_path": _relative(manifest_path),
@@ -300,6 +317,7 @@ def write_discrete_artifacts(
     env_root: Path | None = None,
     generation_budget: int | None = None,
     candidate_budget: int | None = None,
+    branching_factor: int | None = None,
 ) -> Path:
     active_runs_root = runs_root or RUNS
     session_id = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
@@ -328,6 +346,7 @@ def write_discrete_artifacts(
         session_id=session_id,
         generation_budget=generation_budget,
         candidate_budget=candidate_budget,
+        branching_factor=branching_factor,
     )
     payload["audit"]["session_id"] = session_id
     active_runs_root.mkdir(parents=True, exist_ok=True)
@@ -359,6 +378,7 @@ def main() -> None:
     parser.add_argument("--list-tasks", action="store_true", help="List available task ids.")
     parser.add_argument("--generation-budget", type=int, help="Override generation budget for this run.")
     parser.add_argument("--candidate-budget", type=int, help="Override candidate budget for this run.")
+    parser.add_argument("--branching-factor", type=int, help="Override branching factor for this run.")
     args = parser.parse_args()
 
     if args.list_tasks:
@@ -370,6 +390,7 @@ def main() -> None:
         task_id=args.task,
         generation_budget=args.generation_budget,
         candidate_budget=args.candidate_budget,
+        branching_factor=args.branching_factor,
     )
     print(f"wrote {out}")
 

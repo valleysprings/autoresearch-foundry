@@ -67,6 +67,19 @@ PROPOSAL_PAYLOAD = {
     ]
 }
 
+PARALLEL_PROPOSAL_PAYLOAD = {
+    "candidates": [
+        {
+            "name": "Seen set",
+            "strategy": "Stream through the list with a seen set.",
+            "rationale": "Early exit preserves correctness and removes quadratic scans.",
+            "imports": [],
+            "function_body": "seen = set()\nfor value in values:\n    if value in seen:\n        return True\n    seen.add(value)\nreturn False",
+            "candidate_summary": "Streaming duplicate detection with early exit.",
+        }
+    ]
+}
+
 FAILURE_PROPOSAL_PAYLOAD = {
     "candidates": [
         {
@@ -153,6 +166,7 @@ class CodegenRunnerTest(unittest.TestCase):
                     task_id="contains-duplicates",
                     proposal_runtime=runtime,
                     runs_root=Path(tmp_dir),
+                    branching_factor=1,
                 )
 
     def test_success_path_writes_payload_memory_and_llm_trace(self) -> None:
@@ -171,6 +185,7 @@ class CodegenRunnerTest(unittest.TestCase):
                 task_id="contains-duplicates",
                 proposal_runtime=runtime,
                 runs_root=Path(tmp_dir),
+                branching_factor=1,
             )
             payload = json.loads(artifact_path.read_text())
             run = payload["runs"][0]
@@ -184,7 +199,6 @@ class CodegenRunnerTest(unittest.TestCase):
             self.assertIsNotNone(manifest["artifact_paths"]["llm_trace_jsonl"])
             self.assertTrue((Path(tmp_dir) / manifest["artifact_paths"]["llm_trace_jsonl"]).exists())
             self.assertTrue((Path(tmp_dir) / manifest["artifact_paths"]["report_svg"]).exists())
-            self.assertTrue((Path(tmp_dir) / manifest["artifact_paths"]["improvement_table_json"]).exists())
             self.assertIn(manifest["session_id"], run["handoff_bundle"]["manifest_path"])
             self.assertEqual(run["session_id"], manifest["session_id"])
             self.assertEqual(payload["summary"]["write_backs"], 2)
@@ -209,6 +223,7 @@ class CodegenRunnerTest(unittest.TestCase):
                     task_id="contains-duplicates",
                     proposal_runtime=runtime,
                     runs_root=Path(tmp_dir),
+                    branching_factor=1,
                 )
 
     def test_invalid_http_json_aborts_run(self) -> None:
@@ -219,6 +234,7 @@ class CodegenRunnerTest(unittest.TestCase):
                     task_id="contains-duplicates",
                     proposal_runtime=runtime,
                     runs_root=Path(tmp_dir),
+                    branching_factor=1,
                 )
 
     def test_reflection_failure_aborts_run(self) -> None:
@@ -234,6 +250,7 @@ class CodegenRunnerTest(unittest.TestCase):
                     task_id="contains-duplicates",
                     proposal_runtime=runtime,
                     runs_root=Path(tmp_dir),
+                    branching_factor=1,
                 )
 
     def test_non_improving_passing_candidate_skips_failure_memory_writeback(self) -> None:
@@ -247,12 +264,16 @@ class CodegenRunnerTest(unittest.TestCase):
         task = next(item for item in load_codegen_tasks() if item["id"] == "contains-duplicates")
         task = dict(task)
         task["generation_budget"] = 2
+        task["branching_factor"] = 1
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp = Path(tmp_dir)
             store = MemoryStore(tmp / "memory.json", markdown_path=tmp / "memory.md")
             store.ensure_seed_records(seed_strategy_experiences())
 
-            with patch("app.codegen.trainer._select_parent", side_effect=lambda _frontier, current_best, _generation: current_best):
+            with patch(
+                "app.codegen.trainer._select_branch_parents",
+                side_effect=lambda _frontier, current_best, _accepted_history, _branching_factor: [current_best],
+            ):
                 result = run_codegen_task(
                     task,
                     store,
@@ -278,6 +299,7 @@ class CodegenRunnerTest(unittest.TestCase):
         task = next(item for item in load_codegen_tasks() if item["id"] == "contains-duplicates")
         task = dict(task)
         task["generation_budget"] = 1
+        task["branching_factor"] = 1
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp = Path(tmp_dir)
             store = MemoryStore(tmp / "memory.json", markdown_path=tmp / "memory.md")
@@ -303,6 +325,7 @@ class CodegenRunnerTest(unittest.TestCase):
         task = next(item for item in load_codegen_tasks() if item["id"] == "contains-duplicates")
         task = dict(task)
         task["generation_budget"] = 1
+        task["branching_factor"] = 1
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp = Path(tmp_dir)
             store = MemoryStore(tmp / "memory.json", markdown_path=tmp / "memory.md")
@@ -316,6 +339,112 @@ class CodegenRunnerTest(unittest.TestCase):
             )
             self.assertEqual(result["winner"]["metrics"]["status"], "pass")
             self.assertEqual(result["llm_traces"][0]["attempt"], 2)
+
+    def test_branching_factor_triggers_parallel_proposals_and_branch_events(self) -> None:
+        runtime = make_runtime(
+            [
+                chat_response(PROPOSAL_PAYLOAD),
+                chat_response(REFLECTION_PAYLOAD),
+                chat_response(PARALLEL_PROPOSAL_PAYLOAD),
+                chat_response(PARALLEL_PROPOSAL_PAYLOAD),
+                chat_response(REFLECTION_PAYLOAD),
+                chat_response(REFLECTION_PAYLOAD),
+            ]
+        )
+        task = next(item for item in load_codegen_tasks() if item["id"] == "contains-duplicates")
+        task = dict(task)
+        task["generation_budget"] = 2
+        task["branching_factor"] = 2
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            store = MemoryStore(tmp / "memory.json", markdown_path=tmp / "memory.md")
+            store.ensure_seed_records(seed_strategy_experiences())
+            events: list[dict[str, object]] = []
+            result = run_codegen_task(
+                task,
+                store,
+                proposal_runtime=runtime,
+                workspace_root=tmp / "workspace",
+                session_id="parallel-branches",
+                progress_callback=events.append,
+            )
+            second_generation = result["generations"][1]
+            self.assertEqual(len(second_generation["branches"]), 2)
+            self.assertTrue(all(branch["branch_id"].startswith("g2-b") for branch in second_generation["branches"]))
+            self.assertIn("objective_score", result["winner"]["metrics"])
+            self.assertTrue(any(event.get("branch_id") == "g2-b1" for event in events))
+            self.assertTrue(any(event.get("branch_id") == "g2-b2" for event in events))
+
+    def test_min_objective_uses_normalized_objective_score_for_selection(self) -> None:
+        task = {
+            "id": "synthetic-min-task",
+            "title": "Synthetic min task",
+            "description": "Select lower objective values by normalized score.",
+            "family": "numeric",
+            "function_name": "solve",
+            "function_signature": "def solve(values):",
+            "objective_label": "latency_ms",
+            "objective_direction": "min",
+            "objective_spec": {
+                "display_name": "Latency",
+                "direction": "min",
+                "unit": "ms",
+                "summary_template": "Lower latency is better.",
+                "formula": "latency_ms = elapsed_ms",
+            },
+            "task_signature": ["python-codegen", "synthetic", "min-objective"],
+            "source_type": "embedded-codegen-task",
+            "generation_budget": 1,
+            "candidate_budget": 1,
+            "branching_factor": 1,
+            "epsilon": 0.0,
+            "baseline_imports": [],
+            "baseline_body": "return values[0]",
+            "baseline_summary": "Baseline synthetic solver.",
+            "benchmark": {"kind": "contains_duplicates", "repeats": 1},
+            "tests": [{"name": "identity", "args": [[1]], "expected": 1}],
+        }
+        baseline_metrics = {
+            "status": "pass",
+            "verifier_status": "pass",
+            "objective": 10.0,
+            "objective_score": -10.0,
+            "J": 1.0,
+            "benchmark_ms": 10.0,
+            "passed_tests": 1,
+            "total_tests": 1,
+            "speedup_vs_baseline": 1.0,
+        }
+        candidate_metrics = {
+            "status": "pass",
+            "verifier_status": "pass",
+            "objective": 6.0,
+            "objective_score": -6.0,
+            "J": 1.2,
+            "benchmark_ms": 6.0,
+            "passed_tests": 1,
+            "total_tests": 1,
+            "speedup_vs_baseline": 1.0,
+        }
+        runtime = make_runtime([chat_response({"candidates": [PROPOSAL_PAYLOAD["candidates"][0]]}), chat_response(REFLECTION_PAYLOAD)])
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            store = MemoryStore(tmp / "memory.json", markdown_path=tmp / "memory.md")
+            store.ensure_seed_records(seed_strategy_experiences())
+            with (
+                patch("app.codegen.trainer.evaluate_materialized_candidate", side_effect=[baseline_metrics, candidate_metrics]),
+                patch("app.codegen.trainer.materialize_candidate", return_value=(tmp / "candidate.py", "def solve(values):\n    return values[0]\n")),
+            ):
+                result = run_codegen_task(
+                    task,
+                    store,
+                    proposal_runtime=runtime,
+                    workspace_root=tmp / "workspace",
+                    session_id="min-objective",
+                )
+            self.assertEqual(result["winner"]["metrics"]["objective"], 6.0)
+            self.assertEqual(result["winner"]["metrics"]["objective_score"], -6.0)
+            self.assertTrue(result["generations"][0]["winner_accepted"])
 
 
 if __name__ == "__main__":

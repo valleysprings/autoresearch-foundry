@@ -18,6 +18,16 @@ def _estimate_complexity(source_code: str, imports: list[str]) -> float:
     return round(min(0.12 + line_cost + import_cost + branch_cost, 0.95), 2)
 
 
+def _objective_direction(task: dict[str, Any]) -> str:
+    objective_spec = task.get("objective_spec") or {}
+    return str(objective_spec.get("direction") or task.get("objective_direction") or "max")
+
+
+def _objective_score(task: dict[str, Any], objective: float) -> float:
+    direction = _objective_direction(task)
+    return objective if direction == "max" else -objective
+
+
 def indent_function_body(function_body: str) -> str:
     normalized = function_body.strip("\n")
     if not normalized.strip():
@@ -109,6 +119,7 @@ def _run_tests(function, tests: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _error_metrics(*, task: dict[str, Any], source_code: str, imports: list[str], error: str) -> dict[str, Any]:
+    objective = 0.0
     return {
         "status": "error",
         "verifier_status": "error",
@@ -122,7 +133,8 @@ def _error_metrics(*, task: dict[str, Any], source_code: str, imports: list[str]
         "stability": 0.0,
         "complexity": _estimate_complexity(source_code, imports),
         "line_count": _line_count(source_code),
-        "objective": 0.0,
+        "objective": objective,
+        "objective_score": _objective_score(task, objective),
         "error": error,
         "test_results": [],
         "J": -1.0,
@@ -154,6 +166,7 @@ def evaluate_materialized_candidate(
     line_count = _line_count(source_code)
 
     if correctness == 0.0:
+        objective = 0.0
         return {
             "status": "fail",
             "verifier_status": "fail",
@@ -167,7 +180,8 @@ def evaluate_materialized_candidate(
             "stability": 0.0,
             "complexity": complexity,
             "line_count": line_count,
-            "objective": 0.0,
+            "objective": objective,
+            "objective_score": _objective_score(task, objective),
             "error": None,
             "test_results": test_results,
             "J": round(0.45 - 0.25 * complexity, 4),
@@ -198,6 +212,7 @@ def evaluate_materialized_candidate(
         - 0.18 * complexity
         - 0.05 * (line_count / 10.0)
     )
+    objective = round(speedup, 3)
     return {
         "status": "pass",
         "verifier_status": "pass",
@@ -211,7 +226,8 @@ def evaluate_materialized_candidate(
         "stability": round(stability, 3),
         "complexity": complexity,
         "line_count": line_count,
-        "objective": round(speedup, 3),
+        "objective": objective,
+        "objective_score": _objective_score(task, objective),
         "error": None,
         "test_results": test_results,
         "J": round(score, 4),

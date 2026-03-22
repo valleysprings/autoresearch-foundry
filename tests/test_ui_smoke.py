@@ -12,13 +12,13 @@ class UiSmokeTest(unittest.TestCase):
         source = (ROOT / "ui" / "src" / "App.tsx").read_text()
         self.assertIn("llm-required", source)
         self.assertIn("terminal failure", source)
-        self.assertIn("Deterministic verifier and model runtime", source)
+        self.assertIn("Verifier and proposal runtime", source)
         self.assertIn("Run selected task", source)
-        self.assertIn("Memory fragments", source)
-        self.assertIn("Positive fragments", source)
-        self.assertIn("Negative fragments", source)
+        self.assertIn("Per-generation net change", source)
+        self.assertIn("Task-scoped runtime trace", source)
+        self.assertIn("Task summaries and generation details", source)
         self.assertIn("Theme mode", source)
-        self.assertIn("run overview", source)
+        self.assertIn("Generational deltas", source)
 
     def test_index_loads_react_entry(self) -> None:
         source = (ROOT / "ui" / "index.html").read_text()

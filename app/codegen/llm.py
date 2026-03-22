@@ -246,6 +246,11 @@ def _proposal_prompt(
     candidate_history: list[dict[str, Any]],
     memories: list[dict[str, Any]],
 ) -> tuple[str, str]:
+    objective_spec = task.get("objective_spec") or {}
+    objective_name = objective_spec.get("display_name") or task.get("objective_label") or "objective"
+    objective_direction = objective_spec.get("direction") or task.get("objective_direction") or "max"
+    objective_formula = objective_spec.get("formula") or task.get("objective_label") or "objective"
+    objective_summary = objective_spec.get("summary_template") or ""
     memory_lines = [
         "- "
         + json.dumps(
@@ -291,13 +296,19 @@ def _proposal_prompt(
         f"Title: {task['title']}\n"
         f"Description: {task['description']}\n"
         f"Function signature: {task['function_signature']}\n"
-        f"Objective: {task['objective_direction']} {task['objective_label']}\n"
+        f"Objective: {objective_name}\n"
+        f"Objective direction: {objective_direction}\n"
+        f"Objective formula: {objective_formula}\n"
+        f"Objective summary: {objective_summary}\n"
+        "J is the always-max internal selection score; improve the selected parent objective first, then raise J without regressing correctness.\n"
         f"Generation: {generation}\n"
         f"Selected parent summary: {parent_candidate['candidate_summary']}\n"
         f"Selected parent objective: {parent_candidate['metrics']['objective']}\n"
+        f"Selected parent objective_score: {parent_candidate['metrics'].get('objective_score')}\n"
         f"Selected parent J: {parent_candidate['metrics']['J']}\n"
         f"Global best summary: {current_best['candidate_summary']}\n"
         f"Global best objective: {current_best['metrics']['objective']}\n"
+        f"Global best objective_score: {current_best['metrics'].get('objective_score')}\n"
         f"Global best J: {current_best['metrics']['J']}\n"
         "Baseline source:\n"
         f"{current_best['baseline_source']}\n"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from collections.abc import Sequence
 
 from app.codegen.config import RuntimeConfig
@@ -33,11 +34,13 @@ def chat_response(payload: dict, *, model: str = "deepseek-chat") -> str:
 class QueueTransport:
     def __init__(self, responses: Sequence[object]):
         self.responses = list(responses)
+        self._lock = threading.Lock()
 
     def __call__(self, _request_body, _config) -> str:
-        if not self.responses:
-            raise AssertionError("No mocked LLM responses remain.")
-        response = self.responses.pop(0)
+        with self._lock:
+            if not self.responses:
+                raise AssertionError("No mocked LLM responses remain.")
+            response = self.responses.pop(0)
         if isinstance(response, Exception):
             raise response
         return str(response)

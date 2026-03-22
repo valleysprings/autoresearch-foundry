@@ -63,7 +63,7 @@ def _error_payload(exc: Exception) -> dict[str, object]:
     }
 
 
-def _run_job(job_id: str, task_id: str | None, proposal_runtime: ProposalRuntime) -> None:
+def _run_job(job_id: str, task_id: str | None, proposal_runtime: ProposalRuntime, branching_factor: int | None) -> None:
     def progress(event: dict) -> None:
         with JOB_LOCK:
             JOBS[job_id]["events"].append(event)
@@ -74,6 +74,7 @@ def _run_job(job_id: str, task_id: str | None, proposal_runtime: ProposalRuntime
             progress_callback=progress,
             pace_ms=120,
             proposal_runtime=proposal_runtime,
+            branching_factor=branching_factor,
         )
         payload = json.loads(artifact.read_text())
         with JOB_LOCK:
@@ -85,12 +86,13 @@ def _run_job(job_id: str, task_id: str | None, proposal_runtime: ProposalRuntime
             JOBS[job_id].update(_error_payload(exc))
 
 
-def _start_job(task_id: str | None, proposal_runtime: ProposalRuntime) -> str:
+def _start_job(task_id: str | None, proposal_runtime: ProposalRuntime, branching_factor: int | None) -> str:
     job_id = uuid.uuid4().hex[:10]
     with JOB_LOCK:
         JOBS[job_id] = {
             "status": "running",
             "task_id": task_id,
+            "branching_factor": branching_factor,
             "events": [],
             "payload": None,
             "terminal": False,
@@ -98,7 +100,7 @@ def _start_job(task_id: str | None, proposal_runtime: ProposalRuntime) -> str:
             "error": None,
             "model": proposal_runtime.active_model,
         }
-    thread = threading.Thread(target=_run_job, args=(job_id, task_id, proposal_runtime), daemon=True)
+    thread = threading.Thread(target=_run_job, args=(job_id, task_id, proposal_runtime, branching_factor), daemon=True)
     thread.start()
     return job_id
 
@@ -172,25 +174,49 @@ class DemoHandler(SimpleHTTPRequestHandler):
         if parsed.path == "/api/run-task":
             task_id = query.get("task_id", [None])[0]
             model = query.get("model", [None])[0]
+            branching_value = query.get("branching_factor", [None])[0]
             if task_id is None:
                 self.send_error(HTTPStatus.BAD_REQUEST, "task_id is required")
                 return
+            branching_factor: int | None = None
+            if branching_value is not None:
+                try:
+                    branching_factor = max(1, int(branching_value))
+                except ValueError:
+                    self.send_error(HTTPStatus.BAD_REQUEST, "branching_factor must be an integer")
+                    return
             try:
                 runtime = _runtime_for_request(model)
             except Exception as exc:  # noqa: BLE001
                 _json_response(self, _error_payload(exc), status=HTTPStatus.BAD_REQUEST)
                 return
-            _json_response(self, {"job_id": _start_job(task_id, runtime), "model": runtime.active_model}, status=HTTPStatus.ACCEPTED)
+            _json_response(
+                self,
+                {"job_id": _start_job(task_id, runtime, branching_factor), "model": runtime.active_model},
+                status=HTTPStatus.ACCEPTED,
+            )
             return
 
         if parsed.path == "/api/run-sequence":
             model = query.get("model", [None])[0]
+            branching_value = query.get("branching_factor", [None])[0]
+            branching_factor = None
+            if branching_value is not None:
+                try:
+                    branching_factor = max(1, int(branching_value))
+                except ValueError:
+                    self.send_error(HTTPStatus.BAD_REQUEST, "branching_factor must be an integer")
+                    return
             try:
                 runtime = _runtime_for_request(model)
             except Exception as exc:  # noqa: BLE001
                 _json_response(self, _error_payload(exc), status=HTTPStatus.BAD_REQUEST)
                 return
-            _json_response(self, {"job_id": _start_job(None, runtime), "model": runtime.active_model}, status=HTTPStatus.ACCEPTED)
+            _json_response(
+                self,
+                {"job_id": _start_job(None, runtime, branching_factor), "model": runtime.active_model},
+                status=HTTPStatus.ACCEPTED,
+            )
             return
 
         self.send_error(HTTPStatus.NOT_FOUND, "Unknown endpoint")

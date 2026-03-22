@@ -32,13 +32,20 @@ export async function loadLatestRun(taskId?: string): Promise<Payload> {
   return fetchJson<Payload>(`/api/latest-run${query}`);
 }
 
-export async function startJob(taskId: string | null, model: string): Promise<{ job_id: string; model: string }> {
+export async function startJob(
+  taskId: string | null,
+  model: string,
+  branchingFactor?: number | null,
+): Promise<{ job_id: string; model: string }> {
   const params = new URLSearchParams();
   if (model) {
     params.set("model", model);
   }
   if (taskId) {
     params.set("task_id", taskId);
+  }
+  if (typeof branchingFactor === "number" && Number.isFinite(branchingFactor)) {
+    params.set("branching_factor", String(Math.max(1, Math.floor(branchingFactor))));
   }
   const suffix = params.toString() ? `?${params.toString()}` : "";
   const url = taskId ? `/api/run-task${suffix}` : `/api/run-sequence${suffix}`;
