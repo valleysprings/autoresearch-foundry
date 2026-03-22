@@ -293,6 +293,9 @@ export type LiveEvent = {
   phase?: string;
   event_type?: string;
   task_id?: string;
+  question_task_id?: string;
+  item_id?: string;
+  item_name?: string;
   generation?: number;
   branch_id?: string;
   branch_index?: number;

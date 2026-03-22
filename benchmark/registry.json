@@ -58,17 +58,17 @@
     {
       "id": "planbench-lite",
       "path": "planning_verified/planbench-lite",
-      "enabled": false
+      "enabled": true
     },
     {
       "id": "multihop-snapshot-small",
       "path": "multihop_qa_snapshot/multihop-snapshot-small",
-      "enabled": false
+      "enabled": true
     },
     {
       "id": "tbench-lite",
       "path": "terminal_verified/tbench-lite",
-      "enabled": false
+      "enabled": true
     }
   ]
 }

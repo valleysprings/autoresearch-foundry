@@ -340,12 +340,44 @@ h4 {
   gap: 14px;
 }
 
+.live-task-card {
+  gap: 18px;
+}
+
 .task-card.completed-card {
   background: linear-gradient(180deg, var(--panel), rgba(255, 255, 255, 0.34));
 }
 
 .task-summary-row {
   align-items: flex-start;
+}
+
+.live-scroll,
+.history-scroll {
+  display: grid;
+  gap: 12px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.live-item-row {
+  display: grid;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--panel-strong);
+  border: 1px solid var(--line);
+}
+
+.live-item-main {
+  display: grid;
+  gap: 4px;
+}
+
+.live-item-message {
+  margin: 0;
+  line-height: 1.45;
 }
 
 .metric-card {

@@ -22,7 +22,7 @@ class CodegenCatalogTest(unittest.TestCase):
         self.assertTrue(all(not task["included_in_main_comparison"] for task in experiment_tasks))
         self.assertEqual(
             {task["track"] for task in comparable_tasks},
-            {"math_verified", "science_verified"},
+            {"math_verified", "science_verified", "planning_verified", "multihop_qa_snapshot", "terminal_verified"},
         )
         self.assertTrue(all(task["included_in_main_comparison"] for task in comparable_tasks))
 

@@ -19,32 +19,28 @@ import type {
 
 type ThemePreference = "system" | "light" | "dark";
 
-type LiveBranchCard = {
-  branchId: string;
-  branchIndex: number;
+type LiveItemCard = {
+  itemKey: string;
+  itemId: string;
+  itemName: string;
   status: "queued" | "running" | "completed";
-  parentCandidate: string;
-  selectedModel: string | null;
-  candidateMessages: string[];
-  memoryMessage: string | null;
-  acceptedToFrontier: boolean;
-  improvedGlobalBest: boolean;
+  latestGeneration: number;
+  branchCount: number;
+  passCount: number;
+  failCount: number;
+  errorCount: number;
+  acceptCount: number;
   memoryDelta: number;
-};
-
-type LiveGenerationCard = {
-  generation: number;
-  status: "queued" | "running" | "completed";
-  summary: string | null;
-  acceptedCount: number;
-  memoryDelta: number;
-  branches: LiveBranchCard[];
+  bestJ: number | null;
+  bestObjective: number | null;
+  latestMessage: string | null;
 };
 
 type LiveTaskCard = {
   taskId: string;
   title: string;
   description: string;
+  objectiveLabel: string;
   model: string;
   branchingFactor: number;
   generationBudget: number;
@@ -53,8 +49,25 @@ type LiveTaskCard = {
   maxItems: number | null;
   currentBest: string | null;
   status: "queued" | "running" | "completed";
-  generations: LiveGenerationCard[];
+  totalItems: number;
+  completedItems: number;
+  passItems: number;
+  acceptedCount: number;
+  memoryDelta: number;
+  bestJ: number | null;
+  items: LiveItemCard[];
   events: LiveEvent[];
+};
+
+type MutableLiveItemCard = LiveItemCard & {
+  branchIds: Set<string>;
+};
+
+type MutableLiveTaskCard = Omit<LiveTaskCard, "items" | "totalItems" | "completedItems" | "passItems" | "acceptedCount" | "memoryDelta" | "bestJ"> & {
+  itemsMap: Map<string, MutableLiveItemCard>;
+  acceptedCount: number;
+  memoryDelta: number;
+  bestJ: number | null;
 };
 
 function shortPath(path?: string | null): string {
@@ -244,15 +257,35 @@ function trackLabel(track: string): string {
   return track.replace(/_/g, " ");
 }
 
+function parseCandidateMetrics(message?: string | null): {
+  status: string | null;
+  objective: number | null;
+  j: number | null;
+} {
+  const text = String(message ?? "");
+  const statusMatch = text.match(/status=([a-z]+)/i);
+  const objectiveMatch = text.match(/objective=([-+]?\d+(?:\.\d+)?)/i);
+  const jMatch = text.match(/J=([-+]?\d+(?:\.\d+)?)/);
+  return {
+    status: statusMatch ? statusMatch[1].toLowerCase() : null,
+    objective: objectiveMatch ? Number(objectiveMatch[1]) : null,
+    j: jMatch ? Number(jMatch[1]) : null,
+  };
+}
+
+function formatPercent(value: number): string {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
 function summarizeLiveTasks(
   events: LiveEvent[],
   taskCatalog: TaskSummary[],
   liveJob: JobState | null,
   runs: Run[],
 ): LiveTaskCard[] {
-  const taskMap = new Map<string, LiveTaskCard>();
+  const taskMap = new Map<string, MutableLiveTaskCard>();
 
-  function getTask(taskId: string): LiveTaskCard {
+  function getTask(taskId: string): MutableLiveTaskCard {
     const catalogTask = taskCatalog.find((task) => task.id === taskId);
     const completedRun = runs.find((run) => run.task.id === taskId);
     const existing = taskMap.get(taskId);
@@ -263,6 +296,7 @@ function summarizeLiveTasks(
       taskId,
       title: catalogTask?.title ?? completedRun?.task.title ?? taskId,
       description: catalogTask?.description ?? completedRun?.task.description ?? "Task description unavailable.",
+      objectiveLabel: objectiveLabel(catalogTask?.objective_spec ?? completedRun?.task.objective_spec ?? { display_name: "Objective", direction: "max", summary_template: "", formula: "" }),
       model: liveJob?.model ?? completedRun?.active_model ?? "n/a",
       branchingFactor:
         liveJob?.branching_factor ?? catalogTask?.branching_factor ?? completedRun?.task.branching_factor ?? 1,
@@ -273,12 +307,49 @@ function summarizeLiveTasks(
       itemWorkers: liveJob?.item_workers ?? catalogTask?.item_workers ?? completedRun?.task.item_workers ?? null,
       maxItems: liveJob?.max_items ?? null,
       currentBest: null,
-      status: "queued",
-      generations: [],
+      status: liveJob?.status === "completed" ? "completed" : liveJob?.status === "running" ? "running" : "queued",
+      totalItems: 0,
+      completedItems: 0,
+      passItems: 0,
+      acceptedCount: 0,
+      memoryDelta: 0,
+      bestJ: null,
+      items: [],
       events: [],
     };
-    taskMap.set(taskId, entry);
-    return entry;
+    const mutableEntry: MutableLiveTaskCard = {
+      ...entry,
+      itemsMap: new Map<string, MutableLiveItemCard>(),
+    };
+    taskMap.set(taskId, mutableEntry);
+    return mutableEntry;
+  }
+
+  function getItem(task: MutableLiveTaskCard, event: LiveEvent): MutableLiveItemCard {
+    const itemKey = event.item_id ?? task.taskId;
+    const existing = task.itemsMap.get(itemKey);
+    if (existing) {
+      return existing;
+    }
+    const item: MutableLiveItemCard = {
+      itemKey,
+      itemId: event.item_id ?? task.taskId,
+      itemName: event.item_name ?? event.item_id ?? task.title,
+      status: "queued",
+      latestGeneration: 0,
+      branchCount: 0,
+      passCount: 0,
+      failCount: 0,
+      errorCount: 0,
+      acceptCount: 0,
+      memoryDelta: 0,
+      bestJ: null,
+      bestObjective: null,
+      latestMessage: null,
+      branchIds: new Set<string>(),
+    };
+    task.itemsMap.set(itemKey, item);
+    return item;
   }
 
   for (const event of events) {
@@ -288,84 +359,79 @@ function summarizeLiveTasks(
     }
     const task = getTask(taskId);
     task.events.push(event);
-    const generationNumber = event.generation;
-    if (typeof generationNumber !== "number") {
-      continue;
+    const item = getItem(task, event);
+    item.latestMessage = event.message ?? item.latestMessage;
+    if (typeof event.generation === "number") {
+      item.latestGeneration = Math.max(item.latestGeneration, event.generation);
     }
-    let generation = task.generations.find((item) => item.generation === generationNumber);
-    if (!generation) {
-      generation = {
-        generation: generationNumber,
-        status: "queued",
-        summary: null,
-        acceptedCount: 0,
-        memoryDelta: 0,
-        branches: [],
-      };
-      task.generations.push(generation);
+    if (event.branch_id) {
+      item.branchIds.add(event.branch_id);
+      item.branchCount = item.branchIds.size;
     }
-    if (event.phase === "generation_started") {
-      generation.status = "running";
-      generation.summary = event.message ?? null;
+    if (event.phase === "generation_started" || event.phase === "branch_started" || event.phase === "proposal_generated") {
       task.status = "running";
+      item.status = "running";
     }
-    if (event.phase === "generation_finished") {
-      generation.status = "completed";
-      generation.summary = event.message ?? generation.summary;
-      task.currentBest = event.message ?? task.currentBest;
-      task.status = liveJob?.status === "completed" ? "completed" : "running";
+    if (event.phase === "candidate_verified") {
+      const metrics = parseCandidateMetrics(event.message);
+      if (metrics.status === "pass") {
+        item.passCount += 1;
+      } else if (metrics.status === "fail") {
+        item.failCount += 1;
+      } else if (metrics.status === "error") {
+        item.errorCount += 1;
+      }
+      if (typeof metrics.j === "number" && Number.isFinite(metrics.j)) {
+        item.bestJ = item.bestJ == null ? metrics.j : Math.max(item.bestJ, metrics.j);
+        task.bestJ = task.bestJ == null ? metrics.j : Math.max(task.bestJ, metrics.j);
+      }
+      if (typeof metrics.objective === "number" && Number.isFinite(metrics.objective)) {
+        item.bestObjective = item.bestObjective == null ? metrics.objective : Math.max(item.bestObjective, metrics.objective);
+      }
     }
     if (event.accepted_to_frontier) {
-      generation.acceptedCount += 1;
+      item.acceptCount += 1;
+      task.acceptedCount += 1;
     }
-    generation.memoryDelta += event.memory_delta ?? 0;
-
-    if (!event.branch_id) {
-      continue;
-    }
-    let branch = generation.branches.find((item) => item.branchId === event.branch_id);
-    if (!branch) {
-      branch = {
-        branchId: event.branch_id,
-        branchIndex: event.branch_index ?? generation.branches.length + 1,
-        status: "queued",
-        parentCandidate: event.parent_candidate ?? "n/a",
-        selectedModel: null,
-        candidateMessages: [],
-        memoryMessage: null,
-        acceptedToFrontier: false,
-        improvedGlobalBest: false,
-        memoryDelta: 0,
-      };
-      generation.branches.push(branch);
-    }
-    branch.parentCandidate = event.parent_candidate ?? branch.parentCandidate;
-    if (event.phase === "branch_started") {
-      branch.status = "running";
-    } else if (event.phase === "proposal_generated") {
-      branch.status = "running";
-      branch.selectedModel = event.candidate ?? branch.selectedModel;
-    } else if (event.phase === "candidate_verified" && event.message) {
-      branch.candidateMessages = [...branch.candidateMessages, event.message];
-    } else if (event.phase === "memory_writeback" || event.phase === "memory_skipped") {
-      branch.status = "completed";
-      branch.memoryMessage = event.message ?? branch.memoryMessage;
-      branch.acceptedToFrontier = Boolean(event.accepted_to_frontier);
-      branch.improvedGlobalBest = Boolean(event.improved_global_best);
-      branch.memoryDelta = event.memory_delta ?? branch.memoryDelta;
+    item.memoryDelta += event.memory_delta ?? 0;
+    task.memoryDelta += event.memory_delta ?? 0;
+    if (event.phase === "generation_finished") {
+      task.currentBest = event.message ?? task.currentBest;
+      if (item.latestGeneration >= task.generationBudget) {
+        item.status = "completed";
+      }
     }
   }
 
   return [...taskMap.values()]
-    .map((task) => ({
-      ...task,
-      generations: task.generations
-        .map((generation) => ({
-          ...generation,
-          branches: [...generation.branches].sort((left, right) => left.branchIndex - right.branchIndex),
+    .map((task) => {
+      const items = [...task.itemsMap.values()]
+        .map((item) => ({
+          itemKey: item.itemKey,
+          itemId: item.itemId,
+          itemName: item.itemName,
+          status: liveJob?.status === "completed" || item.latestGeneration >= task.generationBudget ? "completed" : item.status,
+          latestGeneration: item.latestGeneration,
+          branchCount: item.branchIds.size,
+          passCount: item.passCount,
+          failCount: item.failCount,
+          errorCount: item.errorCount,
+          acceptCount: item.acceptCount,
+          memoryDelta: item.memoryDelta,
+          bestJ: item.bestJ,
+          bestObjective: item.bestObjective,
+          latestMessage: item.latestMessage,
         }))
-        .sort((left, right) => left.generation - right.generation),
-    }))
+        .sort((left, right) => left.itemId.localeCompare(right.itemId));
+      return {
+        ...task,
+        status: liveJob?.status === "completed" ? "completed" : task.status,
+        totalItems: items.length,
+        completedItems: items.filter((item) => item.status === "completed").length,
+        passItems: items.filter((item) => item.passCount > 0).length,
+        items,
+      };
+    })
     .sort((left, right) => left.taskId.localeCompare(right.taskId));
 }
 
@@ -639,11 +705,13 @@ function generationCard(generation: Generation, objectiveSpec: ObjectiveSpec, op
   );
 }
 
-function liveTaskSection(task: LiveTaskCard, isOpen: boolean, onToggle: () => void) {
+function liveTaskSection(task: LiveTaskCard) {
+  const completedRatio = task.totalItems ? task.completedItems / task.totalItems : 0;
+  const passRatio = task.totalItems ? task.passItems / task.totalItems : 0;
   return (
-    <article className="task-card" key={task.taskId}>
-      <button className="accordion-toggle" onClick={onToggle} type="button">
-        <div className="accordion-copy">
+    <article className="task-card live-task-card" key={task.taskId}>
+      <div className="panel-header">
+        <div>
           <p className="eyebrow">live task</p>
           <h3>{task.title}</h3>
           <p className="muted">{task.description}</p>
@@ -654,84 +722,51 @@ function liveTaskSection(task: LiveTaskCard, isOpen: boolean, onToggle: () => vo
           <span className="badge">branching {task.branchingFactor}</span>
           <span className="badge">candidates {task.candidateBudget}</span>
           <span className="badge">item workers {task.itemWorkers ?? "n/a"}</span>
-          <span className="badge">
-            g{task.generations.length}/{task.generationBudget || "?"}
-          </span>
         </div>
-      </button>
+      </div>
       <div className="task-summary-row">
         <span className="summary-pill">{task.taskId}</span>
+        <span className="summary-pill">{task.objectiveLabel}</span>
         <span className="summary-pill">item workers {task.itemWorkers ?? "n/a"}</span>
         <span className="summary-pill">candidate budget {task.candidateBudget}</span>
+        <span className="summary-pill">generation budget {task.generationBudget}</span>
         <span className="summary-pill">{task.maxItems ? `max items ${task.maxItems}` : "max items all"}</span>
-        <span className="summary-pill">{task.currentBest ?? "Current best pending"}</span>
+        <span className="summary-pill">{task.currentBest ?? "current best pending"}</span>
       </div>
-      {isOpen ? (
-        <div className="accordion-body stack">
-          {task.generations.length ? (
-            task.generations.map((generation) => (
-              <article className="live-generation-card" key={`${task.taskId}-${generation.generation}`}>
-                <div className="panel-header">
-                  <div>
-                    <div className="section-label">Generation {generation.generation}</div>
-                    <p className="small">{generation.summary ?? "Waiting for generation summary."}</p>
-                  </div>
-                  <div className="badge-row">
-                    <span className={`badge ${generation.status === "completed" ? "good" : generation.status === "running" ? "warn" : ""}`}>{generation.status}</span>
-                    <span className="badge">accepts {generation.acceptedCount}</span>
-                    <span className={`badge ${generation.memoryDelta > 0 ? "good" : generation.memoryDelta < 0 ? "warn" : ""}`}>
-                      memory {generation.memoryDelta > 0 ? `+${generation.memoryDelta}` : generation.memoryDelta}
-                    </span>
-                  </div>
-                </div>
-                <div className="branch-grid">
-                  {generation.branches.map((branch) => (
-                    <article className="branch-pill-card" key={branch.branchId}>
-                      <div className="badge-row">
-                        <span className="badge">{branch.branchId}</span>
-                        <span className={`badge ${branch.acceptedToFrontier ? "good" : ""}`}>{branch.selectedModel ?? "awaiting model"}</span>
-                      </div>
-                      <p className="small">
-                        parent <strong>{branch.parentCandidate}</strong>
-                      </p>
-                      <ul className="dense-list compact-list">
-                        {branch.candidateMessages.length ? (
-                          branch.candidateMessages.map((message) => <li key={`${branch.branchId}-${message}`}>{message}</li>)
-                        ) : (
-                          <li>No verified candidates yet.</li>
-                        )}
-                      </ul>
-                      {branch.memoryMessage ? <p className="small">{branch.memoryMessage}</p> : null}
-                    </article>
-                  ))}
-                </div>
-              </article>
-            ))
-          ) : (
-            <p className="small">Waiting for task events.</p>
-          )}
-          <details className="detail-card">
-            <summary className="detail-summary">
-              <div>
-                <strong>Event log</strong>
-                <div className="detail-summary-copy">Raw task-scoped backend events.</div>
+      <div className="metric-grid compact-metrics">
+        {metric("items seen", task.totalItems)}
+        {metric("items completed", `${task.completedItems}/${task.totalItems || "?"}`)}
+        {metric("completion", formatPercent(completedRatio))}
+        {metric("items with pass", `${task.passItems}/${task.totalItems || "?"}`)}
+        {metric("pass rate", formatPercent(passRatio))}
+        {metric("best J seen", task.bestJ == null ? "n/a" : task.bestJ.toFixed(3))}
+        {metric("accepted branches", task.acceptedCount)}
+        {metric("memory delta", task.memoryDelta > 0 ? `+${task.memoryDelta}` : task.memoryDelta)}
+      </div>
+      <div className="live-scroll">
+        {task.items.length ? (
+          task.items.map((item) => (
+            <article className="live-item-row" key={item.itemKey}>
+              <div className="live-item-main">
+                <strong>{item.itemName}</strong>
+                <div className="detail-summary-copy">{item.itemId}</div>
               </div>
-            </summary>
-            <div className="detail-body">
-              <ul className="dense-list">
-                {task.events.map((event, index) => (
-                  <li key={`${task.taskId}-${event.timestamp ?? "t"}-${index}`}>
-                    <strong>{event.phase ?? event.event_type ?? "event"}</strong>
-                    <div className="small">
-                      {[event.timestamp, event.branch_id, event.message].filter(Boolean).join(" · ")}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </details>
-        </div>
-      ) : null}
+              <div className="badge-row">
+                <span className={`badge ${item.status === "completed" ? "good" : item.status === "running" ? "warn" : ""}`}>{item.status}</span>
+                <span className="badge">g{item.latestGeneration || 0}/{task.generationBudget || "?"}</span>
+                <span className="badge">branches {item.branchCount}</span>
+                <span className="badge">pass {item.passCount}</span>
+                <span className="badge">fail {item.failCount}</span>
+                <span className="badge">accepts {item.acceptCount}</span>
+                <span className="badge">J {item.bestJ == null ? "n/a" : item.bestJ.toFixed(3)}</span>
+              </div>
+              {item.latestMessage ? <p className="small live-item-message">{item.latestMessage}</p> : null}
+            </article>
+          ))
+        ) : (
+          <p className="small">Waiting for task events.</p>
+        )}
+      </div>
     </article>
   );
 }
@@ -934,7 +969,6 @@ export function App() {
     events: [{ phase: "boot", message: "Loading runtime and task catalog." }],
   });
   const [error, setError] = useState<ErrorPayload | null>(null);
-  const [openLiveTasks, setOpenLiveTasks] = useState<Record<string, boolean>>({});
   const [openCompletedTasks, setOpenCompletedTasks] = useState<Record<string, boolean>>({});
   const pollToken = useRef(0);
 
@@ -954,8 +988,8 @@ export function App() {
   );
 
   const liveTasks = useMemo(
-    () => summarizeLiveTasks(liveJob?.events ?? [], payload.task_catalog, liveJob, payload.runs),
-    [liveJob, payload.task_catalog, payload.runs],
+    () => summarizeLiveTasks(liveJob?.events ?? [], payload.task_catalog, liveJob, liveJob?.payload?.runs ?? []),
+    [liveJob, payload.task_catalog],
   );
 
   const comparableRuns = useMemo(
@@ -1015,13 +1049,7 @@ export function App() {
         }
         const normalized = normalizePayload(latest, tasks);
         setPayload(normalized);
-        setOpenCompletedTasks(
-          normalized.runs[0]
-            ? {
-                [normalized.runs[0].task.id]: true,
-              }
-            : {},
-        );
+        setOpenCompletedTasks({});
         setLiveJob(null);
         setError(null);
       } catch (caught) {
@@ -1068,25 +1096,6 @@ export function App() {
       window.clearInterval(timer);
     };
   }, [liveJob?.status]);
-
-  useEffect(() => {
-    if (!liveTasks.length) {
-      return;
-    }
-    setOpenLiveTasks((previous) => {
-      const next = { ...previous };
-      for (const task of liveTasks) {
-        if (!(task.taskId in next) && task.status !== "queued") {
-          next[task.taskId] = true;
-        }
-      }
-      return next;
-    });
-  }, [liveTasks]);
-
-  function toggleLiveTask(taskId: string) {
-    setOpenLiveTasks((previous) => ({ ...previous, [taskId]: !previous[taskId] }));
-  }
 
   function toggleCompletedTask(taskId: string) {
     setOpenCompletedTasks((previous) => ({ ...previous, [taskId]: !previous[taskId] }));
@@ -1153,15 +1162,6 @@ export function App() {
       if (job.payload) {
         const normalized = normalizePayload(job.payload, payload.task_catalog);
         setPayload(normalized);
-        setOpenCompletedTasks((previous) => {
-          const next = { ...previous };
-          for (const run of normalized.runs) {
-            if (taskId === run.task.id || (!taskId && !(run.task.id in next))) {
-              next[run.task.id] = true;
-            }
-          }
-          return next;
-        });
         setError(null);
       }
     } catch (caught) {
@@ -1211,7 +1211,7 @@ export function App() {
             <p className="eyebrow">control room</p>
             <h1>Branching evolution, task by task.</h1>
             <p className="muted hero-copy">
-              Each task carries its own description, objective template, and branchable generation trace. The interface stays collapsed until a specific task actually moves.
+              The Web view stays focused on live numeric movement. Browser-submitted runs stay visible here; cached history stays collapsed until you explicitly open it.
             </p>
           </div>
           <div className="badge-row">
@@ -1323,7 +1323,6 @@ export function App() {
               <span className="summary-pill">llm queue {runtimeInfo.llm_concurrency}</span>
             </div>
             <p className="muted">{selectedTask.description}</p>
-            {metricTemplate(selectedTask.objective_spec, taskJSpec)}
           </div>
         ) : null}
       </section>
@@ -1380,11 +1379,11 @@ export function App() {
           </div>
         </div>
         {liveTasks.length ? (
-          liveTasks.map((task) => liveTaskSection(task, Boolean(openLiveTasks[task.taskId]), () => toggleLiveTask(task.taskId)))
+          liveTasks.map((task) => liveTaskSection(task))
         ) : (
           <section className="empty-state">
             <h3>No live task yet</h3>
-            <p className="muted">Start a task or a full sequence and the frontend will group all live events by task, then by generation and branch.</p>
+            <p className="muted">Start a task or a full sequence and the frontend will show only the current browser-submitted run here.</p>
           </section>
         )}
       </section>
@@ -1412,14 +1411,16 @@ export function App() {
               <span className="badge">{comparableRuns.length} cached</span>
             </div>
           </div>
-          {comparableRuns.length ? (
-            comparableRuns.map((run) => runCard(run, taskJSpec, Boolean(openCompletedTasks[run.task.id]), () => toggleCompletedTask(run.task.id)))
-          ) : (
-            <section className="empty-state">
-              <h3>No main benchmark run yet</h3>
-              <p className="muted">Full-sequence runs land here, and only comparable tasks contribute to the default benchmark lane.</p>
-            </section>
-          )}
+          <div className="history-scroll">
+            {comparableRuns.length ? (
+              comparableRuns.map((run) => runCard(run, taskJSpec, Boolean(openCompletedTasks[run.task.id]), () => toggleCompletedTask(run.task.id)))
+            ) : (
+              <section className="empty-state">
+                <h3>No main benchmark run yet</h3>
+                <p className="muted">Full-sequence runs land here, and only comparable tasks contribute to the default benchmark lane.</p>
+              </section>
+            )}
+          </div>
         </section>
 
         <section className="subpanel stack">
@@ -1433,14 +1434,16 @@ export function App() {
               <span className="badge">{experimentRuns.length} cached</span>
             </div>
           </div>
-          {experimentRuns.length ? (
-            experimentRuns.map((run) => runCard(run, taskJSpec, Boolean(openCompletedTasks[run.task.id]), () => toggleCompletedTask(run.task.id)))
-          ) : (
-            <section className="empty-state">
-              <h3>No small experiment run yet</h3>
-              <p className="muted">Manual smoke and regression runs stay here and never enter the default comparable benchmark summary.</p>
-            </section>
-          )}
+          <div className="history-scroll">
+            {experimentRuns.length ? (
+              experimentRuns.map((run) => runCard(run, taskJSpec, Boolean(openCompletedTasks[run.task.id]), () => toggleCompletedTask(run.task.id)))
+            ) : (
+              <section className="empty-state">
+                <h3>No small experiment run yet</h3>
+                <p className="muted">Manual smoke and regression runs stay here and never enter the default comparable benchmark summary.</p>
+              </section>
+            )}
+          </div>
         </section>
       </section>
     </main>
