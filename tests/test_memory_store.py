@@ -94,13 +94,24 @@ class MemoryStoreTest(unittest.TestCase):
             markdown = store.load_markdown()
 
             self.assertEqual(len(retrieved), 2)
-            self.assertEqual(retrieved[0]["experience_outcome"], "failure")
-            self.assertEqual(retrieved[1]["experience_outcome"], "success")
+            self.assertEqual(retrieved[0]["experience_outcome"], "success")
+            self.assertEqual(retrieved[1]["experience_outcome"], "failure")
             self.assertIn("success_memories: 1", markdown)
             self.assertIn("failure_memories: 1", markdown)
             self.assertIn("experience_outcome: failure", markdown)
             self.assertIn("strategy_hypothesis:", markdown)
             self.assertIn("prompt_fragment:", markdown)
+
+    def test_append_deduplicates_equivalent_memory_fragments(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            store = MemoryStore(Path(tmp_dir) / "memory.json", markdown_path=Path(tmp_dir) / "memory.md")
+            store.seed_from_records([SUCCESS_MEMORY])
+
+            duplicate = dict(SUCCESS_MEMORY)
+            duplicate["experience_id"] = "exp-success-duplicate"
+
+            self.assertFalse(store.append(duplicate))
+            self.assertEqual(store.count(), 1)
 
 
 if __name__ == "__main__":

@@ -84,6 +84,12 @@ def _benchmark_args(kind: str) -> tuple[Any, ...]:
         missing = 777
         values = [index for index in range(1600) if index != missing]
         return (values,)
+    if kind == "count_primes_up_to":
+        return (3500,)
+    if kind == "count_change_ways":
+        return (48, [1, 2, 5, 10, 20, 50])
+    if kind == "count_n_queens":
+        return (9,)
     raise ValueError(f"Unknown benchmark kind: {kind}")
 
 
@@ -102,6 +108,27 @@ def _run_tests(function, tests: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return results
 
 
+def _error_metrics(*, task: dict[str, Any], source_code: str, imports: list[str], error: str) -> dict[str, Any]:
+    return {
+        "status": "error",
+        "verifier_status": "error",
+        "correctness": 0.0,
+        "passed_tests": 0,
+        "total_tests": len(task["tests"]),
+        "benchmark_ms": None,
+        "benchmark_samples_ms": [],
+        "speedup_vs_baseline": 0.0,
+        "speed_score": 0.0,
+        "stability": 0.0,
+        "complexity": _estimate_complexity(source_code, imports),
+        "line_count": _line_count(source_code),
+        "objective": 0.0,
+        "error": error,
+        "test_results": [],
+        "J": -1.0,
+    }
+
+
 def evaluate_materialized_candidate(
     *,
     task: dict[str, Any],
@@ -115,26 +142,12 @@ def evaluate_materialized_candidate(
     try:
         function = _load_function_from_path(source_path, task["function_name"])
     except Exception as exc:  # noqa: BLE001
-        return {
-            "status": "error",
-            "verifier_status": "error",
-            "correctness": 0.0,
-            "passed_tests": 0,
-            "total_tests": len(task["tests"]),
-            "benchmark_ms": None,
-            "benchmark_samples_ms": [],
-            "speedup_vs_baseline": 0.0,
-            "speed_score": 0.0,
-            "stability": 0.0,
-            "complexity": complexity,
-            "line_count": _line_count(source_code),
-            "objective": 0.0,
-            "error": str(exc),
-            "test_results": [],
-            "J": -1.0,
-        }
+        return _error_metrics(task=task, source_code=source_code, imports=imports, error=str(exc))
 
-    test_results = _run_tests(function, task["tests"])
+    try:
+        test_results = _run_tests(function, task["tests"])
+    except Exception as exc:  # noqa: BLE001
+        return _error_metrics(task=task, source_code=source_code, imports=imports, error=str(exc))
     passed_tests = sum(1 for result in test_results if result["passed"])
     total_tests = len(test_results)
     correctness = 1.0 if passed_tests == total_tests else 0.0
@@ -163,11 +176,14 @@ def evaluate_materialized_candidate(
     samples: list[float] = []
     repeats = int(task["benchmark"]["repeats"])
     benchmark_args = _benchmark_args(task["benchmark"]["kind"])
-    for _ in range(3):
-        started = time.perf_counter()
-        for _ in range(repeats):
-            function(*benchmark_args)
-        samples.append((time.perf_counter() - started) * 1000.0)
+    try:
+        for _ in range(3):
+            started = time.perf_counter()
+            for _ in range(repeats):
+                function(*benchmark_args)
+            samples.append((time.perf_counter() - started) * 1000.0)
+    except Exception as exc:  # noqa: BLE001
+        return _error_metrics(task=task, source_code=source_code, imports=imports, error=str(exc))
 
     benchmark_ms = statistics.median(samples)
     speedup = baseline_ms / benchmark_ms if baseline_ms is not None and benchmark_ms > 0 else 1.0

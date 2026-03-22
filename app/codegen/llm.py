@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import textwrap
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -94,7 +95,12 @@ def _normalize_candidate_payload(payload: dict[str, Any], task: dict[str, Any], 
             )
         function_body = item["function_body"].strip("\n")
         if function_body.lstrip().startswith("def "):
-            raise LlmResponseError("Candidates must return function_body only, without a def line.", model=trace.get("selected_model"))
+            lines = function_body.splitlines()
+            if len(lines) < 2:
+                raise LlmResponseError("Candidates must return a non-empty function body.", model=trace.get("selected_model"))
+            function_body = textwrap.dedent("\n".join(lines[1:])).strip("\n")
+            if not function_body:
+                raise LlmResponseError("Candidates must return a non-empty function body.", model=trace.get("selected_model"))
         normalized.append(
             {
                 "agent": f"candidate-{index}",
@@ -185,47 +191,57 @@ class ProposalRuntime:
             "max_tokens": self.config.max_tokens,
         }
         sender = self.transport or _default_transport
-        try:
-            raw_response = sender(request_body, self.config)
-        except LlmTransportError:
-            raise
-        except TimeoutError as exc:
-            raise LlmTransportError("Model request timed out.", model=self.active_model) from exc
-        except urllib.error.URLError as exc:
-            raise LlmTransportError(f"Model request failed: {exc.reason}", model=self.active_model) from exc
-        try:
-            parsed_response = json.loads(raw_response)
-        except json.JSONDecodeError as exc:
-            raise LlmResponseError("Model HTTP response was not valid JSON.", model=self.active_model) from exc
+        last_parse_error: LlmResponseError | None = None
+        for attempt in range(1, 4):
+            try:
+                raw_response = sender(request_body, self.config)
+            except LlmTransportError:
+                raise
+            except TimeoutError as exc:
+                raise LlmTransportError("Model request timed out.", model=self.active_model) from exc
+            except urllib.error.URLError as exc:
+                raise LlmTransportError(f"Model request failed: {exc.reason}", model=self.active_model) from exc
+            try:
+                parsed_response = json.loads(raw_response)
+            except json.JSONDecodeError as exc:
+                raise LlmResponseError("Model HTTP response was not valid JSON.", model=self.active_model) from exc
 
-        try:
-            message = parsed_response["choices"][0]["message"]["content"]
-        except (KeyError, IndexError, TypeError) as exc:
-            raise LlmResponseError("Model response did not contain choices[0].message.content.", model=self.active_model) from exc
+            try:
+                message = parsed_response["choices"][0]["message"]["content"]
+            except (KeyError, IndexError, TypeError) as exc:
+                raise LlmResponseError("Model response did not contain choices[0].message.content.", model=self.active_model) from exc
 
-        text = _message_text(message)
-        try:
-            payload = _extract_json_object(text)
-        except LlmResponseError as exc:
-            raise LlmResponseError(str(exc), model=self.active_model) from exc
-        usage = parsed_response.get("usage", {})
-        trace = {
-            "purpose": purpose,
-            "selected_model": self.active_model,
-            "parse_status": "ok",
-            "api_base": self.config.api_base,
-            "prompt_tokens": usage.get("prompt_tokens"),
-            "completion_tokens": usage.get("completion_tokens"),
-            "request_preview": _request_preview(messages),
-            "raw_preview": _trim(text, limit=280),
-        }
-        return payload, trace
+            text = _message_text(message)
+            try:
+                payload = _extract_json_object(text)
+            except LlmResponseError as exc:
+                last_parse_error = LlmResponseError(str(exc), model=self.active_model)
+                if attempt >= 3:
+                    raise last_parse_error from exc
+                continue
+            usage = parsed_response.get("usage", {})
+            trace = {
+                "purpose": purpose,
+                "selected_model": self.active_model,
+                "parse_status": "ok",
+                "api_base": self.config.api_base,
+                "prompt_tokens": usage.get("prompt_tokens"),
+                "completion_tokens": usage.get("completion_tokens"),
+                "request_preview": _request_preview(messages),
+                "raw_preview": _trim(text, limit=280),
+                "attempt": attempt,
+            }
+            return payload, trace
+        if last_parse_error is not None:
+            raise last_parse_error
+        raise LlmResponseError("Model response did not contain a valid JSON object.", model=self.active_model)
 
 
 def _proposal_prompt(
     *,
     task: dict[str, Any],
     generation: int,
+    parent_candidate: dict[str, Any],
     current_best: dict[str, Any],
     candidate_history: list[dict[str, Any]],
     memories: list[dict[str, Any]],
@@ -277,12 +293,17 @@ def _proposal_prompt(
         f"Function signature: {task['function_signature']}\n"
         f"Objective: {task['objective_direction']} {task['objective_label']}\n"
         f"Generation: {generation}\n"
-        f"Current best summary: {current_best['candidate_summary']}\n"
-        f"Current best objective: {current_best['metrics']['objective']}\n"
-        f"Current best J: {current_best['metrics']['J']}\n"
+        f"Selected parent summary: {parent_candidate['candidate_summary']}\n"
+        f"Selected parent objective: {parent_candidate['metrics']['objective']}\n"
+        f"Selected parent J: {parent_candidate['metrics']['J']}\n"
+        f"Global best summary: {current_best['candidate_summary']}\n"
+        f"Global best objective: {current_best['metrics']['objective']}\n"
+        f"Global best J: {current_best['metrics']['J']}\n"
         "Baseline source:\n"
         f"{current_best['baseline_source']}\n"
-        "Current best source:\n"
+        "Selected parent source:\n"
+        f"{parent_candidate['source_code']}\n"
+        "Global best source:\n"
         f"{current_best['source_code']}\n"
         f"Benchmark spec: {json.dumps(task['benchmark'])}\n"
         f"Tests: {json.dumps(task['tests'])}\n"
@@ -290,7 +311,7 @@ def _proposal_prompt(
         + ("\n".join(memory_lines) if memory_lines else "- none")
         + "\nPrevious candidate summaries:\n"
         + ("\n".join(history_lines) if history_lines else "- none")
-        + "\nGenerate Python candidates that preserve correctness and improve runtime."
+        + "\nGenerate Python candidates that preserve correctness, improve the selected parent, and avoid repeating recent no-op rewrites."
     )
     return system_prompt, user_prompt
 
@@ -300,6 +321,7 @@ def propose_code_candidates(
     *,
     task: dict[str, Any],
     generation: int,
+    parent_candidate: dict[str, Any],
     current_best: dict[str, Any],
     candidate_history: list[dict[str, Any]],
     memories: list[dict[str, Any]],
@@ -307,6 +329,7 @@ def propose_code_candidates(
     system_prompt, user_prompt = _proposal_prompt(
         task=task,
         generation=generation,
+        parent_candidate=parent_candidate,
         current_best=current_best,
         candidate_history=candidate_history,
         memories=memories,

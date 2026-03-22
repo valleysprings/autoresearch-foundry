@@ -32,6 +32,13 @@ FAMILY_STYLE = {
         "subtitle": "Numeric search tasks highlight whether arithmetic structure replaces repeated scans.",
         "secondary_title": "Candidate frontier",
     },
+    "math": {
+        "objective": "#8c4f1c",
+        "j": "#2f6f3e",
+        "accent": "#5f3411",
+        "subtitle": "Harder combinatorics and number-theory tasks reward stepping-stone improvements, not only one-shot wins.",
+        "secondary_title": "Candidate frontier",
+    },
 }
 
 
@@ -52,6 +59,7 @@ def build_improvement_table(run: dict[str, Any]) -> list[dict[str, str]]:
     baseline_benchmark = baseline_metrics.get("benchmark_ms")
     winner_benchmark = winner_metrics.get("benchmark_ms")
     accepted_generations = sum(1 for point in run.get("objective_curve", [])[1:] if point.get("accepted"))
+    best_improvements = sum(1 for point in run.get("objective_curve", [])[1:] if point.get("improved_global_best"))
 
     return [
         {"label": "Task", "value": str(run["task"]["id"])},
@@ -73,7 +81,8 @@ def build_improvement_table(run: dict[str, Any]) -> list[dict[str, str]]:
             "label": "Winner benchmark",
             "value": "n/a" if winner_benchmark is None else f"{_numeric(winner_benchmark):.3f} ms",
         },
-        {"label": "Accepted generations", "value": str(accepted_generations)},
+        {"label": "Frontier accepts", "value": str(accepted_generations)},
+        {"label": "Global-best improves", "value": str(best_improvements)},
         {"label": "Write-backs", "value": str(len(run.get("memory_events", [])))},
     ]
 

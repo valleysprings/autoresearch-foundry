@@ -105,6 +105,79 @@ def _failure_reason(previous_best: dict[str, Any], winner: dict[str, Any]) -> st
     return "Candidate was not accepted by the deterministic verifier."
 
 
+def _objective(candidate: dict[str, Any]) -> float:
+    return float(candidate.get("metrics", {}).get("objective") or 0.0)
+
+
+def _candidate_rank(candidate: dict[str, Any]) -> tuple[float, float]:
+    return _objective(candidate), float(candidate.get("metrics", {}).get("J") or -1.0)
+
+
+def _select_generation_winner(evaluated_candidates: list[dict[str, Any]]) -> dict[str, Any]:
+    passing = [candidate for candidate in evaluated_candidates if candidate["metrics"]["status"] == "pass"]
+    if passing:
+        return max(passing, key=_candidate_rank)
+    return max(evaluated_candidates, key=lambda candidate: (float(candidate["metrics"]["J"]), _objective(candidate)))
+
+
+def _select_parent(frontier: list[dict[str, Any]], current_best: dict[str, Any], generation: int) -> dict[str, Any]:
+    if len(frontier) == 1:
+        return current_best
+
+    sorted_frontier = sorted(frontier, key=_candidate_rank, reverse=True)
+    recent_non_best = [item for item in reversed(frontier) if item["candidate_id"] != current_best["candidate_id"]]
+    strategy_index = (generation - 1) % 3
+    if strategy_index == 0:
+        return current_best
+    if strategy_index == 1 and recent_non_best:
+        return recent_non_best[0]
+    if len(sorted_frontier) > 1:
+        return sorted_frontier[1]
+    return current_best
+
+
+def _extend_frontier(frontier: list[dict[str, Any]], candidate: dict[str, Any], max_size: int = 6) -> list[dict[str, Any]]:
+    if any(item.get("source_code") == candidate.get("source_code") for item in frontier):
+        return frontier
+    updated = frontier + [candidate]
+    if len(updated) <= max_size:
+        return updated
+    best = max(updated, key=_candidate_rank)
+    keep_ids = {best["candidate_id"]}
+    kept: list[dict[str, Any]] = [best]
+    for item in reversed(updated):
+        candidate_id = item["candidate_id"]
+        if candidate_id in keep_ids:
+            continue
+        kept.append(item)
+        keep_ids.add(candidate_id)
+        if len(kept) >= max_size:
+            break
+    kept.reverse()
+    return kept
+
+
+def _failure_reason_against_parent(parent_candidate: dict[str, Any], winner: dict[str, Any], epsilon: float) -> str:
+    verifier_status = winner["metrics"]["verifier_status"]
+    if verifier_status == "error":
+        return f"Candidate errored before verification completed: {winner['metrics'].get('error') or 'unknown error'}"
+    if verifier_status == "fail":
+        failed_tests = [result["name"] for result in winner["metrics"].get("test_results", []) if not result.get("passed")]
+        if failed_tests:
+            return "Candidate failed deterministic tests: " + ", ".join(failed_tests)
+        return "Candidate failed deterministic correctness checks."
+    winner_objective = _objective(winner)
+    parent_objective = _objective(parent_candidate)
+    return (
+        "Candidate passed verification but did not improve the selected parent objective "
+        f"({winner_objective:.3f} <= {parent_objective:.3f} + epsilon {epsilon:.3f})."
+    )
+
+
+def _should_write_failure_memory(winner: dict[str, Any]) -> bool:
+    return winner["metrics"]["verifier_status"] in {"fail", "error"}
+
+
 def run_codegen_task(
     task: dict[str, Any],
     store: MemoryStore,
@@ -119,10 +192,12 @@ def run_codegen_task(
     baseline = _baseline_candidate(task, workspace_root / task["id"])
     baseline_ms = baseline["metrics"]["benchmark_ms"]
     current_best = baseline
+    frontier = [baseline]
     candidate_history: list[dict[str, Any]] = []
     llm_traces: list[dict[str, Any]] = []
     memory_events: list[dict[str, Any]] = []
     generations: list[dict[str, Any]] = []
+    epsilon = float(task.get("epsilon", 0.0))
     objective_curve = [
         {
             "generation": 0,
@@ -140,6 +215,7 @@ def run_codegen_task(
     initial_retrieved = store.retrieve(task_signature=task["task_signature"], family=task["family"], top_k=4)
 
     for generation in range(1, int(task["generation_budget"]) + 1):
+        parent_candidate = _select_parent(frontier, current_best, generation)
         retrieved = store.retrieve(task_signature=task["task_signature"], family=task["family"], top_k=4)
         _emit(
             progress_callback,
@@ -147,12 +223,17 @@ def run_codegen_task(
             phase="generation_started",
             task_id=task["id"],
             generation=generation,
-            message=f"Generation {generation} retrieved {len(retrieved)} memories",
+            candidate=parent_candidate["agent"],
+            message=(
+                f"Generation {generation} retrieved {len(retrieved)} memories "
+                f"and selected parent {parent_candidate['agent']}"
+            ),
         )
         candidate_specs, proposal_trace = propose_code_candidates(
             proposal_runtime,
             task=task,
             generation=generation,
+            parent_candidate=parent_candidate,
             current_best=current_best,
             candidate_history=candidate_history,
             memories=retrieved,
@@ -203,6 +284,7 @@ def run_codegen_task(
                 "baseline_source": baseline["source_code"],
                 "run_mode": "llm-required",
                 "supporting_memory_ids": [memory["experience_id"] for memory in retrieved],
+                "parent_candidate_id": parent_candidate["candidate_id"],
                 "metrics": metrics,
                 "verifier_status": metrics["verifier_status"],
             }
@@ -221,71 +303,85 @@ def run_codegen_task(
                 ),
             )
 
-        evaluated_candidates.sort(key=lambda item: item["metrics"]["J"], reverse=True)
-        generation_winner = evaluated_candidates[0]
+        evaluated_candidates.sort(key=lambda item: float(item["metrics"]["J"]), reverse=True)
+        generation_winner = _select_generation_winner(evaluated_candidates)
         previous_best = current_best
         accepted = False
-        if (
-            generation_winner["metrics"]["status"] == "pass"
-            and generation_winner["metrics"]["objective"] > previous_best["metrics"]["objective"]
-        ):
-            current_best = generation_winner
+        improved_global_best = False
+        if generation_winner["metrics"]["status"] == "pass" and _objective(generation_winner) > _objective(parent_candidate) + epsilon:
             accepted = True
+            frontier = _extend_frontier(frontier, generation_winner)
+            if _objective(generation_winner) > _objective(previous_best) + epsilon:
+                current_best = generation_winner
+                improved_global_best = True
 
-        delta_j = round(generation_winner["metrics"]["J"] - previous_best["metrics"]["J"], 4)
+        delta_j = round(generation_winner["metrics"]["J"] - parent_candidate["metrics"]["J"], 4)
+        global_best_delta_j = round(generation_winner["metrics"]["J"] - previous_best["metrics"]["J"], 4)
         experience_outcome = "success" if accepted else "failure"
-        rejection_reason = None if accepted else _failure_reason(previous_best, generation_winner)
+        rejection_reason = None if accepted else _failure_reason_against_parent(parent_candidate, generation_winner, epsilon)
         wrote_memory = False
         new_experience = None
-        reflection, reflection_trace = reflect_strategy_experience(
-            proposal_runtime,
-            task=task,
-            generation=generation,
-            previous_best=previous_best,
-            winner=generation_winner,
-            delta_j=delta_j,
-            outcome=experience_outcome,
-            rejection_reason=rejection_reason,
-        )
-        llm_traces.append(
-            {
-                "task_id": task["id"],
-                "generation": generation,
-                "phase": "memory_reflection",
-                "experience_outcome": experience_outcome,
-                **reflection_trace,
-            }
-        )
-        new_experience = _build_experience(
-            task,
-            session_id,
-            generation,
-            generation_winner,
-            delta_j,
-            reflection,
-            outcome=experience_outcome,
-            rejection_reason=rejection_reason,
-        )
-        wrote_memory = store.append(new_experience)
-        if wrote_memory:
-            memory_events.append(
+        should_reflect = accepted or _should_write_failure_memory(generation_winner)
+        if should_reflect:
+            reflection, reflection_trace = reflect_strategy_experience(
+                proposal_runtime,
+                task=task,
+                generation=generation,
+                previous_best=parent_candidate,
+                winner=generation_winner,
+                delta_j=delta_j,
+                outcome=experience_outcome,
+                rejection_reason=rejection_reason,
+            )
+            llm_traces.append(
                 {
+                    "task_id": task["id"],
                     "generation": generation,
-                    "experience_id": new_experience["experience_id"],
+                    "phase": "memory_reflection",
                     "experience_outcome": experience_outcome,
-                    "verifier_status": generation_winner["metrics"]["verifier_status"],
-                    "delta_J": delta_j,
-                    "prompt_fragment": new_experience["prompt_fragment"],
+                    **reflection_trace,
                 }
             )
+            new_experience = _build_experience(
+                task,
+                session_id,
+                generation,
+                generation_winner,
+                delta_j,
+                reflection,
+                outcome=experience_outcome,
+                rejection_reason=rejection_reason,
+            )
+            wrote_memory = store.append(new_experience)
+            if wrote_memory:
+                memory_events.append(
+                    {
+                        "generation": generation,
+                        "experience_id": new_experience["experience_id"],
+                        "experience_outcome": experience_outcome,
+                        "verifier_status": generation_winner["metrics"]["verifier_status"],
+                        "delta_J": delta_j,
+                        "prompt_fragment": new_experience["prompt_fragment"],
+                    }
+                )
+                _emit(
+                    progress_callback,
+                    pace_ms,
+                    phase="memory_writeback",
+                    task_id=task["id"],
+                    generation=generation,
+                    candidate=generation_winner["agent"],
+                    message=f"Wrote {new_experience['experience_id']} ({experience_outcome})",
+                )
+        else:
             _emit(
                 progress_callback,
                 pace_ms,
-                phase="memory_writeback",
+                phase="memory_skipped",
                 task_id=task["id"],
                 generation=generation,
                 candidate=generation_winner["agent"],
-                message=f"Wrote {new_experience['experience_id']} ({experience_outcome})",
+                message="Skipped write-back for a passing but non-improving candidate.",
             )
 
         objective_curve.append(
@@ -298,6 +394,8 @@ def run_codegen_task(
                 "candidate_agent": generation_winner["agent"],
                 "candidate_label": generation_winner["label"],
                 "accepted": accepted,
+                "improved_global_best": improved_global_best,
+                "parent_candidate": parent_candidate["agent"],
                 "active_model": proposal_runtime.active_model,
                 "proposal_model": generation_winner["proposal_model"],
                 "experience_outcome": experience_outcome,
@@ -309,15 +407,19 @@ def run_codegen_task(
                 "generation": generation,
                 "run_mode": "llm-required",
                 "active_model": proposal_runtime.active_model,
+                "parent_candidate": parent_candidate,
                 "retrieved_memories": retrieved,
                 "candidates": evaluated_candidates,
                 "winner": generation_winner,
                 "winner_accepted": accepted,
+                "winner_improved_global_best": improved_global_best,
                 "best_after_generation": current_best,
                 "delta_J": delta_j,
+                "global_best_delta_J": global_best_delta_j,
                 "experience_outcome": experience_outcome,
                 "wrote_memory": wrote_memory,
                 "new_experience": new_experience,
+                "frontier_size": len(frontier),
             }
         )
         _emit(
@@ -327,11 +429,18 @@ def run_codegen_task(
             task_id=task["id"],
             generation=generation,
             candidate=current_best["agent"],
-            message=f"Best objective after generation {generation}: {current_best['metrics']['objective']}",
+            message=(
+                f"Best objective after generation {generation}: {current_best['metrics']['objective']} "
+                f"(frontier={len(frontier)})"
+            ),
         )
 
     run_delta_j = round(current_best["metrics"]["J"] - baseline["metrics"]["J"], 4)
-    added_experiences = [generation["new_experience"] for generation in generations if generation.get("new_experience")]
+    added_experiences = [
+        generation["new_experience"]
+        for generation in generations
+        if generation.get("wrote_memory") and generation.get("new_experience")
+    ]
     positive_experiences_added = sum(
         1 for experience in added_experiences if experience.get("experience_outcome") == "success"
     )

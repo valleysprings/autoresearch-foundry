@@ -54,12 +54,24 @@ def generate_discrete_payload(
     env_root: Path | None = None,
     workspace_root: Path | None = None,
     session_id: str | None = None,
+    generation_budget: int | None = None,
+    candidate_budget: int | None = None,
 ) -> dict[str, Any]:
     tasks = load_codegen_tasks()
     if task_id is not None:
         tasks = [task for task in tasks if task["id"] == task_id]
         if not tasks:
             raise ValueError(f"Unknown task id: {task_id}")
+    if generation_budget is not None or candidate_budget is not None:
+        overridden_tasks: list[dict[str, Any]] = []
+        for task in tasks:
+            patched = dict(task)
+            if generation_budget is not None:
+                patched["generation_budget"] = generation_budget
+            if candidate_budget is not None:
+                patched["candidate_budget"] = candidate_budget
+            overridden_tasks.append(patched)
+        tasks = overridden_tasks
 
     active_runs_root = runs_root or RUNS
     active_workspace_root = workspace_root or (active_runs_root / "workspace" / "current")
@@ -286,6 +298,8 @@ def write_discrete_artifacts(
     proposal_runtime: ProposalRuntime | None = None,
     runs_root: Path | None = None,
     env_root: Path | None = None,
+    generation_budget: int | None = None,
+    candidate_budget: int | None = None,
 ) -> Path:
     active_runs_root = runs_root or RUNS
     session_id = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
@@ -312,6 +326,8 @@ def write_discrete_artifacts(
         env_root=env_root,
         workspace_root=active_workspace_root,
         session_id=session_id,
+        generation_budget=generation_budget,
+        candidate_budget=candidate_budget,
     )
     payload["audit"]["session_id"] = session_id
     active_runs_root.mkdir(parents=True, exist_ok=True)
@@ -341,6 +357,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run the strict LLM-required codegen demo.")
     parser.add_argument("--task", help="Run only one task id from the codegen catalog.")
     parser.add_argument("--list-tasks", action="store_true", help="List available task ids.")
+    parser.add_argument("--generation-budget", type=int, help="Override generation budget for this run.")
+    parser.add_argument("--candidate-budget", type=int, help="Override candidate budget for this run.")
     args = parser.parse_args()
 
     if args.list_tasks:
@@ -348,7 +366,11 @@ def main() -> None:
             print(f"{task['id']}: {task['title']}")
         return
 
-    out = write_discrete_artifacts(task_id=args.task)
+    out = write_discrete_artifacts(
+        task_id=args.task,
+        generation_budget=args.generation_budget,
+        candidate_budget=args.candidate_budget,
+    )
     print(f"wrote {out}")
 
 

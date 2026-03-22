@@ -8,8 +8,34 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app.codegen.errors import ConfigError, LlmResponseError, LlmTransportError
+from app.codegen.catalog import load_codegen_tasks, seed_strategy_experiences
+from app.codegen.trainer import run_codegen_task
 from app.entries.discrete_demo import generate_discrete_payload, write_discrete_artifacts
+from app.memory.store import MemoryStore
 from tests.helpers import chat_response, make_runtime
+
+
+def raw_content_response(content: str, *, model: str = "deepseek-chat") -> str:
+    return json.dumps(
+        {
+            "id": "resp-raw",
+            "object": "chat.completion",
+            "choices": [
+                {
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": content,
+                    },
+                }
+            ],
+            "usage": {
+                "prompt_tokens": 10,
+                "completion_tokens": 20,
+            },
+            "model": model,
+        }
+    )
 
 
 PROPOSAL_PAYLOAD = {
@@ -86,6 +112,32 @@ FAILURE_REFLECTION_PAYLOAD = {
     "tool_trace_summary": "candidate passed tests, matched or trailed the incumbent benchmark, and was rejected as a non-improving repeat.",
 }
 
+NON_IMPROVING_PASS_PROPOSAL_PAYLOAD = {
+    "candidates": [
+        {
+            "name": "Sorted scan",
+            "strategy": "Sort then scan neighbors.",
+            "rationale": "This stays correct but should trail the already accepted set-based winner.",
+            "imports": [],
+            "function_body": "ordered = sorted(values)\nfor index in range(1, len(ordered)):\n    if ordered[index] == ordered[index - 1]:\n        return True\nreturn False",
+            "candidate_summary": "Correct but weaker sorted duplicate detection.",
+        }
+    ]
+}
+
+FULL_FUNCTION_PROPOSAL_PAYLOAD = {
+    "candidates": [
+        {
+            "name": "Wrapped definition",
+            "strategy": "Return the full function even though the parser asked for only the body.",
+            "rationale": "The runtime should strip the wrapper and keep going.",
+            "imports": [],
+            "function_body": "def contains_duplicates(values):\n    return len(values) != len(set(values))",
+            "candidate_summary": "Set-cardinality duplicate detector returned with a def wrapper.",
+        }
+    ]
+}
+
 
 class CodegenRunnerTest(unittest.TestCase):
     def test_missing_runtime_config_fails_before_run(self) -> None:
@@ -135,12 +187,12 @@ class CodegenRunnerTest(unittest.TestCase):
             self.assertTrue((Path(tmp_dir) / manifest["artifact_paths"]["improvement_table_json"]).exists())
             self.assertIn(manifest["session_id"], run["handoff_bundle"]["manifest_path"])
             self.assertEqual(run["session_id"], manifest["session_id"])
-            self.assertEqual(payload["summary"]["write_backs"], 3)
+            self.assertEqual(payload["summary"]["write_backs"], 2)
             self.assertEqual(run["memory_before_count"], 2)
-            self.assertEqual(run["memory_after_count"], 5)
+            self.assertEqual(run["memory_after_count"], 4)
             self.assertEqual(run["positive_experiences_added"], 1)
-            self.assertEqual(run["negative_experiences_added"], 2)
-            self.assertEqual(len(run["added_experiences"]), 3)
+            self.assertEqual(run["negative_experiences_added"], 1)
+            self.assertEqual(len(run["added_experiences"]), 2)
             self.assertEqual(run["added_experiences"][0]["generation"], 1)
             self.assertEqual(run["added_experiences"][0]["experience_outcome"], "success")
             memories = json.loads((Path(tmp_dir) / "codegen_working_memory.json").read_text())
@@ -183,6 +235,87 @@ class CodegenRunnerTest(unittest.TestCase):
                     proposal_runtime=runtime,
                     runs_root=Path(tmp_dir),
                 )
+
+    def test_non_improving_passing_candidate_skips_failure_memory_writeback(self) -> None:
+        runtime = make_runtime(
+            [
+                chat_response(PROPOSAL_PAYLOAD),
+                chat_response(REFLECTION_PAYLOAD),
+                chat_response(NON_IMPROVING_PASS_PROPOSAL_PAYLOAD),
+            ]
+        )
+        task = next(item for item in load_codegen_tasks() if item["id"] == "contains-duplicates")
+        task = dict(task)
+        task["generation_budget"] = 2
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            store = MemoryStore(tmp / "memory.json", markdown_path=tmp / "memory.md")
+            store.ensure_seed_records(seed_strategy_experiences())
+
+            with patch("app.codegen.trainer._select_parent", side_effect=lambda _frontier, current_best, _generation: current_best):
+                result = run_codegen_task(
+                    task,
+                    store,
+                    proposal_runtime=runtime,
+                    workspace_root=tmp / "workspace",
+                    session_id="non-improving-pass",
+                )
+
+            self.assertEqual(len(result["memory_events"]), 1)
+            self.assertEqual(result["positive_experiences_added"], 1)
+            self.assertEqual(result["negative_experiences_added"], 0)
+            self.assertFalse(result["generations"][1]["wrote_memory"])
+            self.assertEqual(result["generations"][1]["experience_outcome"], "failure")
+            self.assertEqual(len(result["llm_traces"]), 3)
+
+    def test_full_function_wrappers_are_stripped_from_candidate_payloads(self) -> None:
+        runtime = make_runtime(
+            [
+                chat_response(FULL_FUNCTION_PROPOSAL_PAYLOAD),
+                chat_response(REFLECTION_PAYLOAD),
+            ]
+        )
+        task = next(item for item in load_codegen_tasks() if item["id"] == "contains-duplicates")
+        task = dict(task)
+        task["generation_budget"] = 1
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            store = MemoryStore(tmp / "memory.json", markdown_path=tmp / "memory.md")
+            store.ensure_seed_records(seed_strategy_experiences())
+            result = run_codegen_task(
+                task,
+                store,
+                proposal_runtime=runtime,
+                workspace_root=tmp / "workspace",
+                session_id="wrapped-function",
+            )
+            self.assertEqual(result["winner"]["metrics"]["status"], "pass")
+            self.assertTrue(result["generations"][0]["winner_accepted"])
+
+    def test_model_content_parse_error_is_retried(self) -> None:
+        runtime = make_runtime(
+            [
+                raw_content_response("not valid json content"),
+                chat_response(FULL_FUNCTION_PROPOSAL_PAYLOAD),
+                chat_response(REFLECTION_PAYLOAD),
+            ]
+        )
+        task = next(item for item in load_codegen_tasks() if item["id"] == "contains-duplicates")
+        task = dict(task)
+        task["generation_budget"] = 1
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            store = MemoryStore(tmp / "memory.json", markdown_path=tmp / "memory.md")
+            store.ensure_seed_records(seed_strategy_experiences())
+            result = run_codegen_task(
+                task,
+                store,
+                proposal_runtime=runtime,
+                workspace_root=tmp / "workspace",
+                session_id="retry-parse-error",
+            )
+            self.assertEqual(result["winner"]["metrics"]["status"], "pass")
+            self.assertEqual(result["llm_traces"][0]["attempt"], 2)
 
 
 if __name__ == "__main__":

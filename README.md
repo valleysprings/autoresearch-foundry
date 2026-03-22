@@ -84,8 +84,10 @@ Selection logic:
 
 - correctness is gated first
 - failing or erroring candidates do not enter the benchmark lane as winners
-- accepted generations must beat the incumbent objective
-- memory records both positive and negative experiences so future prompts inherit wins and avoid repeated dead ends
+- generations mutate a selected frontier parent, not only the global incumbent
+- a generation is accepted when it beats its selected parent by `epsilon`
+- the global best updates only when a frontier winner also beats the current best by `epsilon`
+- passing-but-stagnant candidates do not get written back as failure memory
 
 ## Memory Design
 
@@ -107,8 +109,9 @@ Each experience stores fields such as:
 Important properties:
 
 - memory persists across runs and is not reset to seeds each time
-- both **success** and **failure** experiences are retrieved
-- retrieval still ranks by task overlap, family overlap, and impact
+- retrieval prefers **success** experiences and caps failure fragments
+- failure memory is reserved for informative verifier failures or execution errors
+- duplicate memory fragments are suppressed before write-back
 - markdown output is an auditable ledger, but the UI also surfaces run-local fragments directly
 
 ## Configuration
@@ -143,6 +146,9 @@ They are all pure-function deterministic tasks:
 - `most-frequent-item`
 - `deduplicate-preserve-order`
 - `missing-number`
+- `count-primes-up-to`
+- `count-change-ways`
+- `count-n-queens`
 
 Why they fit well:
 
@@ -172,6 +178,12 @@ Use the current engine when the task can be represented as:
 - a measurable objective like runtime, quality, or both
 
 Add a new benchmark kind when the task needs a new deterministic input generator or score fixture in [app/codegen/verifier.py](/Users/david/coding/2026/autoresearcher-MA/app/codegen/verifier.py).
+
+For longer experiments, you can override budgets from the CLI without editing the catalog:
+
+```bash
+python3 -m app.entries.discrete_demo --task count-n-queens --generation-budget 20
+```
 
 The current runtime is especially good for:
 

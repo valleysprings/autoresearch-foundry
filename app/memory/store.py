@@ -52,8 +52,10 @@ class MemoryStore:
         task_signature: list[str],
         family: str,
         top_k: int = 3,
+        failure_top_k: int = 1,
     ) -> list[dict[str, Any]]:
-        scored: list[tuple[float, dict[str, Any]]] = []
+        success_scored: list[tuple[float, dict[str, Any]]] = []
+        failure_scored: list[tuple[float, dict[str, Any]]] = []
         target = set(task_signature)
         for item in self.load():
             overlap = len(target & set(item.get("task_signature", [])))
@@ -61,20 +63,44 @@ class MemoryStore:
             family_bonus = 2.0 if family_name == family else 1.0 if family_name == "agnostic" else 0.0
             impact_bonus = min(abs(float(item.get("delta_J", 0.0))), 1.0)
             outcome = item.get("experience_outcome", "success")
-            outcome_bonus = 0.2 if outcome == "success" else 0.1 if outcome == "failure" else 0.0
+            verifier_status = item.get("verifier_status", "")
+            if outcome == "failure" and verifier_status == "pass":
+                # Passing-but-stagnant attempts are usually prompt noise, not reusable avoidance memory.
+                continue
+            outcome_bonus = 0.25 if outcome == "success" else 0.05 if outcome == "failure" else 0.0
             score = overlap * 3.0 + family_bonus + impact_bonus + outcome_bonus
             if score <= 0:
                 continue
             enriched = dict(item)
             enriched["retrieval_score"] = round(score, 3)
-            scored.append((score, enriched))
-        scored.sort(key=lambda pair: (pair[0], abs(float(pair[1].get("delta_J", 0.0)))), reverse=True)
-        return [item for _, item in scored[:top_k]]
+            if outcome == "failure":
+                failure_scored.append((score, enriched))
+            else:
+                success_scored.append((score, enriched))
+
+        def _sort_key(pair: tuple[float, dict[str, Any]]) -> tuple[float, float]:
+            return pair[0], abs(float(pair[1].get("delta_J", 0.0)))
+
+        success_scored.sort(key=_sort_key, reverse=True)
+        failure_scored.sort(key=_sort_key, reverse=True)
+        selected = [item for _, item in success_scored[:top_k]]
+        remaining = max(top_k - len(selected), 0)
+        if remaining > 0:
+            selected.extend(item for _, item in failure_scored[: min(failure_top_k, remaining)])
+
+        if len(selected) < top_k:
+            leftovers = success_scored[top_k:] + failure_scored[min(failure_top_k, remaining) :]
+            leftovers.sort(key=_sort_key, reverse=True)
+            selected.extend(item for _, item in leftovers[: top_k - len(selected)])
+        return selected[:top_k]
 
     def append(self, experience: dict[str, Any]) -> bool:
         memories = self.load()
         existing_ids = {item.get("experience_id") for item in memories}
         if experience.get("experience_id") in existing_ids:
+            return False
+        signature = self._signature(experience)
+        if signature and signature in {self._signature(item) for item in memories}:
             return False
         memories.append(dict(experience))
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -92,3 +118,17 @@ class MemoryStore:
             return
         self.markdown_path.parent.mkdir(parents=True, exist_ok=True)
         self.markdown_path.write_text(render_memory_markdown(memories, title=self.title))
+
+    @staticmethod
+    def _signature(experience: dict[str, Any]) -> str:
+        parts = [
+            str(experience.get("source_task", "")).strip().lower(),
+            str(experience.get("experience_outcome", "")).strip().lower(),
+            str(experience.get("verifier_status", "")).strip().lower(),
+            str(experience.get("failure_pattern", "")).strip().lower(),
+            str(experience.get("successful_strategy", "")).strip().lower(),
+            str(experience.get("prompt_fragment", "")).strip().lower(),
+            str(experience.get("candidate_summary", "")).strip().lower(),
+        ]
+        normalized = " | ".join(part for part in parts if part)
+        return normalized[:640]

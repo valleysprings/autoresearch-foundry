@@ -269,6 +269,133 @@ CODEGEN_TASKS: list[dict[str, Any]] = [
             {"name": "unordered-input", "args": [[4, 2, 1, 0]], "expected": 3},
         ],
     },
+    {
+        "id": "count-primes-up-to",
+        "title": "Optimize count_primes_up_to",
+        "description": "Count primes up to a limit on a deterministic math benchmark where trial division and sieve families compete.",
+        "family": "math",
+        "function_name": "count_primes_up_to",
+        "function_signature": "def count_primes_up_to(limit):",
+        "objective_label": "speedup_vs_baseline",
+        "objective_direction": "max",
+        "task_signature": ["python-codegen", "math", "prime-counting"],
+        "source_type": "embedded-codegen-task",
+        "generation_budget": 6,
+        "candidate_budget": 3,
+        "epsilon": 0.15,
+        "baseline_imports": [],
+        "baseline_body": _body(
+            """
+            count = 0
+            for candidate in range(2, limit + 1):
+                is_prime = True
+                divisor = 2
+                while divisor < candidate:
+                    if candidate % divisor == 0:
+                        is_prime = False
+                        break
+                    divisor += 1
+                if is_prime:
+                    count += 1
+            return count
+            """
+        ),
+        "baseline_summary": "Naive trial division for every candidate integer.",
+        "benchmark": {"kind": "count_primes_up_to", "repeats": 8},
+        "tests": [
+            {"name": "below-two", "args": [1], "expected": 0},
+            {"name": "two", "args": [2], "expected": 1},
+            {"name": "ten", "args": [10], "expected": 4},
+            {"name": "thirty", "args": [30], "expected": 10},
+        ],
+    },
+    {
+        "id": "count-change-ways",
+        "title": "Optimize count_change_ways",
+        "description": "Tackle a harder combinatorics problem where exponential recursion should evolve toward dynamic programming.",
+        "family": "math",
+        "function_name": "count_change_ways",
+        "function_signature": "def count_change_ways(total, coins):",
+        "objective_label": "speedup_vs_baseline",
+        "objective_direction": "max",
+        "task_signature": ["python-codegen", "math", "coin-change"],
+        "source_type": "embedded-codegen-task",
+        "generation_budget": 6,
+        "candidate_budget": 3,
+        "epsilon": 0.15,
+        "baseline_imports": [],
+        "baseline_body": _body(
+            """
+            def search(remaining, index):
+                if remaining == 0:
+                    return 1
+                if remaining < 0 or index >= len(coins):
+                    return 0
+                return search(remaining - coins[index], index) + search(remaining, index + 1)
+
+            return search(total, 0)
+            """
+        ),
+        "baseline_summary": "Exponential recursive coin-change counting without memoization.",
+        "benchmark": {"kind": "count_change_ways", "repeats": 5},
+        "tests": [
+            {"name": "zero-total", "args": [0, [1, 2]], "expected": 1},
+            {"name": "simple", "args": [4, [1, 2, 3]], "expected": 4},
+            {"name": "classic", "args": [10, [2, 5, 3, 6]], "expected": 5},
+            {"name": "single-coin", "args": [5, [5]], "expected": 1},
+        ],
+    },
+    {
+        "id": "count-n-queens",
+        "title": "Optimize count_n_queens",
+        "description": "Benchmark combinatorial search on a harder math workload where better state encoding should unlock deeper improvements.",
+        "family": "math",
+        "function_name": "count_n_queens",
+        "function_signature": "def count_n_queens(size):",
+        "objective_label": "speedup_vs_baseline",
+        "objective_direction": "max",
+        "task_signature": ["python-codegen", "math", "n-queens"],
+        "source_type": "embedded-codegen-task",
+        "generation_budget": 6,
+        "candidate_budget": 3,
+        "epsilon": 0.15,
+        "baseline_imports": [],
+        "baseline_body": _body(
+            """
+            placements = []
+
+            def conflicts(column):
+                row = len(placements)
+                for previous_row, previous_column in enumerate(placements):
+                    if previous_column == column or abs(previous_column - column) == row - previous_row:
+                        return True
+                return False
+
+            def search():
+                row = len(placements)
+                if row == size:
+                    return 1
+                total = 0
+                for column in range(size):
+                    if conflicts(column):
+                        continue
+                    placements.append(column)
+                    total += search()
+                    placements.pop()
+                return total
+
+            return search()
+            """
+        ),
+        "baseline_summary": "Plain backtracking with linear conflict checks at every placement.",
+        "benchmark": {"kind": "count_n_queens", "repeats": 4},
+        "tests": [
+            {"name": "one", "args": [1], "expected": 1},
+            {"name": "four", "args": [4], "expected": 2},
+            {"name": "five", "args": [5], "expected": 10},
+            {"name": "six", "args": [6], "expected": 4},
+        ],
+    },
 ]
 
 
