@@ -169,12 +169,15 @@ class CodegenVerifierTest(unittest.TestCase):
         comparable_tasks = [task for task in comparable_tasks if not task.get("local_dataset_only")]
         self.assertEqual(
             {task["id"] for task in comparable_tasks},
-            {"planbench-lite", "multihop-snapshot-small", "tbench-lite"},
+            {"multihop-snapshot-small", "tbench-lite"},
         )
 
     def test_dataset_question_microtasks_generate_item_level_records(self) -> None:
         dataset_tasks = [task for task in load_codegen_tasks(included_in_main_comparison=True) if task.get("local_dataset_only")]
-        self.assertEqual({task["id"] for task in dataset_tasks}, {"olymmath", "sciq"})
+        self.assertEqual(
+            {task["id"] for task in dataset_tasks},
+            {"olymmath", "math-500", "aime", "amc", "planbench", "sciq", "qasc", "scienceqa"},
+        )
         with tempfile.TemporaryDirectory() as tmp_dir:
             workspace = Path(tmp_dir)
             for task in dataset_tasks:
@@ -225,9 +228,11 @@ class CodegenVerifierTest(unittest.TestCase):
         task = next(task for task in load_codegen_tasks() if task["id"] == "sciq")
         item = load_question_manifest(task)[0]
         micro_task = build_micro_task(task, item)
+        correct_choice_index = int(item["metadata"]["correct_choice_index"])
+        correct_choice_letter = chr(ord("A") + correct_choice_index)
         _, source_path, source_code = self._materialize(
             micro_task,
-            "def solve(question: dict) -> str:\n    return 'B'\n",
+            f"def solve(question: dict) -> str:\n    return {correct_choice_letter!r}\n",
         )
         metrics = evaluate_materialized_candidate(
             task=micro_task,
@@ -237,7 +242,63 @@ class CodegenVerifierTest(unittest.TestCase):
             memory_applied=False,
         )
         self.assertEqual(metrics["status"], "pass")
-        self.assertEqual(metrics["test_results"][0]["actual"], "darwin")
+        self.assertEqual(metrics["test_results"][0]["actual"], item["expected_answer"])
+
+    def test_qasc_choice_letter_answer_is_accepted(self) -> None:
+        task = next(task for task in load_codegen_tasks() if task["id"] == "qasc")
+        item = load_question_manifest(task)[0]
+        micro_task = build_micro_task(task, item)
+        correct_choice_index = int(item["metadata"]["correct_choice_index"])
+        correct_choice_letter = chr(ord("A") + correct_choice_index)
+        _, source_path, source_code = self._materialize(
+            micro_task,
+            f"def solve(question: dict) -> str:\n    return {correct_choice_letter!r}\n",
+        )
+        metrics = evaluate_materialized_candidate(
+            task=micro_task,
+            source_path=source_path,
+            source_code=source_code,
+            baseline_metrics=None,
+            memory_applied=False,
+        )
+        self.assertEqual(metrics["status"], "pass")
+        self.assertEqual(metrics["test_results"][0]["actual"], item["expected_answer"])
+
+    def test_amc_choice_letter_answer_is_accepted(self) -> None:
+        task = next(task for task in load_codegen_tasks() if task["id"] == "amc")
+        item = load_question_manifest(task)[0]
+        micro_task = build_micro_task(task, item)
+        _, source_path, source_code = self._materialize(
+            micro_task,
+            "def solve(question: dict) -> str:\n    return 'C'\n",
+        )
+        metrics = evaluate_materialized_candidate(
+            task=micro_task,
+            source_path=source_path,
+            source_code=source_code,
+            baseline_metrics=None,
+            memory_applied=False,
+        )
+        self.assertEqual(metrics["status"], "pass")
+        self.assertEqual(metrics["test_results"][0]["actual"], "4")
+
+    def test_aime_numeric_answer_is_normalized_before_match(self) -> None:
+        task = next(task for task in load_codegen_tasks() if task["id"] == "aime")
+        item = next(item for item in load_question_manifest(task) if item["item_id"] == "aime-2024-02")
+        micro_task = build_micro_task(task, item)
+        _, source_path, source_code = self._materialize(
+            micro_task,
+            "def solve(question: dict) -> str:\n    return '0113'\n",
+        )
+        metrics = evaluate_materialized_candidate(
+            task=micro_task,
+            source_path=source_path,
+            source_code=source_code,
+            baseline_metrics=None,
+            memory_applied=False,
+        )
+        self.assertEqual(metrics["status"], "pass")
+        self.assertEqual(metrics["test_results"][0]["actual"], "113")
 
     def test_dataset_solver_cannot_read_expected_answer_from_question_payload(self) -> None:
         task = next(task for task in load_codegen_tasks() if task["id"] == "sciq")
@@ -265,6 +326,33 @@ class CodegenVerifierTest(unittest.TestCase):
         )
         self.assertEqual(metrics["status"], "fail")
         self.assertNotEqual(metrics["test_results"][0]["actual"], "darwin")
+
+    def test_math_dataset_solver_cannot_read_expected_answer_from_question_payload(self) -> None:
+        task = next(task for task in load_codegen_tasks() if task["id"] == "math-500")
+        item = load_question_manifest(task)[0]
+        micro_task = build_micro_task(task, item)
+        _, source_path, source_code = self._materialize(
+            micro_task,
+            (
+                "def solve(question: dict) -> str:\n"
+                "    answer = question.get('expected_answer')\n"
+                "    metadata = question.get('metadata', {})\n"
+                "    if answer:\n"
+                "        return str(answer)\n"
+                "    if metadata.get('correct_choice_index') is not None:\n"
+                "        return str(metadata['correct_choice_index'])\n"
+                "    return ''\n"
+            ),
+        )
+        metrics = evaluate_materialized_candidate(
+            task=micro_task,
+            source_path=source_path,
+            source_code=source_code,
+            baseline_metrics=None,
+            memory_applied=False,
+        )
+        self.assertEqual(metrics["status"], "fail")
+        self.assertNotEqual(metrics["test_results"][0]["actual"], "5")
 
     def test_network_access_is_rejected_for_dataset_tasks(self) -> None:
         task = next(task for task in load_codegen_tasks() if task["id"] == "sciq")

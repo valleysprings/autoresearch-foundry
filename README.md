@@ -28,7 +28,7 @@ The benchmark source of truth lives under [benchmark/](/Users/david/coding/2026/
 
 The active research lane is dataset-first:
 
-- each comparable benchmark task is a real local dataset such as `olymmath` or `sciq`
+- each comparable benchmark task is a real local dataset such as `olymmath`, `math-500`, `aime`, `amc`, `planbench`, `sciq`, `qasc`, or `scienceqa`
 - each dataset fans out into independent question-runs
 - each question-run evolves its own solver trajectory and emits its own artifacts
 
@@ -100,7 +100,6 @@ curl http://127.0.0.1:8000/api/tasks
 curl http://127.0.0.1:8000/api/latest-run
 curl http://127.0.0.1:8000/api/runtime
 curl -X POST "http://127.0.0.1:8000/api/run-task?task_id=olymmath&max_items=100"
-curl -X POST "http://127.0.0.1:8000/api/run-sequence"
 ```
 
 Successful runs emit artifacts under `runs/`, including:
@@ -118,8 +117,8 @@ Run one task from the CLI:
 python3 -m app.entries.discrete_demo --task olymmath --max-items 25
 ```
 
-Run the full sequence:
+Run another math benchmark task:
 
 ```bash
-python3 -m app.entries.discrete_demo --max-items 100
+python3 -m app.entries.discrete_demo --task math-500 --max-items 25
 ```

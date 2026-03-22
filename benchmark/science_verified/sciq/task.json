@@ -1,0 +1,37 @@
+{
+  "id": "sciq",
+  "title": "SciQ",
+  "description": "Evolve a single-file solver independently for each SciQ multiple-choice science question in the local full validation split.",
+  "benchmark_tier": "comparable",
+  "track": "science_verified",
+  "dataset_id": "sciq",
+  "dataset_size": 1000,
+  "local_dataset_only": true,
+  "item_manifest": "data/questions.json",
+  "split": "validation",
+  "answer_metric": "accuracy",
+  "family": "science",
+  "task_signature": [
+    "single-file-optimization",
+    "dataset-task",
+    "science-question-solving"
+  ],
+  "source_type": "dataset-task",
+  "editable_file": "editable.py",
+  "verifier": "verifier.py",
+  "entry_symbol": "solve",
+  "generation_budget": 4,
+  "candidate_budget": 3,
+  "branching_factor": 4,
+  "epsilon": 0.02,
+  "baseline_summary": "A placeholder dataset-level solver template that returns the first available answer choice.",
+  "objective_spec": {
+    "display_name": "Accuracy",
+    "direction": "max",
+    "unit": "ratio",
+    "summary_template": "Higher accuracy is better across independently evolved SciQ question runs.",
+    "formula": "accuracy = solved_questions / total_questions"
+  },
+  "prompt_context": "Edit editable.py only. The entry symbol solve(question: dict) must return the best answer string for the current science question.",
+  "function_name": "solve"
+}

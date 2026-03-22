@@ -20,9 +20,38 @@ from app.configs.paths import REGISTRY_PATH as CONFIG_REGISTRY_PATH
 BENCHMARK_ROOT = CONFIG_BENCHMARK_ROOT
 REGISTRY_PATH = CONFIG_REGISTRY_PATH
 
+TRACK_ORDER = {
+    "math_verified": 0,
+    "planning_verified": 1,
+    "deepsearch_verified": 2,
+    "browse_snapshot": 3,
+    "science_verified": 4,
+    "multihop_qa_snapshot": 5,
+    "terminal_verified": 6,
+    "small_experiments": 7,
+}
+TASK_ORDER = {
+    "olymmath": 0,
+    "math-500": 1,
+    "aime": 2,
+    "amc": 3,
+    "planbench": 4,
+    "sciq": 5,
+    "qasc": 6,
+    "scienceqa": 7,
+}
+
 
 def _speedup_objective_spec() -> dict[str, str]:
     return speedup_objective_spec()
+
+
+def _count_manifest_items(path: Path) -> int:
+    payload = json.loads(path.read_text())
+    rows = payload.get("items") if isinstance(payload, dict) and "items" in payload else payload
+    if not isinstance(rows, list):
+        raise ValueError(f"Question manifest must contain a list of items: {path}")
+    return len(rows)
 
 
 def _normalize_task(task: dict[str, Any]) -> dict[str, Any]:
@@ -113,6 +142,7 @@ def _load_task(entry: dict[str, Any]) -> dict[str, Any]:
         if not item_manifest_path.exists():
             raise FileNotFoundError(f"Question manifest not found: {item_manifest_path}")
         merged["item_manifest_path"] = str(item_manifest_path)
+        merged["dataset_size"] = _count_manifest_items(item_manifest_path)
     data_file = task.get("data_file")
     if isinstance(data_file, str) and data_file.strip():
         merged["data_path"] = str(task_dir / data_file)
@@ -123,8 +153,14 @@ def _load_task(entry: dict[str, Any]) -> dict[str, Any]:
     return _normalize_task(merged)
 
 
-def _sort_key(task: dict[str, Any]) -> tuple[int, str, str]:
-    return (0 if task["included_in_main_comparison"] else 1, task["track"], task["id"])
+def _sort_key(task: dict[str, Any]) -> tuple[int, int, int, str, str]:
+    return (
+        0 if task["included_in_main_comparison"] else 1,
+        TRACK_ORDER.get(task["track"], len(TRACK_ORDER)),
+        TASK_ORDER.get(task["id"], 999),
+        task["track"],
+        task["id"],
+    )
 
 def load_codegen_tasks(
     task_id: str | None = None,

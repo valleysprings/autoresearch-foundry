@@ -218,6 +218,50 @@ QUESTION_SOLVER_PROPOSAL_PAYLOAD = {
     ]
 }
 
+PLANBENCH_PROPOSAL_PAYLOAD = {
+    "candidates": [
+        {
+            "name": "BFS planner",
+            "strategy": "Search over robot, package, and carrying state with breadth-first search.",
+            "rationale": "The planning benchmark is small and deterministic, so BFS can return a shortest valid action list.",
+            "imports": [],
+            "file_body": (
+                "from collections import deque\n\n"
+                "def solve(problem: dict) -> list[str]:\n"
+                "    graph: dict[str, set[str]] = {}\n"
+                "    for left, right in problem.get('roads', []):\n"
+                "        graph.setdefault(left, set()).add(right)\n"
+                "        graph.setdefault(right, set()).add(left)\n"
+                "    start = (problem['start'], problem['package_start'], False)\n"
+                "    queue = deque([(start, [])])\n"
+                "    seen = {start}\n"
+                "    goal = problem['goal']\n"
+                "    while queue:\n"
+                "        (robot, package, holding), path = queue.popleft()\n"
+                "        if not holding and package == goal:\n"
+                "            return path\n"
+                "        for neighbor in sorted(graph.get(robot, set())):\n"
+                "            next_state = (neighbor, package, holding)\n"
+                "            if next_state not in seen:\n"
+                "                seen.add(next_state)\n"
+                "                queue.append((next_state, path + [f'drive {robot} {neighbor}']))\n"
+                "        if not holding and robot == package:\n"
+                "            next_state = (robot, package, True)\n"
+                "            if next_state not in seen:\n"
+                "                seen.add(next_state)\n"
+                "                queue.append((next_state, path + [f'pickup pkg {robot}']))\n"
+                "        if holding:\n"
+                "            next_state = (robot, robot, False)\n"
+                "            if next_state not in seen:\n"
+                "                seen.add(next_state)\n"
+                "                queue.append((next_state, path + [f'drop pkg {robot}']))\n"
+                "    return []\n"
+            ),
+            "candidate_summary": "Breadth-first delivery planner that emits valid drive/pickup/drop actions.",
+        }
+    ]
+}
+
 
 class CodegenRunnerTest(unittest.TestCase):
     def test_missing_runtime_config_fails_before_run(self) -> None:
@@ -262,7 +306,7 @@ class CodegenRunnerTest(unittest.TestCase):
     def test_truncated_llm_output_surfaces_parse_details(self) -> None:
         truncated_response = raw_content_response(
             "```json\n{\"candidates\": [{\"name\": \"cut off\"",
-            completion_tokens=1400,
+            completion_tokens=4096,
         )
         runtime = make_runtime([truncated_response, truncated_response, truncated_response])
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -279,8 +323,8 @@ class CodegenRunnerTest(unittest.TestCase):
         self.assertIsInstance(details, dict)
         assert isinstance(details, dict)
         self.assertEqual(details["parse_status"], "truncated")
-        self.assertEqual(details["completion_tokens"], 1400)
-        self.assertEqual(details["max_tokens"], 1400)
+        self.assertEqual(details["completion_tokens"], 4096)
+        self.assertEqual(details["max_tokens"], 4096)
         self.assertEqual(details["attempt"], 3)
         self.assertTrue(details["response_truncated"])
         self.assertIn("cut off", str(details["raw_preview"]))
@@ -309,7 +353,7 @@ class CodegenRunnerTest(unittest.TestCase):
                 primary_model="deepseek-chat",
                 available_models=("deepseek-chat",),
                 temperature=0.2,
-                max_tokens=1400,
+                max_tokens=4096,
                 timeout_s=45,
                 llm_concurrency=2,
             ),
@@ -352,7 +396,7 @@ class CodegenRunnerTest(unittest.TestCase):
                 primary_model="deepseek-chat",
                 available_models=("deepseek-chat",),
                 temperature=0.2,
-                max_tokens=1400,
+                max_tokens=4096,
                 timeout_s=45,
                 llm_concurrency=1,
             ),
@@ -536,6 +580,36 @@ class CodegenRunnerTest(unittest.TestCase):
             )
             self.assertEqual(result["winner"]["metrics"]["status"], "pass")
             self.assertTrue(result["generations"][0]["winner_accepted"])
+
+    def test_planbench_task_accepts_valid_planner_candidate(self) -> None:
+        runtime = make_runtime(
+            [
+                chat_response(PLANBENCH_PROPOSAL_PAYLOAD),
+                chat_response(REFLECTION_PAYLOAD),
+            ]
+        )
+        task = next(item for item in load_codegen_tasks() if item["id"] == "planbench-lite")
+        task = dict(task)
+        task["generation_budget"] = 1
+        task["candidate_budget"] = 1
+        task["branching_factor"] = 1
+        task["item_workers"] = 1
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            result = run_dataset_task(
+                task,
+                proposal_runtime=runtime,
+                workspace_root=tmp / "workspace",
+                memory_root=tmp / "item-memory",
+                session_id="planbench-success",
+                max_items=1,
+            )
+            self.assertEqual(result["dataset_summary"]["total_items"], 1)
+            self.assertEqual(result["dataset_summary"]["winner_passed"], 1)
+            self.assertEqual(result["winner"]["metrics"]["status"], "pass")
+            self.assertGreater(result["winner"]["metrics"]["objective"], 0.0)
+            self.assertEqual(len(result["item_runs"]), 1)
+            self.assertEqual(result["item_runs"][0]["winner"]["metrics"]["status"], "pass")
 
     def test_model_content_parse_error_is_retried(self) -> None:
         runtime = make_runtime(
@@ -727,18 +801,15 @@ class CodegenRunnerTest(unittest.TestCase):
             task["candidate_budget"] = 1
             task["branching_factor"] = 1
             task["item_workers"] = 1
-        runtime = make_runtime(
-            [
-                response
-                for task in comparable_tasks
-                for response in (
-                    chat_response(QUESTION_SOLVER_PROPOSAL_PAYLOAD),
-                    chat_response(REFLECTION_PAYLOAD),
-                )
-            ]
-        )
+        runtime = make_runtime([chat_response(QUESTION_SOLVER_PROPOSAL_PAYLOAD) for _ in comparable_tasks])
         with tempfile.TemporaryDirectory() as tmp_dir:
-            with patch("app.entries.discrete_demo.load_codegen_tasks", return_value=comparable_tasks):
+            with (
+                patch("app.entries.discrete_demo.load_codegen_tasks", return_value=comparable_tasks),
+                patch(
+                    "app.codegen.trainer.reflect_strategy_experience",
+                    return_value=(REFLECTION_PAYLOAD, {"selected_model": "deepseek-chat", "attempt": 1}),
+                ),
+            ):
                 payload = generate_discrete_payload(
                     proposal_runtime=runtime,
                     runs_root=Path(tmp_dir),

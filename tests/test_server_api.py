@@ -95,7 +95,13 @@ class ServerApiTest(unittest.TestCase):
             self.assertEqual(status, 200)
             contains_duplicates = next(task for task in payload["tasks"] if task["id"] == "contains-duplicates")
             olymmath = next(task for task in payload["tasks"] if task["id"] == "olymmath")
+            math_500 = next(task for task in payload["tasks"] if task["id"] == "math-500")
+            amc = next(task for task in payload["tasks"] if task["id"] == "amc")
+            planbench = next(task for task in payload["tasks"] if task["id"] == "planbench")
             sciq = next(task for task in payload["tasks"] if task["id"] == "sciq")
+            qasc = next(task for task in payload["tasks"] if task["id"] == "qasc")
+            scienceqa = next(task for task in payload["tasks"] if task["id"] == "scienceqa")
+            planbench_lite = next(task for task in payload["tasks"] if task["id"] == "planbench-lite")
             self.assertEqual(contains_duplicates["benchmark_tier"], "experiment")
             self.assertEqual(contains_duplicates["track"], "small_experiments")
             self.assertEqual(contains_duplicates["dataset_id"], "contains-duplicates-v1")
@@ -103,8 +109,24 @@ class ServerApiTest(unittest.TestCase):
             self.assertEqual(olymmath["dataset_id"], "olymmath")
             self.assertEqual(olymmath["dataset_size"], 100)
             self.assertTrue(olymmath["local_dataset_only"])
+            self.assertEqual(math_500["track"], "math_verified")
+            self.assertEqual(math_500["split"], "test")
+            self.assertEqual(amc["dataset_size"], 4)
+            self.assertEqual(planbench["dataset_size"], 2270)
+            self.assertTrue(planbench["local_dataset_only"])
+            self.assertEqual(planbench["track"], "planning_verified")
+            self.assertTrue(planbench["included_in_main_comparison"])
             self.assertEqual(sciq["track"], "science_verified")
             self.assertEqual(sciq["split"], "validation")
+            self.assertEqual(sciq["dataset_size"], 1000)
+            self.assertEqual(qasc["dataset_size"], 926)
+            self.assertEqual(qasc["split"], "validation")
+            self.assertEqual(scienceqa["dataset_size"], 768)
+            self.assertEqual(scienceqa["split"], "validation:natural-science:text-only:biology-chemistry-physics")
+            self.assertEqual(planbench_lite["dataset_size"], 4)
+            self.assertEqual(planbench_lite["track"], "small_experiments")
+            self.assertFalse(planbench_lite["included_in_main_comparison"])
+            self.assertEqual([task["id"] for task in payload["tasks"][:4]], ["olymmath", "math-500", "aime", "amc"])
         finally:
             httpd.shutdown()
             httpd.server_close()
@@ -208,7 +230,7 @@ class ServerApiTest(unittest.TestCase):
                     status, start_payload = _fetch_json(
                         (
                             f"http://127.0.0.1:{httpd.server_port}/api/run-task"
-                            "?task_id=olymmath&item_workers=50&max_items=50"
+                            "?task_id=math-500&item_workers=50&max_items=50"
                         ),
                         method="POST",
                     )
@@ -241,7 +263,7 @@ class ServerApiTest(unittest.TestCase):
                 httpd, thread = self._serve()
                 try:
                     status, start_payload = _fetch_json(
-                        f"http://127.0.0.1:{httpd.server_port}/api/run-task?task_id=olymmath&max_items=100",
+                        f"http://127.0.0.1:{httpd.server_port}/api/run-task?task_id=math-500&max_items=100",
                         method="POST",
                     )
                     self.assertEqual(status, 202)
@@ -338,8 +360,8 @@ class ServerApiTest(unittest.TestCase):
             model="deepseek-chat",
             details={
                 "parse_status": "truncated",
-                "completion_tokens": 1400,
-                "max_tokens": 1400,
+                "completion_tokens": 4096,
+                "max_tokens": 4096,
                 "response_truncated": True,
             },
         )
@@ -442,7 +464,7 @@ class ServerApiTest(unittest.TestCase):
                 "experiment_write_backs": -1,
             },
             "runs": [
-                {"task": {"id": "planbench-lite"}, "included_in_main_comparison": True},
+                {"task": {"id": "math-500"}, "included_in_main_comparison": True},
                 {"task": {"id": "contains-duplicates"}, "included_in_main_comparison": False},
             ],
             "task_catalog": [],

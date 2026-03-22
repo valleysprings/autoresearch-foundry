@@ -51,13 +51,43 @@
       "enabled": true
     },
     {
+      "id": "math-500",
+      "path": "math_verified/math-500",
+      "enabled": true
+    },
+    {
+      "id": "aime",
+      "path": "math_verified/aime",
+      "enabled": true
+    },
+    {
+      "id": "amc",
+      "path": "math_verified/amc",
+      "enabled": true
+    },
+    {
+      "id": "planbench",
+      "path": "planning_verified/planbench",
+      "enabled": true
+    },
+    {
       "id": "sciq",
       "path": "science_verified/sciq",
       "enabled": true
     },
     {
+      "id": "qasc",
+      "path": "science_verified/qasc",
+      "enabled": true
+    },
+    {
+      "id": "scienceqa",
+      "path": "science_verified/scienceqa",
+      "enabled": true
+    },
+    {
       "id": "planbench-lite",
-      "path": "planning_verified/planbench-lite",
+      "path": "small_experiments/planbench-lite",
       "enabled": true
     },
     {
