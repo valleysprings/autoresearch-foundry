@@ -61,7 +61,7 @@ class MemoryStore:
             overlap = len(target & set(item.get("task_signature", [])))
             family_name = item.get("family", "agnostic")
             family_bonus = 2.0 if family_name == family else 1.0 if family_name == "agnostic" else 0.0
-            impact_bonus = min(abs(float(item.get("delta_J", 0.0))), 1.0)
+            impact_bonus = min(abs(self._delta_primary_score(item)), 1.0)
             outcome = item.get("experience_outcome", "success")
             verifier_status = item.get("verifier_status", "")
             if outcome == "failure" and verifier_status == "pass":
@@ -79,7 +79,7 @@ class MemoryStore:
                 success_scored.append((score, enriched))
 
         def _sort_key(pair: tuple[float, dict[str, Any]]) -> tuple[float, float]:
-            return pair[0], abs(float(pair[1].get("delta_J", 0.0)))
+            return pair[0], abs(self._delta_primary_score(pair[1]))
 
         success_scored.sort(key=_sort_key, reverse=True)
         failure_scored.sort(key=_sort_key, reverse=True)
@@ -132,3 +132,11 @@ class MemoryStore:
         ]
         normalized = " | ".join(part for part in parts if part)
         return normalized[:640]
+
+    @staticmethod
+    def _delta_primary_score(experience: dict[str, Any]) -> float:
+        raw_value = experience.get("delta_primary_score", experience.get("delta_J", 0.0))
+        try:
+            return float(raw_value)
+        except (TypeError, ValueError):
+            return 0.0

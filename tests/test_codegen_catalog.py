@@ -104,6 +104,83 @@ class CodegenCatalogTest(unittest.TestCase):
                 self.assertEqual(load_codegen_tasks(), [])
                 self.assertEqual(list_codegen_task_summaries(), [])
 
+    def test_lazy_manifest_keeps_declared_dataset_size(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            task_dir = root / "coding_verified" / "lazy-livecodebench"
+            data_dir = task_dir / "data"
+            data_dir.mkdir(parents=True, exist_ok=True)
+            registry_path = root / "registry.json"
+            registry_path.write_text(
+                json.dumps(
+                    {
+                        "tasks": [
+                            {"id": "livecodebench", "path": "coding_verified/lazy-livecodebench", "enabled": True},
+                        ]
+                    }
+                )
+            )
+            (task_dir / "editable.py").write_text("def solve():\n    return None\n")
+            (task_dir / "verifier.py").write_text("def evaluate_candidate(**_kwargs):\n    return {}\n")
+            (task_dir / "task.json").write_text(
+                json.dumps(
+                    {
+                        "id": "livecodebench",
+                        "title": "Lazy LiveCodeBench",
+                        "description": "Synthetic lazy dataset task.",
+                        "benchmark_tier": "comparable",
+                        "track": "coding_verified",
+                        "dataset_id": "livecodebench_release_v6",
+                        "dataset_size": 1055,
+                        "local_dataset_only": True,
+                        "lazy_item_manifest": True,
+                        "item_manifest": "data/questions.json",
+                        "split": "release_v6:test",
+                        "allow_browsing": False,
+                        "answer_metric": "test_pass_rate",
+                        "family": "coding",
+                        "task_signature": ["dataset-task"],
+                        "source_type": "dataset-task",
+                        "editable_file": "editable.py",
+                        "verifier": "verifier.py",
+                        "entry_symbol": "solve",
+                        "generation_budget": 3,
+                        "candidate_budget": 2,
+                        "branching_factor": 3,
+                        "item_workers": 6,
+                        "epsilon": 0.01,
+                        "objective_spec": {
+                            "display_name": "Test pass rate",
+                            "direction": "max",
+                            "unit": "ratio",
+                            "summary_template": "Higher is better.",
+                            "formula": "test_pass_rate = passed_cases / total_cases"
+                        }
+                    }
+                )
+            )
+            (data_dir / "questions.json").write_text(
+                json.dumps(
+                    {
+                        "dataset_id": "livecodebench_release_v6",
+                        "dataset_size": 1055,
+                        "prepared_count": 2,
+                        "items": [
+                            {"item_id": "item-1", "prompt": "a", "expected_answer": "ok"},
+                            {"item_id": "item-2", "prompt": "b", "expected_answer": "ok"},
+                        ],
+                    }
+                )
+            )
+
+            with (
+                patch.object(catalog, "BENCHMARK_ROOT", root),
+                patch.object(catalog, "REGISTRY_PATH", registry_path),
+            ):
+                task = next(item for item in load_codegen_tasks() if item["id"] == "livecodebench")
+                self.assertEqual(task["dataset_size"], 1055)
+                self.assertEqual(task["prepared_item_count"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

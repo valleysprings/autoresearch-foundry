@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 import json
 import re
 import subprocess
@@ -33,6 +34,20 @@ def _preview(text: str, *, limit: int = QUESTION_PREVIEW_LIMIT) -> str:
     return normalized[: limit - 3].rstrip() + "..."
 
 
+def _dedupe_item_id(base_item_id: str, raw_item: dict[str, Any], index: int) -> str:
+    metadata = dict(raw_item.get("metadata") or {})
+    name = str(raw_item.get("name") or "").strip()
+    parts = [base_item_id]
+    if name and name != base_item_id:
+        parts.append(name)
+    for key in ("domain", "prompt_type", "config", "source_split", "source_index"):
+        value = metadata.get(key)
+        if value is not None and str(value).strip():
+            parts.append(str(value))
+    parts.append(str(index))
+    return _slugify("-".join(parts))
+
+
 def load_question_manifest(task: dict[str, Any], min_items: int | None = None) -> list[dict[str, Any]]:
     manifest_path_raw = task.get("item_manifest_path")
     if not isinstance(manifest_path_raw, str) or not manifest_path_raw.strip():
@@ -59,6 +74,13 @@ def load_question_manifest(task: dict[str, Any], min_items: int | None = None) -
                 f"but {requested_items} were requested."
             )
 
+    base_item_ids = [
+        _slugify(str(raw_item.get("item_id") or raw_item.get("name") or f"item-{index}"))
+        for index, raw_item in enumerate(raw_items, start=1)
+        if isinstance(raw_item, dict)
+    ]
+    duplicate_ids = {item_id for item_id, count in Counter(base_item_ids).items() if count > 1}
+    used_ids: set[str] = set()
     normalized: list[dict[str, Any]] = []
     for index, raw_item in enumerate(raw_items, start=1):
         if not isinstance(raw_item, dict):
@@ -71,6 +93,11 @@ def load_question_manifest(task: dict[str, Any], min_items: int | None = None) -
             raise ValueError(f"Question manifest item {index} is missing expected_answer: {manifest_path}")
         item_id = str(raw_item.get("item_id") or raw_item.get("name") or f"item-{index}")
         normalized_item_id = _slugify(item_id)
+        if normalized_item_id in duplicate_ids:
+            normalized_item_id = _dedupe_item_id(item_id, raw_item, index)
+        while normalized_item_id in used_ids:
+            normalized_item_id = f"{normalized_item_id}-{index}"
+        used_ids.add(normalized_item_id)
         raw_context = raw_item.get("context")
         raw_choices = list(raw_item.get("choices") or [])
         metadata = dict(raw_item.get("metadata") or {})
@@ -144,10 +171,20 @@ def micro_task_id(dataset_task_id: str, item_id: str) -> str:
 def question_prompt_context(task: dict[str, Any], item: dict[str, Any]) -> str:
     sections = [str(task.get("prompt_context") or "").strip()]
     sections.append(f"Dataset question id: {item['item_id']}")
-    sections.append(f"Question prompt: {item['prompt']}")
-    context = item.get("context")
+    raw_prompt = str(item.get("raw_prompt") or "").strip()
+    prompt = str(item.get("prompt") or "").strip()
+    if raw_prompt:
+        sections.append("Question raw prompt:")
+        sections.append(raw_prompt)
+    elif prompt:
+        sections.append(f"Question prompt: {prompt}")
+    context = item.get("raw_context") if item.get("raw_context") is not None else item.get("context")
     if context:
-        sections.append(f"Question context: {json.dumps(context, ensure_ascii=True)}")
+        if isinstance(context, (dict, list)):
+            context_text = json.dumps(context, ensure_ascii=True)
+        else:
+            context_text = str(context)
+        sections.append(f"Question context: {context_text}")
     choices = item.get("choices") or []
     if choices:
         sections.append(f"Choices: {json.dumps(choices, ensure_ascii=True)}")
@@ -181,13 +218,16 @@ def aggregate_dataset_metrics(item_runs: list[dict[str, Any]]) -> dict[str, Any]
     winner_passed = sum(1 for item in item_runs if item["winner"]["metrics"]["verifier_status"] == "pass")
     baseline_objective = sum(float(item["baseline"]["metrics"]["objective"] or 0.0) for item in item_runs)
     winner_objective = sum(float(item["winner"]["metrics"]["objective"] or 0.0) for item in item_runs)
-    avg_delta_j = sum(float(item.get("run_delta_J") or item.get("delta_J") or 0.0) for item in item_runs)
+    avg_delta_primary_score = sum(
+        float(item.get("run_delta_primary_score") or item.get("delta_primary_score") or 0.0)
+        for item in item_runs
+    )
     failure_count = total_items - winner_passed
 
     if total_items:
         baseline_objective /= total_items
         winner_objective /= total_items
-        avg_delta_j /= total_items
+        avg_delta_primary_score /= total_items
 
     return {
         "total_items": total_items,
@@ -197,19 +237,21 @@ def aggregate_dataset_metrics(item_runs: list[dict[str, Any]]) -> dict[str, Any]
         "solved_ratio": round((winner_passed / total_items) if total_items else 0.0, 6),
         "avg_baseline_objective": round(baseline_objective, 6),
         "avg_winner_objective": round(winner_objective, 6),
-        "avg_delta_J": round(avg_delta_j, 6),
+        "avg_delta_primary_score": round(avg_delta_primary_score, 6),
     }
 
 
 def aggregate_candidate(role: str, item_runs: list[dict[str, Any]], objective_label: str) -> dict[str, Any]:
     objective_total = sum(float(item[role]["metrics"]["objective"] or 0.0) for item in item_runs)
-    j_total = sum(float(item[role]["metrics"]["J"] or 0.0) for item in item_runs)
     objective_score_total = sum(float(item[role]["metrics"].get("objective_score") or 0.0) for item in item_runs)
+    primary_score_total = sum(float(item[role]["metrics"].get("primary_score") or 0.0) for item in item_runs)
+    tie_break_score_total = sum(float(item[role]["metrics"].get("tie_break_score") or 0.0) for item in item_runs)
     total_items = len(item_runs)
     if total_items:
         objective_total /= total_items
-        j_total /= total_items
         objective_score_total /= total_items
+        primary_score_total /= total_items
+        tie_break_score_total /= total_items
     label = "Dataset baseline aggregate" if role == "baseline" else "Dataset winner aggregate"
     return {
         "agent": role,
@@ -222,7 +264,9 @@ def aggregate_candidate(role: str, item_runs: list[dict[str, Any]], objective_la
         "metrics": {
             "objective": round(objective_total, 6),
             "objective_score": round(objective_score_total, 6),
-            "J": round(j_total, 6),
+            "primary_score": round(primary_score_total, 6),
+            "tie_break_score": round(tie_break_score_total, 6),
+            "gate_passed": True,
             "verifier_status": "pass",
             "status": "pass",
         },

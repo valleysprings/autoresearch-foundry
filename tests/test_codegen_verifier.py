@@ -1,15 +1,72 @@
 from __future__ import annotations
 
+import re
 import tempfile
 import unittest
 from pathlib import Path
 
+from app.codegen.benchmark_support import public_question_payload
 from app.codegen.catalog import load_codegen_tasks
 from app.codegen.dataset_support import build_micro_task, load_question_manifest
 from app.codegen.verifier import evaluate_materialized_candidate, materialize_candidate
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def canonical_plan_steps(raw_plan: object) -> list[str]:
+    text = str(raw_plan or "")
+    parenthesized = [match.strip() for match in re.findall(r"\(([^()]+)\)", text)]
+    if parenthesized:
+        return parenthesized
+    steps: list[str] = []
+    for line in text.splitlines():
+        stripped = line.strip().strip("()")
+        if stripped:
+            steps.append(stripped)
+    return steps
+
+
+def canonical_plan_text(raw_plan: object) -> str:
+    return "\n".join(canonical_plan_steps(raw_plan))
+
+
+def logistics_symbol(symbol: str) -> str:
+    if symbol.startswith("p"):
+        return f"package_{symbol[1:]}"
+    if symbol.startswith("a"):
+        return f"airplane_{symbol[1:]}"
+    if symbol.startswith("t"):
+        return f"truck_{symbol[1:]}"
+    if symbol.startswith("l"):
+        left, right = symbol[1:].split("-", 1)
+        return f"location_{left}_{right}"
+    if symbol.startswith("c"):
+        return f"city_{symbol[1:]}"
+    return symbol
+
+
+def logistics_line(step: str) -> str:
+    action, *args = step.split()
+    if action == "load-airplane":
+        package, airplane, location = map(logistics_symbol, args)
+        return f"load {package} into {airplane} at {location}"
+    if action == "load-truck":
+        package, truck, location = map(logistics_symbol, args)
+        return f"load {package} into {truck} at {location}"
+    if action == "unload-airplane":
+        package, airplane, location = map(logistics_symbol, args)
+        return f"unload {package} from {airplane} at {location}"
+    if action == "unload-truck":
+        package, truck, location = map(logistics_symbol, args)
+        return f"unload {package} from {truck} at {location}"
+    if action == "drive-truck":
+        truck, source, target = map(logistics_symbol, args)
+        return f"drive {truck} from {source} to {target}"
+    if action == "fly-airplane":
+        airplane, source, target = map(logistics_symbol, args)
+        return f"fly {airplane} from {source} to {target}"
+    raise ValueError(f"Unsupported logistics action: {action}")
 
 
 class CodegenVerifierTest(unittest.TestCase):
@@ -51,7 +108,8 @@ class CodegenVerifierTest(unittest.TestCase):
             memory_applied=False,
         )
         self.assertEqual(metrics["status"], "error")
-        self.assertLess(metrics["J"], 0.0)
+        self.assertFalse(metrics["gate_passed"])
+        self.assertEqual(metrics["primary_score"], 0.0)
 
     def test_test_failure_marks_candidate_as_fail(self) -> None:
         _, source_path, source_code = self._materialize(
@@ -115,7 +173,7 @@ class CodegenVerifierTest(unittest.TestCase):
             )
             self.assertEqual(metrics["status"], "pass")
             self.assertGreater(metrics["speedup_vs_baseline"], 1.0)
-            self.assertGreater(metrics["J"], baseline_metrics["J"])
+            self.assertGreater(metrics["primary_score"], baseline_metrics["primary_score"])
 
     def test_math_experiment_candidate_improves_benchmark(self) -> None:
         task = next(task for task in load_codegen_tasks() if task["id"] == "count-primes-up-to")
@@ -526,6 +584,63 @@ class CodegenVerifierTest(unittest.TestCase):
         )
         self.assertEqual(metrics["status"], "pass")
         self.assertIn("44*sqrt(30)+241", metrics["test_results"][0]["actual"])
+
+    def test_planbench_manifest_item_ids_are_unique(self) -> None:
+        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench")
+        items = load_question_manifest(task)
+        item_ids = [item["item_id"] for item in items]
+        self.assertEqual(len(item_ids), len(set(item_ids)))
+
+    def test_planbench_public_question_payload_preserves_raw_prompt_and_context(self) -> None:
+        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench")
+        item = load_question_manifest(task)[0]
+        micro_task = build_micro_task(task, item)
+        payload = public_question_payload(item)
+        self.assertEqual(payload["prompt"], item["raw_prompt"])
+        self.assertEqual(payload["context"], item["raw_context"])
+        self.assertIn("Question raw prompt:", micro_task["prompt_context"])
+        self.assertIn("[PLAN]", micro_task["prompt_context"])
+
+    def test_planbench_obfuscated_single_line_object_format_is_accepted(self) -> None:
+        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench")
+        item = next(item for item in load_question_manifest(task) if item["metadata"].get("domain") == "obfuscated_deceptive_logistics")
+        micro_task = build_micro_task(task, item)
+        raw_plan = " ".join(
+            re.sub(r"\bo(\d+)\b", r"object_\1", step)
+            for step in canonical_plan_steps(item["expected_answer"])
+        )
+        _, source_path, source_code = self._materialize(
+            micro_task,
+            f"def solve(question: dict) -> str:\n    return {raw_plan!r}\n",
+        )
+        metrics = evaluate_materialized_candidate(
+            task=micro_task,
+            source_path=source_path,
+            source_code=source_code,
+            baseline_metrics=None,
+            memory_applied=False,
+        )
+        self.assertEqual(metrics["status"], "pass")
+        self.assertEqual(metrics["test_results"][0]["actual"], canonical_plan_text(item["expected_answer"]))
+
+    def test_planbench_logistics_natural_language_plan_is_accepted(self) -> None:
+        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench")
+        item = next(item for item in load_question_manifest(task) if item["metadata"].get("domain") == "logistics")
+        micro_task = build_micro_task(task, item)
+        natural_plan = "\n".join(logistics_line(step) for step in canonical_plan_steps(item["expected_answer"]))
+        _, source_path, source_code = self._materialize(
+            micro_task,
+            f"def solve(question: dict) -> str:\n    return {natural_plan!r}\n",
+        )
+        metrics = evaluate_materialized_candidate(
+            task=micro_task,
+            source_path=source_path,
+            source_code=source_code,
+            baseline_metrics=None,
+            memory_applied=False,
+        )
+        self.assertEqual(metrics["status"], "pass")
+        self.assertEqual(metrics["test_results"][0]["actual"], canonical_plan_text(item["expected_answer"]))
 
 
 if __name__ == "__main__":

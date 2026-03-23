@@ -15,12 +15,12 @@ from app.codegen.errors import ConfigError
 from app.configs.codegen import (
     DEFAULT_SESSION_ID,
     DELTA_FORMULA,
-    DISCRETE_DEMO_J_SPEC,
     FLYWHEEL_STEPS,
     ITEM_MEMORY_DIR_NAME,
-    J_FORMULA,
     OBJECTIVE_FORMULA,
+    PRIMARY_FORMULA,
     RUN_DELTA_FORMULA,
+    TIE_BREAK_FORMULA,
     WORKING_MEMORY_MD_NAME,
     WORKING_MEMORY_NAME,
     WORKING_MEMORY_TITLE,
@@ -193,9 +193,9 @@ def generate_discrete_payload(
                     "generation": len(result["generations"]),
                     "message": (
                         f"Completed {task['id']} with objective={result['winner']['metrics']['objective']} "
-                        f"and delta_J={result['delta_J']}"
+                        f"and delta_primary_score={result['delta_primary_score']}"
                     ),
-                    "delta_J": result["delta_J"],
+                    "delta_primary_score": result["delta_primary_score"],
                 }
             )
 
@@ -222,12 +222,12 @@ def generate_discrete_payload(
             "flywheel": FLYWHEEL_STEPS,
         },
         "formulas": {
-            "J": J_FORMULA,
             "objective": OBJECTIVE_FORMULA,
-            "delta_J": DELTA_FORMULA,
-            "run_delta_J": RUN_DELTA_FORMULA,
+            "primary_score": PRIMARY_FORMULA,
+            "tie_break_score": TIE_BREAK_FORMULA,
+            "delta_primary_score": DELTA_FORMULA,
+            "run_delta_primary_score": RUN_DELTA_FORMULA,
         },
-        "j_spec": dict(DISCRETE_DEMO_J_SPEC),
         "audit": {
             "workspace_root": _relative(active_workspace_root),
             "max_items": max_items,
@@ -269,12 +269,12 @@ def empty_discrete_payload(
             "flywheel": FLYWHEEL_STEPS,
         },
         "formulas": {
-            "J": J_FORMULA,
             "objective": OBJECTIVE_FORMULA,
-            "delta_J": DELTA_FORMULA,
-            "run_delta_J": RUN_DELTA_FORMULA,
+            "primary_score": PRIMARY_FORMULA,
+            "tie_break_score": TIE_BREAK_FORMULA,
+            "delta_primary_score": DELTA_FORMULA,
+            "run_delta_primary_score": RUN_DELTA_FORMULA,
         },
-        "j_spec": dict(DISCRETE_DEMO_J_SPEC),
         "audit": {
             "workspace_root": _relative(workspace_root),
             "session_id": None,

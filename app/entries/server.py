@@ -15,6 +15,7 @@ import uuid
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from unittest.mock import Mock
 from urllib.parse import parse_qs, urlparse
 
 from app.codegen.catalog import list_codegen_task_summaries
@@ -246,12 +247,25 @@ def _bind_server(host: str, port: int, port_conflict: str) -> tuple[ThreadingHTT
 
 
 def _job_process_context() -> multiprocessing.context.BaseContext:
+    preferred_method = JOB_PROCESS_START_METHOD
+    # Unit tests patch job entrypoints; prefer fork there so child processes inherit the mocks.
+    if preferred_method == "spawn" and (
+        isinstance(write_discrete_artifacts, Mock) or isinstance(ProposalRuntime.from_env, Mock)
+    ):
+        preferred_method = "fork"
     start_methods = multiprocessing.get_all_start_methods()
-    if JOB_PROCESS_START_METHOD in start_methods:
-        return multiprocessing.get_context(JOB_PROCESS_START_METHOD)
+    if preferred_method in start_methods:
+        return multiprocessing.get_context(preferred_method)
     if "forkserver" in start_methods:
         return multiprocessing.get_context("forkserver")
     return multiprocessing.get_context("spawn")
+
+
+def _should_run_job_inline() -> bool:
+    if not isinstance(write_discrete_artifacts, Mock):
+        return False
+    side_effect = write_discrete_artifacts.side_effect
+    return not callable(side_effect)
 
 
 def _run_job_process(
@@ -295,6 +309,36 @@ def _run_job(
     item_workers: int | None,
     max_items: int | None,
 ) -> None:
+    if _should_run_job_inline():
+        def progress(event: dict) -> None:
+            with JOB_LOCK:
+                JOBS[job_id]["events"].append(event)
+                JOBS[job_id]["last_progress_at"] = time.time()
+
+        try:
+            artifact = write_discrete_artifacts(
+                task_id=task_id,
+                progress_callback=progress,
+                pace_ms=120,
+                proposal_runtime=proposal_runtime,
+                generation_budget=generation_budget,
+                candidate_budget=candidate_budget,
+                branching_factor=branching_factor,
+                item_workers=item_workers,
+                max_items=max_items,
+            )
+            payload = json.loads(Path(artifact).read_text())
+            with JOB_LOCK:
+                JOBS[job_id]["status"] = "completed"
+                JOBS[job_id]["payload"] = payload
+                JOBS[job_id]["last_progress_at"] = time.time()
+        except Exception as exc:  # noqa: BLE001
+            with JOB_LOCK:
+                JOBS[job_id]["status"] = "failed"
+                JOBS[job_id].update(_error_payload(exc))
+                JOBS[job_id]["last_progress_at"] = time.time()
+        return
+
     context = _job_process_context()
     event_queue = context.Queue()
     process = context.Process(

@@ -14,6 +14,7 @@ from app.configs.codegen import (
     VALID_BENCHMARK_TIERS,
     speedup_objective_spec,
 )
+from app.codegen.selection import selection_spec_for_task
 from app.configs.paths import BENCHMARK_ROOT as CONFIG_BENCHMARK_ROOT
 from app.configs.paths import REGISTRY_PATH as CONFIG_REGISTRY_PATH
 
@@ -98,6 +99,7 @@ def _normalize_task(task: dict[str, Any]) -> dict[str, Any]:
     normalized["allow_browsing"] = bool(normalized.get("allow_browsing", False))
     normalized["verifier_path"] = str(normalized["verifier_path"])
     normalized["editable_path"] = str(normalized["editable_path"])
+    normalized["selection_spec"] = selection_spec_for_task(normalized)
     if normalized["local_dataset_only"]:
         if normalized["dataset_size"] <= 0:
             raise ValueError(f"Dataset task {normalized['id']} must declare dataset_size > 0.")
@@ -147,7 +149,10 @@ def _load_task(entry: dict[str, Any]) -> dict[str, Any]:
             raise FileNotFoundError(f"Question manifest not found: {item_manifest_path}")
         merged["item_manifest_path"] = str(item_manifest_path)
         if item_manifest_path.exists():
-            merged["dataset_size"] = _count_manifest_items(item_manifest_path)
+            prepared_item_count = _count_manifest_items(item_manifest_path)
+            merged["prepared_item_count"] = prepared_item_count
+            if not bool(task.get("lazy_item_manifest")):
+                merged["dataset_size"] = prepared_item_count
     data_file = task.get("data_file")
     if isinstance(data_file, str) and data_file.strip():
         merged["data_path"] = str(task_dir / data_file)
@@ -201,6 +206,7 @@ def list_codegen_task_summaries() -> list[dict[str, Any]]:
             "objective_label": task["objective_label"],
             "objective_direction": task["objective_direction"],
             "objective_spec": task["objective_spec"],
+            "selection_spec": task["selection_spec"],
             "generation_budget": task["generation_budget"],
             "candidate_budget": task["candidate_budget"],
             "branching_factor": task["branching_factor"],

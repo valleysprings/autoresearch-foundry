@@ -18,12 +18,18 @@ export type ObjectiveSpec = {
   formula: string;
 };
 
-export type JSpec = {
+export type SelectionSpec = {
+  profile?: string;
   display_name: string;
-  direction: "max" | string;
   summary_template: string;
-  formula: string;
+  primary_metric?: string;
+  primary_label?: string;
+  primary_direction?: "max" | "min" | string;
+  primary_formula: string;
+  gate_summary: string;
+  tie_break_formula: string;
   delta_template: string;
+  archive_summary: string;
 };
 
 export type TaskSummary = {
@@ -38,6 +44,7 @@ export type TaskSummary = {
   objective_label: string;
   objective_direction: string;
   objective_spec: ObjectiveSpec;
+  selection_spec: SelectionSpec;
   generation_budget: number;
   candidate_budget: number;
   branching_factor: number;
@@ -54,7 +61,9 @@ export type TaskSummary = {
 export type CandidateMetrics = {
   objective: number | string;
   objective_score?: number | string;
-  J: number | string;
+  primary_score?: number | string;
+  tie_break_score?: number | string;
+  gate_passed?: boolean;
   benchmark_ms?: number | null;
   speedup_vs_baseline?: number | string;
   passed_tests?: number | string;
@@ -98,7 +107,7 @@ export type AddedExperience = {
   generation: number;
   experience_outcome: string;
   verifier_status: string;
-  delta_J: number | string;
+  delta_primary_score: number | string;
   prompt_fragment: string;
   strategy_hypothesis: string;
   candidate_summary: string;
@@ -114,8 +123,8 @@ export type Branch = {
   winner: Candidate;
   winner_accepted: boolean;
   winner_improved_global_best: boolean;
-  delta_J: number | string;
-  global_best_delta_J?: number | string;
+  delta_primary_score: number | string;
+  global_best_delta_primary_score?: number | string;
   experience_outcome: string;
   wrote_memory: boolean;
   memory_delta: number;
@@ -126,7 +135,7 @@ export type Generation = {
   generation: number;
   winner_accepted: boolean;
   wrote_memory: boolean;
-  delta_J: number | string;
+  delta_primary_score: number | string;
   winner: Candidate;
   parent_candidate: Candidate;
   parents?: Candidate[];
@@ -145,8 +154,10 @@ export type ObjectivePoint = {
   objective_score?: number | string;
   candidate_objective: number | string;
   candidate_objective_score?: number | string;
-  J: number | string;
-  candidate_J: number | string;
+  primary_score: number | string;
+  candidate_primary_score: number | string;
+  tie_break_score?: number | string;
+  candidate_tie_break_score?: number | string;
   accepted: boolean;
   accepted_count?: number;
   improved_global_best?: boolean;
@@ -165,6 +176,7 @@ export type RunTask = {
   objective_label: string;
   objective_direction: string;
   objective_spec: ObjectiveSpec;
+  selection_spec: SelectionSpec;
   generation_budget: number;
   candidate_budget: number;
   branching_factor: number;
@@ -187,7 +199,7 @@ export type DatasetSummary = {
   solved_ratio: number | string;
   avg_baseline_objective: number | string;
   avg_winner_objective: number | string;
-  avg_delta_J: number | string;
+  avg_delta_primary_score: number | string;
 };
 
 export type QuestionRecord = {
@@ -212,8 +224,8 @@ export type ItemRun = {
   question: QuestionRecord;
   baseline: Candidate;
   winner: Candidate;
-  delta_J: number | string;
-  run_delta_J?: number | string;
+  delta_primary_score: number | string;
+  run_delta_primary_score?: number | string;
   run_delta_objective?: number | string;
   generations: Generation[];
   objective_curve: ObjectivePoint[];
@@ -241,10 +253,10 @@ export type Run = {
   winner: Candidate;
   dataset_summary?: DatasetSummary;
   item_runs?: ItemRun[];
-  delta_J: number | string;
-  run_delta_J?: number | string;
+  delta_primary_score: number | string;
+  run_delta_primary_score?: number | string;
   run_delta_objective?: number | string;
-  j_spec?: JSpec;
+  selection_spec?: SelectionSpec;
   objective_curve: ObjectivePoint[];
   llm_traces: Array<Record<string, unknown>>;
   generations: Generation[];
@@ -278,12 +290,12 @@ export type PayloadSummary = {
 export type Payload = {
   summary: PayloadSummary;
   formulas: {
-    J: string;
     objective: string;
-    delta_J: string;
-    run_delta_J?: string;
+    primary_score: string;
+    tie_break_score: string;
+    delta_primary_score: string;
+    run_delta_primary_score?: string;
   };
-  j_spec?: JSpec;
   audit: {
     workspace_root: string;
     session_id?: string | null;

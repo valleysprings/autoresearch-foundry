@@ -109,7 +109,7 @@ This repo does not currently split styling into many component-local CSS files; 
 
 ## What The Frontend Does Not Do
 
-- it does not compute `J`
+- it does not compute `primary_score` or `tie_break_score`
 - it does not evaluate candidates
 - it does not decide benchmark winners
 - it does not mutate memory directly

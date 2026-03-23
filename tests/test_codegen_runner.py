@@ -302,7 +302,7 @@ class CodegenRunnerTest(unittest.TestCase):
         task["candidate_budget"] = 1
         candidate = {
             "candidate_summary": "Checked-in baseline.",
-            "metrics": {"objective": 0.0, "objective_score": 0.0, "J": 0.42},
+            "metrics": {"objective": 0.0, "objective_score": 0.0, "primary_score": 0.0, "tie_break_score": 0.42, "gate_passed": True},
             "baseline_source": "def contains_duplicates(values):\n    return False\n",
             "source_code": "def contains_duplicates(values):\n    return False\n",
         }
@@ -469,19 +469,25 @@ class CodegenRunnerTest(unittest.TestCase):
             ]
         )
         with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
             artifact_path = write_discrete_artifacts(
                 task_id="contains-duplicates",
                 proposal_runtime=runtime,
-                runs_root=Path(tmp_dir),
+                runs_root=tmp,
                 branching_factor=1,
             )
             payload = json.loads(artifact_path.read_text())
+            latest_payload = json.loads((tmp / "latest_run.json").read_text())
             run = payload["runs"][0]
+            self.assertEqual(artifact_path.name, "codegen-contains-duplicates.json")
+            self.assertTrue((tmp / "codegen-contains-duplicates.json").exists())
+            self.assertEqual(latest_payload["summary"]["generated_at"], payload["summary"]["generated_at"])
+            self.assertEqual(latest_payload["runs"][0]["task"]["id"], "contains-duplicates")
             self.assertEqual(payload["run_mode"], "llm-required")
             self.assertEqual(payload["summary"]["active_model"], "deepseek-chat")
-            self.assertTrue((Path(tmp_dir) / "codegen_working_memory.md").exists())
+            self.assertTrue((tmp / "codegen_working_memory.md").exists())
             self.assertNotIn("handoff_bundle", run)
-            self.assertFalse((Path(tmp_dir) / "handoff").exists())
+            self.assertFalse((tmp / "handoff").exists())
             self.assertTrue(run["session_id"])
             self.assertTrue(run["generated_at"])
             self.assertEqual(payload["summary"]["write_backs"], 0)
@@ -493,11 +499,11 @@ class CodegenRunnerTest(unittest.TestCase):
             self.assertEqual(len(run["added_experiences"]), 2)
             self.assertEqual(run["added_experiences"][0]["generation"], 1)
             self.assertEqual(run["added_experiences"][0]["experience_outcome"], "success")
-            memories = json.loads((Path(tmp_dir) / "codegen_working_memory.json").read_text())
+            memories = json.loads((tmp / "codegen_working_memory.json").read_text())
             task_memories = [item for item in memories if item.get("source_task") == "contains-duplicates"]
             self.assertTrue(any(item.get("experience_outcome") == "success" for item in task_memories))
             self.assertTrue(any(item.get("experience_outcome") == "failure" for item in task_memories))
-            self.assertIn("failure_memories:", (Path(tmp_dir) / "codegen_working_memory.md").read_text())
+            self.assertIn("failure_memories:", (tmp / "codegen_working_memory.md").read_text())
 
     def test_timeout_failure_aborts_run(self) -> None:
         runtime = make_runtime([TimeoutError("timed out")] * 3)
@@ -721,7 +727,9 @@ class CodegenRunnerTest(unittest.TestCase):
             "verifier_status": "pass",
             "objective": 10.0,
             "objective_score": -10.0,
-            "J": 1.0,
+            "primary_score": -10.0,
+            "tie_break_score": 0.0,
+            "gate_passed": True,
             "benchmark_ms": 10.0,
             "passed_tests": 1,
             "total_tests": 1,
@@ -732,7 +740,9 @@ class CodegenRunnerTest(unittest.TestCase):
             "verifier_status": "pass",
             "objective": 6.0,
             "objective_score": -6.0,
-            "J": 1.2,
+            "primary_score": -6.0,
+            "tie_break_score": 0.0,
+            "gate_passed": True,
             "benchmark_ms": 6.0,
             "passed_tests": 1,
             "total_tests": 1,

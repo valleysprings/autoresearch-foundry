@@ -85,6 +85,19 @@ class ServerApiTest(unittest.TestCase):
                 httpd.server_close()
                 thread.join(timeout=5)
 
+    def test_task_scoped_latest_run_prefers_task_specific_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            runs_root = Path(tmp_dir)
+            (runs_root / "latest_run.json").write_text(
+                json.dumps({"summary": {"generated_at": "global"}, "runs": [{"task": {"id": "olymmath"}}], "task_catalog": []})
+            )
+            (runs_root / "codegen-livecodebench.json").write_text(
+                json.dumps({"summary": {"generated_at": "task"}, "runs": [{"task": {"id": "livecodebench"}}], "task_catalog": []})
+            )
+            payload = server.load_cached_discrete_payload(task_id="livecodebench", runs_root=runs_root)
+            self.assertEqual(payload["summary"]["generated_at"], "task")
+            self.assertEqual(payload["runs"][0]["task"]["id"], "livecodebench")
+
     def test_async_job_surfaces_terminal_failure(self) -> None:
         with patch.object(server, "write_discrete_artifacts", side_effect=LlmTransportError("boom", model="deepseek-chat")):
             httpd, thread = self._serve()
@@ -487,7 +500,7 @@ class ServerApiTest(unittest.TestCase):
                             "generation": 1,
                             "experience_outcome": "success",
                             "verifier_status": "pass",
-                            "delta_J": 0.4,
+                            "delta_primary_score": 0.4,
                             "prompt_fragment": "Prefer set membership.",
                             "strategy_hypothesis": "Hash lookup dominates nested scans.",
                             "candidate_summary": "Streaming set check.",

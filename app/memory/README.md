@@ -13,7 +13,7 @@ Each experience stores fields such as:
 - `successful_strategy`
 - `prompt_fragment`
 - `tool_trace_summary`
-- `delta_J`
+- `delta_primary_score`
 - `proposal_model`
 - `candidate_summary`
 - `experience_outcome`

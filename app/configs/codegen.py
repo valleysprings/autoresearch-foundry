@@ -3,6 +3,15 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.codegen.selection import (
+    DELTA_PRIMARY_SCORE_FORMULA,
+    LINE_COUNT_NORMALIZER,
+    PRIMARY_SCORE_FORMULA,
+    PROPOSAL_SELECTION_GUIDANCE,
+    RUN_DELTA_PRIMARY_SCORE_FORMULA,
+    TIE_BREAK_SCORE_FORMULA,
+)
+
 
 DEFAULT_BRANCHING_FACTOR = 4
 DEFAULT_EDITABLE_FILE = "editable.py"
@@ -40,7 +49,7 @@ SEED_STRATEGY_EXPERIENCES: list[dict[str, Any]] = [
         "successful_strategy": "preserve the public contract first, then optimize the editable file under the verifier",
         "prompt_fragment": "Preserve correctness first, then optimize only under the deterministic verifier contract.",
         "tool_trace_summary": "materialize candidate file -> deterministic verifier -> score -> selective write-back",
-        "delta_J": 0.18,
+        "delta_primary_score": 0.18,
         "proposal_model": "seed",
         "candidate_summary": "Valid candidates only enter the comparison lane.",
         "reusable_rules": ["correctness_first", "deterministic_scoring", "single_file_mutation"],
@@ -61,7 +70,7 @@ SEED_STRATEGY_EXPERIENCES: list[dict[str, Any]] = [
         "successful_strategy": "Keep the contract fixed and prefer rewrites that remain faithful to the benchmark spec.",
         "prompt_fragment": "Do not trade away task semantics for a shortcut; keep the benchmark contract intact.",
         "tool_trace_summary": "shortcut rewrite -> deterministic failure -> reject -> prefer semantics-preserving rewrite",
-        "delta_J": -0.24,
+        "delta_primary_score": -0.24,
         "proposal_model": "seed",
         "candidate_summary": "A fast-looking rewrite that violated the verifier contract.",
         "reusable_rules": ["preserve_semantics", "respect_verifier_contract"],
@@ -94,43 +103,11 @@ FLYWHEEL_STEPS = [
     "emit payload, memory ledger, trace, and llm_trace artifacts",
 ]
 
-J_SCORE_WEIGHTS = {
-    "correctness": 1.20,
-    "objective_signal": 0.95,
-    "memory_bonus": 0.20,
-    "stability": 0.15,
-    "complexity": 0.18,
-    "line_count_penalty": 0.05,
-}
-LINE_COUNT_NORMALIZER = 10.0
-J_FORMULA = (
-    f"J = {J_SCORE_WEIGHTS['correctness']:.2f} * correctness + "
-    f"{J_SCORE_WEIGHTS['objective_signal']:.2f} * objective_signal + "
-    f"{J_SCORE_WEIGHTS['memory_bonus']:.2f} * memory_bonus + "
-    f"{J_SCORE_WEIGHTS['stability']:.2f} * stability - "
-    f"{J_SCORE_WEIGHTS['complexity']:.2f} * complexity - "
-    f"{J_SCORE_WEIGHTS['line_count_penalty']:.2f} * (line_count / {int(LINE_COUNT_NORMALIZER)})"
-)
 OBJECTIVE_FORMULA = "objective is task-specific; see task.objective_spec.formula"
-DELTA_FORMULA = "delta_J = J(generation_winner) - J(selected_parent)"
-RUN_DELTA_FORMULA = "run_delta_J = J(final_winner) - J(baseline)"
-PROPOSAL_J_GUIDANCE = (
-    "J is the always-max internal selection score; improve the selected parent objective first, then raise J without regressing correctness."
-)
-TRAINER_J_SPEC = {
-    "display_name": "Internal selection score J",
-    "direction": "max",
-    "summary_template": "J is the always-max internal selection score used to rank verified candidates across tasks.",
-    "formula": J_FORMULA,
-    "delta_template": "delta_J compares the generation winner against the selected parent; run_delta_J compares the final winner against the baseline.",
-}
-DISCRETE_DEMO_J_SPEC = {
-    "display_name": "Internal selection score J",
-    "direction": "max",
-    "summary_template": "J is the always-max internal score used to compare verified candidates across all tasks.",
-    "formula": J_FORMULA,
-    "delta_template": "delta_J is winner vs selected parent; run_delta_J is final winner vs baseline.",
-}
+DELTA_FORMULA = DELTA_PRIMARY_SCORE_FORMULA
+RUN_DELTA_FORMULA = RUN_DELTA_PRIMARY_SCORE_FORMULA
+PRIMARY_FORMULA = PRIMARY_SCORE_FORMULA
+TIE_BREAK_FORMULA = TIE_BREAK_SCORE_FORMULA
 
 TEXT_TRANSLATION = str.maketrans(
     {
@@ -163,7 +140,6 @@ COMPLEXITY_WHILE_COST = 0.04
 COMPLEXITY_IF_COST = 0.02
 BENCHMARK_SAMPLE_COUNT = 3
 SPEED_SCORE_CAP = 8.0
-ERROR_CANDIDATE_J = -1.0
 FORBIDDEN_NETWORK_PATTERNS = (
     r"(^|\n)\s*import\s+requests\b",
     r"(^|\n)\s*from\s+requests\b",

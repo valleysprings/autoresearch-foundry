@@ -38,7 +38,7 @@ Use the following default objects:
 - Task `x`
 - Retrieved memory set `M_k(x)`
 - Candidate solutions `c_i`
-- Evaluator score `J(c_i; x)`
+- Evaluator gate / score tuple `(gate_passed, primary_score, tie_break_score)`
 - Consolidated experience `e`
 
 Use these formulas unless the user provides a better task-specific one.
@@ -49,19 +49,21 @@ Candidate generation:
 
 Selection:
 
-`c* = argmax_i J(c_i; x)`
+`c* = argmax_i (gate_passed(c_i; x), primary_score(c_i; x), tie_break_score(c_i; x))`
 
 Evaluator:
 
-`J(c; x) = alpha * success + beta * test_pass - gamma * cost - lambda * steps`
+`primary_score(c; x) = objective_score(c; x)`
+
+`tie_break_score(c; x) = track_specific_preference(c; x)`
 
 Write-back rule:
 
-`if J(c*; x) - J(base; x) > epsilon, then M <- M union {e}`
+`if primary_score(c*; x) - primary_score(base; x) > epsilon, then M <- M union {e}`
 
 Experience unit structure:
 
-`e = (task_signature, failure_pattern, successful_strategy, tool_trace_summary, delta_J)`
+`e = (task_signature, failure_pattern, successful_strategy, tool_trace_summary, delta_primary_score)`
 
 Keep the initial prototype simple. Do not implement model training, policy gradient updates, or heavyweight long-term memory systems.
 

@@ -5,8 +5,9 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, Callable
 
-from app.configs.codegen import DEFAULT_FRONTIER_SIZE, DEFAULT_MEMORY_RETRIEVAL_TOP_K, DEFAULT_SESSION_ID, TRAINER_J_SPEC
+from app.configs.codegen import DEFAULT_FRONTIER_SIZE, DEFAULT_MEMORY_RETRIEVAL_TOP_K, DEFAULT_SESSION_ID
 from app.codegen.llm import ProposalRuntime, propose_code_candidates, reflect_strategy_experience
+from app.codegen.selection import metrics_rank, selection_spec_for_task
 from app.codegen.verifier import evaluate_materialized_candidate, materialize_candidate
 from app.memory.store import MemoryStore
 
@@ -42,8 +43,16 @@ def _objective_score(candidate: dict[str, Any]) -> float:
     return _objective_value(candidate)
 
 
-def _candidate_rank(candidate: dict[str, Any]) -> tuple[float, float]:
-    return _objective_score(candidate), float(candidate.get("metrics", {}).get("J") or -1.0)
+def _primary_score(candidate: dict[str, Any]) -> float:
+    return float(candidate.get("metrics", {}).get("primary_score") or 0.0)
+
+
+def _tie_break_score(candidate: dict[str, Any]) -> float:
+    return float(candidate.get("metrics", {}).get("tie_break_score") or 0.0)
+
+
+def _candidate_rank(candidate: dict[str, Any]) -> tuple[int, float, float, int]:
+    return metrics_rank(candidate.get("metrics", {}))
 
 
 def _candidate_snapshot(candidate: dict[str, Any]) -> dict[str, Any]:
@@ -56,7 +65,9 @@ def _candidate_snapshot(candidate: dict[str, Any]) -> dict[str, Any]:
         "metrics": {
             "objective": candidate.get("metrics", {}).get("objective"),
             "objective_score": candidate.get("metrics", {}).get("objective_score"),
-            "J": candidate.get("metrics", {}).get("J"),
+            "primary_score": candidate.get("metrics", {}).get("primary_score"),
+            "tie_break_score": candidate.get("metrics", {}).get("tie_break_score"),
+            "gate_passed": candidate.get("metrics", {}).get("gate_passed"),
             "verifier_status": candidate.get("metrics", {}).get("verifier_status"),
             "status": candidate.get("metrics", {}).get("status"),
         },
@@ -103,7 +114,7 @@ def _build_experience(
     session_id: str,
     generation: int,
     winner: dict[str, Any],
-    delta_j: float,
+    delta_primary_score: float,
     reflection: dict[str, str],
     *,
     outcome: str,
@@ -125,7 +136,7 @@ def _build_experience(
         "successful_strategy": reflection["successful_strategy"],
         "prompt_fragment": reflection["prompt_fragment"],
         "tool_trace_summary": reflection["tool_trace_summary"],
-        "delta_J": delta_j,
+        "delta_primary_score": delta_primary_score,
         "proposal_model": winner["proposal_model"],
         "candidate_summary": winner["candidate_summary"],
         "supporting_memory_ids": winner["supporting_memory_ids"],
@@ -133,10 +144,10 @@ def _build_experience(
 
 
 def _select_generation_winner(evaluated_candidates: list[dict[str, Any]]) -> dict[str, Any]:
-    passing = [candidate for candidate in evaluated_candidates if candidate["metrics"]["status"] == "pass"]
+    passing = [candidate for candidate in evaluated_candidates if candidate["metrics"].get("gate_passed")]
     if passing:
         return max(passing, key=_candidate_rank)
-    return max(evaluated_candidates, key=lambda candidate: (float(candidate["metrics"]["J"]), _objective_score(candidate)))
+    return max(evaluated_candidates, key=_candidate_rank)
 
 
 def _extend_frontier(
@@ -268,6 +279,9 @@ def run_codegen_task(
     progress_callback: ProgressCallback | None = None,
     pace_ms: int = 0,
 ) -> dict[str, Any]:
+    normalized_task = dict(task)
+    normalized_task["selection_spec"] = dict(task.get("selection_spec") or selection_spec_for_task(normalized_task))
+    task = normalized_task
     _emit(progress_callback, pace_ms, phase="task_loaded", task_id=task["id"], message=f"Loaded task {task['id']}")
     baseline = _baseline_candidate(task, workspace_root / task["id"])
     current_best = baseline
@@ -286,8 +300,10 @@ def run_codegen_task(
             "objective_score": baseline["metrics"]["objective_score"],
             "candidate_objective": baseline["metrics"]["objective"],
             "candidate_objective_score": baseline["metrics"]["objective_score"],
-            "J": baseline["metrics"]["J"],
-            "candidate_J": baseline["metrics"]["J"],
+            "primary_score": baseline["metrics"]["primary_score"],
+            "candidate_primary_score": baseline["metrics"]["primary_score"],
+            "tie_break_score": baseline["metrics"]["tie_break_score"],
+            "candidate_tie_break_score": baseline["metrics"]["tie_break_score"],
             "candidate_agent": baseline["agent"],
             "candidate_label": baseline["label"],
             "accepted": True,
@@ -469,21 +485,25 @@ def run_codegen_task(
                     message=(
                         f"{branch_id} {candidate['agent']} status={candidate['verifier_status']} "
                         f"objective={candidate['metrics']['objective']} score={candidate['metrics']['objective_score']} "
-                        f"J={candidate['metrics']['J']}"
+                        f"primary_score={candidate['metrics']['primary_score']} "
+                        f"tie_break_score={candidate['metrics']['tie_break_score']}"
                     ),
                 )
 
-            evaluated_candidates.sort(key=lambda item: float(item["metrics"]["J"]), reverse=True)
+            evaluated_candidates.sort(key=_candidate_rank, reverse=True)
             branch_winner = _select_generation_winner(evaluated_candidates)
             accepted_to_frontier = (
-                branch_winner["metrics"]["status"] == "pass"
-                and _objective_score(branch_winner) > _objective_score(parent_candidate) + epsilon
+                bool(branch_winner["metrics"].get("gate_passed"))
+                and _primary_score(branch_winner) > _primary_score(parent_candidate) + epsilon
             )
             improved_global_best = accepted_to_frontier and (
-                _objective_score(branch_winner) > _objective_score(generation_best_before) + epsilon
+                _primary_score(branch_winner) > _primary_score(generation_best_before) + epsilon
             )
-            delta_j = round(branch_winner["metrics"]["J"] - parent_candidate["metrics"]["J"], 4)
-            global_best_delta_j = round(branch_winner["metrics"]["J"] - generation_best_before["metrics"]["J"], 4)
+            delta_primary_score = round(_primary_score(branch_winner) - _primary_score(parent_candidate), 4)
+            global_best_delta_primary_score = round(
+                _primary_score(branch_winner) - _primary_score(generation_best_before),
+                4,
+            )
             experience_outcome = "success" if accepted_to_frontier else "failure"
             rejection_reason = None if accepted_to_frontier else _failure_reason_against_parent(task, parent_candidate, branch_winner, epsilon)
             wrote_memory = False
@@ -497,7 +517,7 @@ def run_codegen_task(
                     generation=generation,
                     previous_best=parent_candidate,
                     winner=branch_winner,
-                    delta_j=delta_j,
+                    delta_primary_score=delta_primary_score,
                     outcome=experience_outcome,
                     rejection_reason=rejection_reason,
                 )
@@ -517,7 +537,7 @@ def run_codegen_task(
                     session_id,
                     generation,
                     branch_winner,
-                    delta_j,
+                    delta_primary_score,
                     reflection,
                     outcome=experience_outcome,
                     rejection_reason=rejection_reason,
@@ -533,7 +553,7 @@ def run_codegen_task(
                         "experience_id": new_experience["experience_id"],
                         "experience_outcome": experience_outcome,
                         "verifier_status": branch_winner["metrics"]["verifier_status"],
-                        "delta_J": delta_j,
+                        "delta_primary_score": delta_primary_score,
                         "memory_delta": memory_delta,
                         "prompt_fragment": new_experience["prompt_fragment"],
                     }
@@ -580,8 +600,8 @@ def run_codegen_task(
                     "winner": branch_winner,
                     "winner_accepted": accepted_to_frontier,
                     "winner_improved_global_best": improved_global_best,
-                    "delta_J": delta_j,
-                    "global_best_delta_J": global_best_delta_j,
+                    "delta_primary_score": delta_primary_score,
+                    "global_best_delta_primary_score": global_best_delta_primary_score,
                     "experience_outcome": experience_outcome,
                     "wrote_memory": wrote_memory,
                     "memory_delta": memory_delta,
@@ -608,8 +628,10 @@ def run_codegen_task(
                 "objective_score": current_best["metrics"]["objective_score"],
                 "candidate_objective": generation_winner["metrics"]["objective"],
                 "candidate_objective_score": generation_winner["metrics"]["objective_score"],
-                "J": current_best["metrics"]["J"],
-                "candidate_J": generation_winner["metrics"]["J"],
+                "primary_score": current_best["metrics"]["primary_score"],
+                "candidate_primary_score": generation_winner["metrics"]["primary_score"],
+                "tie_break_score": current_best["metrics"]["tie_break_score"],
+                "candidate_tie_break_score": generation_winner["metrics"]["tie_break_score"],
                 "candidate_agent": generation_winner["agent"],
                 "candidate_label": generation_winner["label"],
                 "accepted": winner_branch["winner_accepted"],
@@ -636,8 +658,8 @@ def run_codegen_task(
                 "winner_accepted": winner_branch["winner_accepted"],
                 "winner_improved_global_best": any(branch["winner_improved_global_best"] for branch in branch_results),
                 "best_after_generation": current_best,
-                "delta_J": winner_branch["delta_J"],
-                "global_best_delta_J": winner_branch["global_best_delta_J"],
+                "delta_primary_score": winner_branch["delta_primary_score"],
+                "global_best_delta_primary_score": winner_branch["global_best_delta_primary_score"],
                 "experience_outcome": winner_branch["experience_outcome"],
                 "wrote_memory": any(branch["wrote_memory"] for branch in branch_results),
                 "new_experience": winner_branch["new_experience"],
@@ -669,7 +691,7 @@ def run_codegen_task(
             ),
         )
 
-    run_delta_j = round(current_best["metrics"]["J"] - baseline["metrics"]["J"], 4)
+    run_delta_primary_score = round(_primary_score(current_best) - _primary_score(baseline), 4)
     run_delta_objective = round(_objective_value(current_best) - _objective_value(baseline), 4)
     added_experiences = [
         branch["new_experience"]
@@ -686,7 +708,7 @@ def run_codegen_task(
     return {
         "run_mode": "llm-required",
         "active_model": proposal_runtime.active_model,
-        "j_spec": dict(TRAINER_J_SPEC),
+        "selection_spec": dict(task["selection_spec"]),
         "task": {
             "id": task["id"],
             "title": task["title"],
@@ -699,6 +721,7 @@ def run_codegen_task(
             "objective_label": task["objective_label"],
             "objective_direction": task["objective_direction"],
             "objective_spec": task["objective_spec"],
+            "selection_spec": task["selection_spec"],
             "generation_budget": task["generation_budget"],
             "candidate_budget": task["candidate_budget"],
             "branching_factor": branching_factor,
@@ -712,8 +735,8 @@ def run_codegen_task(
         "initial_retrieved_memories": initial_retrieved,
         "generations": generations,
         "winner": current_best,
-        "delta_J": run_delta_j,
-        "run_delta_J": run_delta_j,
+        "delta_primary_score": run_delta_primary_score,
+        "run_delta_primary_score": run_delta_primary_score,
         "run_delta_objective": run_delta_objective,
         "objective_curve": objective_curve,
         "added_experiences": added_experiences,
@@ -728,6 +751,6 @@ def run_codegen_task(
         "included_in_main_comparison": task["included_in_main_comparison"],
         "selection_reason": (
             f"{current_best['label']} reached { _objective_label(task) }={current_best['metrics']['objective']} "
-            f"with J={current_best['metrics']['J']} after {len(generations)} generations."
+            f"with primary_score={current_best['metrics']['primary_score']} after {len(generations)} generations."
         ),
     }

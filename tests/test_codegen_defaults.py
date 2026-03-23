@@ -3,7 +3,14 @@ from __future__ import annotations
 import unittest
 
 from app.codegen.catalog import seed_strategy_experiences
-from app.configs.codegen import DEFAULT_SESSION_ID, DEFAULT_SPEEDUP_OBJECTIVE_SPEC, DISCRETE_DEMO_J_SPEC, J_FORMULA, TRAINER_J_SPEC
+from app.configs.codegen import (
+    DEFAULT_SESSION_ID,
+    DEFAULT_SPEEDUP_OBJECTIVE_SPEC,
+    DELTA_FORMULA,
+    PRIMARY_FORMULA,
+    RUN_DELTA_FORMULA,
+    TIE_BREAK_FORMULA,
+)
 
 
 class CodegenDefaultsTest(unittest.TestCase):
@@ -13,9 +20,11 @@ class CodegenDefaultsTest(unittest.TestCase):
         experiences[0]["experience_id"] = "mutated"
         self.assertNotEqual(seed_strategy_experiences()[0]["experience_id"], "mutated")
 
-    def test_shared_scoring_specs_stay_aligned(self) -> None:
-        self.assertEqual(TRAINER_J_SPEC["formula"], J_FORMULA)
-        self.assertEqual(DISCRETE_DEMO_J_SPEC["formula"], J_FORMULA)
+    def test_selection_formulas_are_exposed(self) -> None:
+        self.assertIn("primary_score", PRIMARY_FORMULA)
+        self.assertIn("tie_break_score", TIE_BREAK_FORMULA)
+        self.assertIn("delta_primary_score", DELTA_FORMULA)
+        self.assertIn("run_delta_primary_score", RUN_DELTA_FORMULA)
         self.assertEqual(DEFAULT_SESSION_ID, "session-current")
 
     def test_default_objective_spec_exposes_speedup_template(self) -> None:

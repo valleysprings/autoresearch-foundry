@@ -26,6 +26,7 @@ def render_memory_markdown(
     ]
 
     for item in memories:
+        delta_primary_score = item.get("delta_primary_score", item.get("delta_J", 0.0))
         lines.extend(
             [
                 f"### {item.get('experience_id', 'unknown-memory')}",
@@ -36,7 +37,7 @@ def render_memory_markdown(
                 f"- experience_outcome: {item.get('experience_outcome', 'success')}",
                 f"- verifier_status: {item.get('verifier_status', '')}",
                 f"- rejection_reason: {item.get('rejection_reason', '')}",
-                f"- delta_J: {item.get('delta_J', 0.0)}",
+                f"- delta_primary_score: {delta_primary_score}",
                 f"- task_signature: {', '.join(item.get('task_signature', []))}",
                 f"- failure_pattern: {item.get('failure_pattern', '')}",
                 f"- strategy_hypothesis: {item.get('strategy_hypothesis', '')}",

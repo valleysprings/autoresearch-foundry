@@ -16,9 +16,10 @@ def main() -> None:
     dataset = load_dataset("tasksource/planbench", "task_1_plan_generation", split=args.split)
     items = []
     for index, row in enumerate(dataset, start=1):
+        item_id = f"planbench-{row['domain']}-{row['prompt_type']}-{int(row['instance_id']):05d}"
         items.append(
             {
-                "item_id": f"planbench-{int(row['instance_id']):05d}",
+                "item_id": item_id,
                 "name": f"{row['domain']} / {row['prompt_type']} / {row['instance_id']}",
                 "prompt": str(row["query"]).strip(),
                 "context": {

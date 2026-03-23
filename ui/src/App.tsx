@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { loadJob, loadLatestRun, loadRuntime, loadTasks, startJob } from "./api";
 import { normalizeErrorPayload, stringifyUnknown } from "./errorPayload";
+import { initialTaskId, taskScopedPayload } from "./reportCache";
 import type {
   Branch,
   Candidate,
@@ -9,13 +10,13 @@ import type {
   ItemRun,
   ErrorPayload,
   Generation,
-  JSpec,
   JobState,
   LiveEvent,
   ObjectiveSpec,
   Payload,
   Run,
   RuntimeInfo,
+  SelectionSpec,
   TaskSummary,
 } from "./types";
 
@@ -33,7 +34,7 @@ type LiveItemCard = {
   errorCount: number;
   acceptCount: number;
   memoryDelta: number;
-  bestJ: number | null;
+  bestPrimaryScore: number | null;
   bestObjective: number | null;
   itemBrief: string | null;
   expectedAnswer: string | null;
@@ -62,7 +63,7 @@ type LiveTaskCard = {
   passItems: number;
   acceptedCount: number;
   memoryDelta: number;
-  bestJ: number | null;
+  bestPrimaryScore: number | null;
   items: LiveItemCard[];
   events: LiveEvent[];
 };
@@ -71,11 +72,11 @@ type MutableLiveItemCard = LiveItemCard & {
   branchIds: Set<string>;
 };
 
-type MutableLiveTaskCard = Omit<LiveTaskCard, "items" | "totalItems" | "completedItems" | "passItems" | "acceptedCount" | "memoryDelta" | "bestJ"> & {
+type MutableLiveTaskCard = Omit<LiveTaskCard, "items" | "totalItems" | "completedItems" | "passItems" | "acceptedCount" | "memoryDelta" | "bestPrimaryScore"> & {
   itemsMap: Map<string, MutableLiveItemCard>;
   acceptedCount: number;
   memoryDelta: number;
-  bestJ: number | null;
+  bestPrimaryScore: number | null;
 };
 
 type TaskGroup = {
@@ -232,13 +233,18 @@ function emptyRuntime(): RuntimeInfo {
   };
 }
 
-function emptyJSpec(): JSpec {
+function emptySelectionSpec(): SelectionSpec {
   return {
-    display_name: "Selection score J",
-    direction: "max",
-    summary_template: "J is the internal max-only score used to rank verified candidates.",
-    formula: "",
+    display_name: "Layered selection policy",
+    summary_template: "Candidates must satisfy the verifier gate, improve primary_score, and only use tie-break metrics when primary scores are effectively tied.",
+    primary_metric: "objective_score",
+    primary_label: "Normalized objective score",
+    primary_direction: "max",
+    primary_formula: "",
+    gate_summary: "",
+    tie_break_formula: "",
     delta_template: "",
+    archive_summary: "",
   };
 }
 
@@ -262,12 +268,12 @@ function emptyPayload(taskCatalog: TaskSummary[] = []): Payload {
       proposal_engine: emptyRuntime(),
     },
     formulas: {
-      J: "",
       objective: "",
-      delta_J: "",
-      run_delta_J: "",
+      primary_score: "",
+      tie_break_score: "",
+      delta_primary_score: "",
+      run_delta_primary_score: "",
     },
-    j_spec: emptyJSpec(),
     audit: {
       workspace_root: "n/a",
       session_id: "n/a",
@@ -293,13 +299,31 @@ function mergeTaskCatalogs(fallbackCatalog: TaskSummary[], cachedCatalog: TaskSu
 }
 
 function normalizePayload(payload: Payload, fallbackCatalog: TaskSummary[]): Payload {
-  const jSpec = payload.j_spec ?? emptyJSpec();
+  const taskCatalog = mergeTaskCatalogs(fallbackCatalog, payload.task_catalog);
   return {
     ...payload,
-    j_spec: jSpec,
-    task_catalog: mergeTaskCatalogs(fallbackCatalog, payload.task_catalog),
-    runs: Array.isArray(payload.runs) ? payload.runs.map((run) => ({ ...run, j_spec: run.j_spec ?? jSpec })) : [],
+    task_catalog: taskCatalog,
+    runs: Array.isArray(payload.runs)
+      ? payload.runs.map((run) => {
+          const catalogTask = taskCatalog.find((task) => task.id === run.task?.id);
+          const selectionSpec =
+            run.selection_spec ?? run.task?.selection_spec ?? catalogTask?.selection_spec ?? emptySelectionSpec();
+          return {
+            ...run,
+            selection_spec: selectionSpec,
+            task: {
+              ...run.task,
+              selection_spec: run.task?.selection_spec ?? selectionSpec,
+            },
+          };
+        })
+      : [],
   };
+}
+
+function scopedPayloadOrEmpty(payload: Payload, taskId: string | null | undefined, fallbackCatalog: TaskSummary[]): Payload {
+  const scoped = taskScopedPayload(payload, taskId);
+  return scoped ? scoped : emptyPayload(fallbackCatalog);
 }
 
 function metric(label: string, value: string | number) {
@@ -371,16 +395,16 @@ function datasetIntroCopy(task: TaskSummary): string {
 function parseCandidateMetrics(message?: string | null): {
   status: string | null;
   objective: number | null;
-  j: number | null;
+  primaryScore: number | null;
 } {
   const text = String(message ?? "");
   const statusMatch = text.match(/status=([a-z]+)/i);
   const objectiveMatch = text.match(/objective=([-+]?\d+(?:\.\d+)?)/i);
-  const jMatch = text.match(/J=([-+]?\d+(?:\.\d+)?)/);
+  const primaryScoreMatch = text.match(/primary_score=([-+]?\d+(?:\.\d+)?)/i);
   return {
     status: statusMatch ? statusMatch[1].toLowerCase() : null,
     objective: objectiveMatch ? Number(objectiveMatch[1]) : null,
-    j: jMatch ? Number(jMatch[1]) : null,
+    primaryScore: primaryScoreMatch ? Number(primaryScoreMatch[1]) : null,
   };
 }
 
@@ -442,7 +466,7 @@ function summarizeLiveTasks(
       passItems: 0,
       acceptedCount: 0,
       memoryDelta: 0,
-      bestJ: null,
+      bestPrimaryScore: null,
       items: [],
       events: [],
     };
@@ -475,7 +499,7 @@ function summarizeLiveTasks(
       errorCount: 0,
       acceptCount: 0,
       memoryDelta: 0,
-      bestJ: null,
+      bestPrimaryScore: null,
       bestObjective: null,
       itemBrief: event.item_brief ?? null,
       expectedAnswer: event.expected_answer ?? null,
@@ -525,9 +549,11 @@ function summarizeLiveTasks(
       } else if (metrics.status === "error") {
         item.errorCount += 1;
       }
-      if (typeof metrics.j === "number" && Number.isFinite(metrics.j)) {
-        item.bestJ = item.bestJ == null ? metrics.j : Math.max(item.bestJ, metrics.j);
-        task.bestJ = task.bestJ == null ? metrics.j : Math.max(task.bestJ, metrics.j);
+      if (typeof metrics.primaryScore === "number" && Number.isFinite(metrics.primaryScore)) {
+        item.bestPrimaryScore =
+          item.bestPrimaryScore == null ? metrics.primaryScore : Math.max(item.bestPrimaryScore, metrics.primaryScore);
+        task.bestPrimaryScore =
+          task.bestPrimaryScore == null ? metrics.primaryScore : Math.max(task.bestPrimaryScore, metrics.primaryScore);
       }
       if (typeof metrics.objective === "number" && Number.isFinite(metrics.objective)) {
         item.bestObjective = item.bestObjective == null ? metrics.objective : Math.max(item.bestObjective, metrics.objective);
@@ -583,7 +609,8 @@ function summarizeLiveTasks(
             errorCount: item?.errorCount ?? (completedItemRun && winnerStatus === "error" ? 1 : 0),
             acceptCount: item?.acceptCount ?? 0,
             memoryDelta: item?.memoryDelta ?? 0,
-            bestJ: item?.bestJ ?? (completedItemRun ? numeric(completedItemRun.winner.metrics.J) : null),
+            bestPrimaryScore:
+              item?.bestPrimaryScore ?? (completedItemRun ? numeric(completedItemRun.winner.metrics.primary_score) : null),
             bestObjective: item?.bestObjective ?? (completedItemRun ? numeric(completedItemRun.winner.metrics.objective) : null),
             itemBrief: completedItemRun ? questionPreview(completedItemRun.question.prompt, 240) : item?.itemBrief ?? null,
             expectedAnswer: completedItemRun ? String(completedItemRun.question.expected_answer) : item?.expectedAnswer ?? null,
@@ -614,12 +641,12 @@ function deltaChart(run: Run) {
   const spec = run.task.objective_spec;
   const label = objectiveLabel(spec);
   const baselineObjective = numeric(points[0].objective);
-  const baselineJ = numeric(points[0].J);
+  const baselinePrimaryScore = numeric(points[0].primary_score);
   const chartPoints = points.map((point, index) => ({
     generation: point.generation,
     index,
     objectiveDelta: numeric(point.objective) - baselineObjective,
-    jDelta: numeric(point.J) - baselineJ,
+    primaryScoreDelta: numeric(point.primary_score) - baselinePrimaryScore,
     acceptedCount: numeric(point.accepted_count ?? 0),
   }));
   const width = 700;
@@ -627,13 +654,13 @@ function deltaChart(run: Run) {
   const padding = 26;
   const plotWidth = width - padding * 2;
   const plotHeight = height - padding * 2;
-  const values = chartPoints.flatMap((point) => [point.objectiveDelta, point.jDelta, 0]);
+  const values = chartPoints.flatMap((point) => [point.objectiveDelta, point.primaryScoreDelta, 0]);
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
   const x = (index: number) => padding + (chartPoints.length === 1 ? plotWidth / 2 : (plotWidth * index) / (chartPoints.length - 1));
   const y = (value: number) => padding + plotHeight - ((value - min) / range) * plotHeight;
-  const pathFor = (key: "objectiveDelta" | "jDelta") =>
+  const pathFor = (key: "objectiveDelta" | "primaryScoreDelta") =>
     chartPoints.map((point, index) => `${index === 0 ? "M" : "L"} ${x(point.index)} ${y(point[key])}`).join(" ");
 
   return (
@@ -645,11 +672,11 @@ function deltaChart(run: Run) {
         })}
         <line className="chart-axis" x1={padding} x2={width - padding} y1={y(0)} y2={y(0)} />
         <path className="chart-line objective-line" d={pathFor("objectiveDelta")} />
-        <path className="chart-line j-line" d={pathFor("jDelta")} />
+        <path className="chart-line j-line" d={pathFor("primaryScoreDelta")} />
         {chartPoints.map((point) => (
           <g key={`chart-${run.task.id}-${point.generation}`}>
             <circle className={`chart-point ${point.acceptedCount > 0 ? "accepted" : "candidate"}`} cx={x(point.index)} cy={y(point.objectiveDelta)} r="4.6" />
-            <circle className={`chart-point j-point ${point.acceptedCount > 0 ? "accepted" : "candidate"}`} cx={x(point.index)} cy={y(point.jDelta)} r="4.6" />
+            <circle className={`chart-point j-point ${point.acceptedCount > 0 ? "accepted" : "candidate"}`} cx={x(point.index)} cy={y(point.primaryScoreDelta)} r="4.6" />
             <text className="chart-label" x={x(point.index)} y={height - 8} textAnchor="middle">
               g{point.generation}
             </text>
@@ -663,7 +690,7 @@ function deltaChart(run: Run) {
         </span>
         <span className="legend-item">
           <span className="legend-swatch j-line-swatch" />
-          J vs baseline
+          primary score vs baseline
         </span>
         <span className="legend-item">
           <span className="legend-swatch accepted-swatch" />
@@ -734,14 +761,14 @@ function memoryDeltaChart(run: Run) {
   );
 }
 
-function metricTemplate(spec: ObjectiveSpec, jSpec: JSpec) {
+function metricTemplate(spec: ObjectiveSpec, selectionSpec: SelectionSpec) {
   return (
     <section className="subpanel">
       <div className="subpanel-header">
         <p className="eyebrow">selection rules</p>
         <div className="badge-row">
           <span className="badge">{directionCopy(spec.direction)}</span>
-          <span className="badge">J orders verified candidates</span>
+          <span className="badge">{"gate -> primary -> tie-break"}</span>
         </div>
       </div>
       <div className="template-grid">
@@ -751,10 +778,13 @@ function metricTemplate(spec: ObjectiveSpec, jSpec: JSpec) {
           <p className="template-formula">{spec.formula}</p>
         </article>
         <article className="template-card">
-          <div className="template-label">{jSpec.display_name}</div>
-          <p className="small">{jSpec.summary_template}</p>
-          <p className="template-formula">{jSpec.formula}</p>
-          <p className="small">{jSpec.delta_template}</p>
+          <div className="template-label">{selectionSpec.display_name}</div>
+          <p className="small">{selectionSpec.summary_template}</p>
+          <p className="template-formula">{selectionSpec.gate_summary}</p>
+          <p className="template-formula">{selectionSpec.primary_formula}</p>
+          <p className="template-formula">{selectionSpec.tie_break_formula}</p>
+          <p className="small">{selectionSpec.delta_template}</p>
+          <p className="small">{selectionSpec.archive_summary}</p>
         </article>
       </div>
     </section>
@@ -779,7 +809,8 @@ function candidateCard(candidate: Candidate, objectiveSpec: ObjectiveSpec, tone:
         <div className="metric-grid compact-metrics">
           {metric(objectiveLabel(objectiveSpec), formatValue(candidate.metrics.objective, objectiveSpec.unit ? ` ${objectiveSpec.unit}` : ""))}
           {metric("normalized score", formatValue(candidate.metrics.objective_score))}
-          {metric("selection J", formatValue(candidate.metrics.J))}
+          {metric("primary score", formatValue(candidate.metrics.primary_score))}
+          {metric("tie-break score", formatValue(candidate.metrics.tie_break_score))}
           {metric("verifier time", candidate.metrics.benchmark_ms == null ? "n/a" : `${candidate.metrics.benchmark_ms} ms`)}
           {metric("tests passed", `${candidate.metrics.passed_tests ?? "n/a"}/${candidate.metrics.total_tests ?? "n/a"}`)}
           {metric("workspace path", shortPath(candidate.workspace_path))}
@@ -807,14 +838,15 @@ function branchCard(branch: Branch, objectiveSpec: ObjectiveSpec, openByDefault 
           <span className={`badge ${branch.memory_delta > 0 ? "good" : branch.memory_delta < 0 ? "warn" : ""}`}>
             memory {branch.memory_delta > 0 ? `+${branch.memory_delta}` : branch.memory_delta}
           </span>
-          <span className="badge">delta J {formatSigned(branch.delta_J, 4)}</span>
+          <span className="badge">delta primary {formatSigned(branch.delta_primary_score, 4)}</span>
         </div>
       </summary>
       <div className="detail-body stack">
         <div className="metric-grid compact-metrics">
           {metric("parent agent", branch.parent_candidate.agent)}
           {metric(objectiveLabel(objectiveSpec), formatValue(branch.winner.metrics.objective, objectiveSpec.unit ? ` ${objectiveSpec.unit}` : ""))}
-          {metric("winner J", formatValue(branch.winner.metrics.J))}
+          {metric("winner primary", formatValue(branch.winner.metrics.primary_score))}
+          {metric("winner tie-break", formatValue(branch.winner.metrics.tie_break_score))}
           {metric("beats run best", String(Boolean(branch.winner_improved_global_best)))}
         </div>
         {branch.rejection_reason ? <p className="small muted">{branch.rejection_reason}</p> : null}
@@ -856,7 +888,7 @@ function generationCard(generation: Generation, objectiveSpec: ObjectiveSpec, op
           <span className={`badge ${numeric(generation.memory_delta) > 0 ? "good" : numeric(generation.memory_delta) < 0 ? "warn" : ""}`}>
             memory {numeric(generation.memory_delta) > 0 ? `+${generation.memory_delta}` : generation.memory_delta ?? 0}
           </span>
-          <span className="badge">delta J {formatSigned(generation.delta_J, 4)}</span>
+          <span className="badge">delta primary {formatSigned(generation.delta_primary_score, 4)}</span>
         </div>
       </summary>
       <div className="detail-body stack">
@@ -864,7 +896,8 @@ function generationCard(generation: Generation, objectiveSpec: ObjectiveSpec, op
           {metric("parent pool", generation.parents?.length ?? generation.branches.length)}
           {metric("selected candidate", generation.winner.label)}
           {metric(objectiveLabel(objectiveSpec), formatValue(generation.winner.metrics.objective, objectiveSpec.unit ? ` ${objectiveSpec.unit}` : ""))}
-          {metric("winner J", formatValue(generation.winner.metrics.J))}
+          {metric("winner primary", formatValue(generation.winner.metrics.primary_score))}
+          {metric("winner tie-break", formatValue(generation.winner.metrics.tie_break_score))}
           {metric("positive writes", generation.positive_writebacks ?? 0)}
           {metric("negative writes", generation.negative_writebacks ?? 0)}
         </div>
@@ -912,7 +945,7 @@ function liveTaskSection(task: LiveTaskCard) {
         {metric("completion", formatPercent(completedRatio))}
         {metric("items solved", `${task.passItems}/${task.totalItems || "?"}`)}
         {metric("solve rate", formatPercent(passRatio))}
-        {metric("best J seen", task.bestJ == null ? "n/a" : task.bestJ.toFixed(3))}
+        {metric("best primary seen", task.bestPrimaryScore == null ? "n/a" : task.bestPrimaryScore.toFixed(3))}
         {metric("frontier accepts", task.acceptedCount)}
         {metric("memory delta", task.memoryDelta > 0 ? `+${task.memoryDelta}` : task.memoryDelta)}
       </div>
@@ -932,7 +965,7 @@ function liveTaskSection(task: LiveTaskCard) {
                   <span className="badge">solved {item.passCount}</span>
                   <span className="badge">fail {item.failCount}</span>
                   <span className="badge">accepted {item.acceptCount}</span>
-                  <span className="badge">J {item.bestJ == null ? "n/a" : item.bestJ.toFixed(3)}</span>
+                  <span className="badge">primary {item.bestPrimaryScore == null ? "n/a" : item.bestPrimaryScore.toFixed(3)}</span>
                 </div>
               </div>
               <div className="split-grid report-grid">
@@ -983,8 +1016,8 @@ function itemRunCard(itemRun: ItemRun, objectiveSpec: ObjectiveSpec) {
           <span className="badge">
             {objectiveLabel(objectiveSpec)} {formatValue(itemRun.winner.metrics.objective, objectiveUnit)}
           </span>
-          <span className={`badge ${numeric(itemRun.run_delta_J ?? itemRun.delta_J) >= 0 ? "good" : "warn"}`}>
-            delta J {formatSigned(itemRun.run_delta_J ?? itemRun.delta_J, 4)}
+          <span className={`badge ${numeric(itemRun.run_delta_primary_score ?? itemRun.delta_primary_score) >= 0 ? "good" : "warn"}`}>
+            delta primary {formatSigned(itemRun.run_delta_primary_score ?? itemRun.delta_primary_score, 4)}
           </span>
         </div>
       </summary>
@@ -1013,7 +1046,7 @@ function itemRunCard(itemRun: ItemRun, objectiveSpec: ObjectiveSpec) {
           {metric("selected status", itemRun.winner.metrics.verifier_status ?? "n/a")}
           {metric("generations used", itemRun.generations.length)}
           {metric("memory ledger", `${itemRun.memory_before_count ?? "n/a"} → ${itemRun.memory_after_count ?? "n/a"}`)}
-          {metric("selected J", formatValue(itemRun.winner.metrics.J))}
+          {metric("selected primary", formatValue(itemRun.winner.metrics.primary_score))}
         </div>
         <p className="small">{itemRun.selection_reason}</p>
         {itemRun.question.context ? (
@@ -1037,8 +1070,9 @@ function itemRunCard(itemRun: ItemRun, objectiveSpec: ObjectiveSpec) {
   );
 }
 
-function runCard(run: Run, jSpec: JSpec, isOpen: boolean, onToggle: () => void) {
+function runCard(run: Run, defaultSelectionSpec: SelectionSpec, isOpen: boolean, onToggle: () => void) {
   const objectiveSpec = run.task.objective_spec;
+  const selectionSpec = run.selection_spec ?? run.task.selection_spec ?? defaultSelectionSpec;
   const isDatasetRun = Array.isArray(run.item_runs) && run.item_runs.length > 0;
   const transitions = isDatasetRun ? datasetTransitionSummary(run) : null;
   const objectiveUnit = objectiveSpec.unit ? ` ${objectiveSpec.unit}` : "";
@@ -1062,8 +1096,8 @@ function runCard(run: Run, jSpec: JSpec, isOpen: boolean, onToggle: () => void) 
               {objectiveLabel(objectiveSpec)} {formatValue(run.winner.metrics.objective, objectiveSpec.unit ? ` ${objectiveSpec.unit}` : "")}
             </span>
           )}
-          <span className={`badge ${numeric(run.run_delta_J ?? run.delta_J) >= 0 ? "good" : "warn"}`}>
-            run delta J {formatSigned(run.run_delta_J ?? run.delta_J, 4)}
+          <span className={`badge ${numeric(run.run_delta_primary_score ?? run.delta_primary_score) >= 0 ? "good" : "warn"}`}>
+            run delta primary {formatSigned(run.run_delta_primary_score ?? run.delta_primary_score, 4)}
           </span>
         </div>
       </button>
@@ -1076,13 +1110,13 @@ function runCard(run: Run, jSpec: JSpec, isOpen: boolean, onToggle: () => void) 
       </div>
       {isOpen ? (
         <div className="accordion-body stack">
-          {metricTemplate(objectiveSpec, run.j_spec ?? jSpec)}
+          {metricTemplate(objectiveSpec, selectionSpec)}
 
           <div className="metric-grid">
             {metric("baseline objective", formatValue(run.baseline.metrics.objective, objectiveUnit))}
             {metric("selected objective", formatValue(run.winner.metrics.objective, objectiveUnit))}
             {metric("objective delta", formatSigned(run.run_delta_objective ?? 0, 4) + objectiveUnit)}
-            {metric("run delta J", formatSigned(run.run_delta_J ?? run.delta_J, 4))}
+            {metric("run delta primary", formatSigned(run.run_delta_primary_score ?? run.delta_primary_score, 4))}
             {metric(isDatasetRun ? "items" : "generations", isDatasetRun ? run.dataset_summary?.total_items ?? run.item_runs?.length ?? 0 : run.generations.length)}
             {metric("new memories", run.added_experiences?.length ?? 0)}
             {metric("memory ledger", `${run.memory_before_count ?? "n/a"} → ${run.memory_after_count ?? "n/a"}`)}
@@ -1103,7 +1137,7 @@ function runCard(run: Run, jSpec: JSpec, isOpen: boolean, onToggle: () => void) 
                 {metric("fail -> pass", transitions?.improved ?? 0)}
                 {metric("pass -> fail", transitions?.regressed ?? 0)}
                 {metric("solve rate", formatValue(run.dataset_summary?.solved_ratio))}
-                {metric("avg delta J", formatValue(run.dataset_summary?.avg_delta_J))}
+                {metric("avg delta primary", formatValue(run.dataset_summary?.avg_delta_primary_score))}
                 {metric("still failing", run.dataset_summary?.failure_count ?? 0)}
               </div>
               <section className="stack">
@@ -1202,30 +1236,17 @@ export function App() {
     [payload.task_catalog, datasetIntroTaskId],
   );
 
-  const comparableTasks = useMemo(
-    () => payload.task_catalog.filter((task) => task.included_in_main_comparison),
-    [payload.task_catalog],
-  );
-
-  const experimentTasks = useMemo(
-    () => payload.task_catalog.filter((task) => !task.included_in_main_comparison),
-    [payload.task_catalog],
-  );
-
   const liveTasks = useMemo(
     () => summarizeLiveTasks(liveJob?.events ?? [], payload.task_catalog, liveJob, liveJob?.payload?.runs ?? []),
     [liveJob, payload.task_catalog],
   );
 
-  const comparableRuns = useMemo(
-    () => payload.runs.filter((run) => run.included_in_main_comparison),
-    [payload.runs],
-  );
-
-  const experimentRuns = useMemo(
-    () => payload.runs.filter((run) => !run.included_in_main_comparison),
-    [payload.runs],
-  );
+  const selectedTaskRun = useMemo(() => {
+    if (!selectedTask) {
+      return payload.runs[0] ?? null;
+    }
+    return payload.runs.find((run) => run.task.id === selectedTask.id) ?? null;
+  }, [payload.runs, selectedTask]);
 
   useEffect(() => {
     const stored = window.localStorage.getItem("autoresearch-theme");
@@ -1271,22 +1292,21 @@ export function App() {
         setRuntimeInfo(runtime);
         setSelectedModel(runtime.active_model);
         setPayload(emptyPayload(tasks));
-        const defaultTask = tasks[0] ?? null;
-        setSelectedTaskId(defaultTask?.id ?? "");
-        setBranchingFactorInput(String(defaultTask?.branching_factor ?? 4));
-        setGenerationBudgetInput(String(defaultTask?.generation_budget ?? 1));
-        setCandidateBudgetInput(String(defaultTask?.candidate_budget ?? 1));
-        setItemWorkersInput(String(defaultTask?.item_workers ?? 20));
         setLiveJob({
           status: "loading",
           events: [{ phase: "boot", message: "Loading cached reports." }],
         });
-        const latest = await loadLatestRun();
+        const latest = normalizePayload(await loadLatestRun(), tasks);
         if (cancelled) {
           return;
         }
-        const normalized = normalizePayload(latest, tasks);
-        setPayload(normalized);
+        const defaultTaskId = initialTaskId(tasks, latest);
+        setSelectedTaskId(defaultTaskId);
+        const taskPayload = defaultTaskId ? normalizePayload(await loadLatestRun(defaultTaskId), tasks) : emptyPayload(tasks);
+        if (cancelled) {
+          return;
+        }
+        setPayload(scopedPayloadOrEmpty(taskPayload, defaultTaskId, tasks));
         setOpenCompletedTasks({});
         setLiveJob(null);
         setError(null);
@@ -1318,14 +1338,45 @@ export function App() {
   }, [selectedTask?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (liveJob?.status === "running") {
+    if (!selectedTaskId || liveJob?.status === "running" || liveJob?.status === "loading") {
+      return;
+    }
+    let cancelled = false;
+    async function loadSelectedTaskReport() {
+      try {
+        if (cancelled) {
+          return;
+        }
+        const latest = await loadLatestRun(selectedTaskId);
+        setPayload((previous) => {
+          const normalized = normalizePayload(latest, previous.task_catalog);
+          return scopedPayloadOrEmpty(normalized, selectedTaskId, previous.task_catalog);
+        });
+      } catch {
+        if (cancelled) {
+          return;
+        }
+        setPayload((previous) => emptyPayload(previous.task_catalog));
+      }
+    }
+    void loadSelectedTaskReport();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTaskId, liveJob?.status]);
+
+  useEffect(() => {
+    if (liveJob?.status === "running" || liveJob?.status === "loading") {
       return undefined;
     }
 
     const timer = window.setInterval(async () => {
       try {
-        const latest = await loadLatestRun();
-        setPayload((previous) => normalizePayload(latest, previous.task_catalog));
+        const latest = await loadLatestRun(selectedTaskId || undefined);
+        setPayload((previous) => {
+          const normalized = normalizePayload(latest, previous.task_catalog);
+          return scopedPayloadOrEmpty(normalized, selectedTaskId, previous.task_catalog);
+        });
       } catch {
         return;
       }
@@ -1334,7 +1385,7 @@ export function App() {
     return () => {
       window.clearInterval(timer);
     };
-  }, [liveJob?.status]);
+  }, [liveJob?.status, selectedTaskId]);
 
   function toggleCompletedTask(taskId: string) {
     setOpenCompletedTasks((previous) => ({ ...previous, [taskId]: !previous[taskId] }));
@@ -1401,7 +1452,12 @@ export function App() {
       }
       if (job.payload) {
         const normalized = normalizePayload(job.payload, payload.task_catalog);
-        setPayload(normalized);
+        if (taskId) {
+          setSelectedTaskId(taskId);
+          setPayload(scopedPayloadOrEmpty(normalized, taskId, payload.task_catalog));
+        } else {
+          setPayload(normalized);
+        }
         setError(null);
       }
     } catch (caught) {
@@ -1422,7 +1478,7 @@ export function App() {
     }
   }
 
-  const taskJSpec = payload.j_spec ?? emptyJSpec();
+  const defaultSelectionSpec = selectedTask?.selection_spec ?? payload.task_catalog[0]?.selection_spec ?? emptySelectionSpec();
   const selectedTaskUsesMaxItems = Boolean(selectedTask?.local_dataset_only && selectedTask?.dataset_size);
   const selectedTaskHasDatasetIntro = Boolean(selectedTask?.local_dataset_only);
   const selectedTaskIsCoding = selectedTask?.track === "coding_verified";
@@ -1640,58 +1696,29 @@ export function App() {
       <section className="panel stack">
         <div className="panel-header">
           <div>
-            <p className="eyebrow">report archive</p>
-            <h2>Cached run reports</h2>
+            <p className="eyebrow">selected task report</p>
+            <h2>Latest cached report</h2>
           </div>
           <div className="badge-row">
+            <span className="badge">{selectedTask?.id ?? "no task selected"}</span>
             <span className="badge">{payload.summary.active_model}</span>
           </div>
         </div>
-        <section className="subpanel stack">
-          <div className="subpanel-header">
-            <div>
-              <p className="eyebrow">benchmark tasks</p>
-              <h4>Benchmark Reports</h4>
-            </div>
-            <div className="badge-row">
-              <span className="badge">{comparableTasks.length} registered</span>
-              <span className="badge">{comparableRuns.length} cached</span>
-            </div>
-          </div>
-          <div className="history-scroll">
-            {comparableRuns.length ? (
-              comparableRuns.map((run) => runCard(run, taskJSpec, Boolean(openCompletedTasks[run.task.id]), () => toggleCompletedTask(run.task.id)))
-            ) : (
-              <section className="empty-state">
-                <h3>No benchmark reports yet</h3>
-                <p className="muted">Completed benchmark-task runs land here. Mathematics stays pinned first in the task selector.</p>
-              </section>
-            )}
-          </div>
-        </section>
-
-        <section className="subpanel stack">
-          <div className="subpanel-header">
-            <div>
-              <p className="eyebrow">smoke and regression</p>
-              <h4>Smoke / Regression Reports</h4>
-            </div>
-            <div className="badge-row">
-              <span className="badge">{experimentTasks.length} registered</span>
-              <span className="badge">{experimentRuns.length} cached</span>
-            </div>
-          </div>
-          <div className="history-scroll">
-            {experimentRuns.length ? (
-              experimentRuns.map((run) => runCard(run, taskJSpec, Boolean(openCompletedTasks[run.task.id]), () => toggleCompletedTask(run.task.id)))
-            ) : (
-              <section className="empty-state">
-                <h3>No smoke or regression reports yet</h3>
-                <p className="muted">Smoke and regression runs stay separate from benchmark task reports.</p>
-              </section>
-            )}
-          </div>
-        </section>
+        <div className="history-scroll">
+          {selectedTaskRun ? (
+            runCard(
+              selectedTaskRun,
+              defaultSelectionSpec,
+              Boolean(openCompletedTasks[selectedTaskRun.task.id]),
+              () => toggleCompletedTask(selectedTaskRun.task.id),
+            )
+          ) : (
+            <section className="empty-state">
+              <h3>No cached report for this task yet</h3>
+              <p className="muted">Run the selected task once to persist its latest report and make it survive refresh.</p>
+            </section>
+          )}
+        </div>
       </section>
 
       {datasetIntroTask ? (

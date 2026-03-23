@@ -73,7 +73,7 @@ Its logic is:
 3. ask `app/codegen/llm.py` for candidate file rewrites
 4. materialize each candidate into an isolated workspace
 5. send each materialized file to the verifier
-6. rank by task objective and internal score `J`
+6. rank by verifier gate, then `primary_score`, then `tie_break_score`
 7. update the frontier only if the winner beats its selected parent by `epsilon`
 8. reflect successful or informative failures back into memory
 
@@ -121,7 +121,8 @@ The generic verifier does:
 6. compute:
    - task-facing `objective`
    - internal `objective_score`
-   - internal selection score `J`
+   - internal `primary_score`
+   - internal `tie_break_score`
 
 Dataset tasks can swap in specialized grading logic:
 
@@ -139,13 +140,13 @@ Memory is not raw chat history.
 - `strategy_hypothesis`
 - `successful_strategy`
 - `prompt_fragment`
-- `delta_J`
+- `delta_primary_score`
 
 Retrieval prefers:
 
 - task-signature overlap
 - family match
-- strong `delta_J`
+- strong `delta_primary_score`
 - successful experiences over noisy failure spam
 
 ## 8. Artifact Path

@@ -205,7 +205,7 @@ def run_dataset_task(
         for experience in item_run.get("added_experiences", [])
     ]
     generations_total = sum(len(item_run.get("generations", [])) for item_run in item_runs)
-    average_delta_j = summary["avg_delta_J"]
+    average_delta_primary_score = summary["avg_delta_primary_score"]
     average_objective_delta = round(
         summary["avg_winner_objective"] - summary["avg_baseline_objective"],
         6,
@@ -214,6 +214,7 @@ def run_dataset_task(
     return {
         "run_mode": "llm-required",
         "active_model": proposal_runtime.active_model,
+        "selection_spec": dict(task["selection_spec"]),
         "benchmark_tier": task["benchmark_tier"],
         "track": task["track"],
         "dataset_id": task["dataset_id"],
@@ -230,6 +231,7 @@ def run_dataset_task(
             "objective_label": task["objective_label"],
             "objective_direction": task["objective_direction"],
             "objective_spec": task["objective_spec"],
+            "selection_spec": task["selection_spec"],
             "generation_budget": task["generation_budget"],
             "candidate_budget": task["candidate_budget"],
             "branching_factor": task["branching_factor"],
@@ -260,8 +262,8 @@ def run_dataset_task(
         "positive_experiences_added": positive_experiences_added,
         "negative_experiences_added": negative_experiences_added,
         "added_experiences": added_experiences,
-        "delta_J": average_delta_j,
-        "run_delta_J": average_delta_j,
+        "delta_primary_score": average_delta_primary_score,
+        "run_delta_primary_score": average_delta_primary_score,
         "run_delta_objective": average_objective_delta,
         "selection_reason": (
             f"Dataset {task['id']} aggregated {summary['winner_passed']}/{summary['total_items']} solved questions "

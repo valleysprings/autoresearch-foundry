@@ -101,7 +101,7 @@ This is the prompt policy layer.
 Central constants for the optimization loop:
 
 - seed strategy memories
-- `J` scoring weights
+- layered selection formulas and prompts
 - dataset instructions
 - network-block rules
 - complexity heuristics
@@ -175,7 +175,7 @@ What it owns:
 - importing the entry symbol
 - running deterministic tests
 - benchmarking passing candidates
-- computing final metrics including `objective_score` and `J`
+- computing final metrics including `objective_score`, `primary_score`, and `tie_break_score`
 
 It is the gatekeeper between model output and accepted progress.
 

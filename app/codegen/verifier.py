@@ -17,12 +17,11 @@ from app.configs.codegen import (
     COMPLEXITY_LINE_DIVISOR,
     COMPLEXITY_MAX,
     COMPLEXITY_WHILE_COST,
-    ERROR_CANDIDATE_J,
     FORBIDDEN_NETWORK_PATTERNS,
-    J_SCORE_WEIGHTS,
     LINE_COUNT_NORMALIZER,
     SPEED_SCORE_CAP,
 )
+from app.codegen.selection import compute_tie_break_score, evaluate_gate
 
 
 def _line_count(code: str) -> int:
@@ -156,6 +155,7 @@ def finalize_candidate_metrics(
     memory_applied: bool,
     raw_metrics: dict[str, Any],
 ) -> dict[str, Any]:
+    selection_spec = dict(task.get("selection_spec") or {})
     status = str(raw_metrics.get("status") or "pass")
     verifier_status = str(raw_metrics.get("verifier_status") or status)
     objective = float(raw_metrics.get("objective") or 0.0)
@@ -170,23 +170,31 @@ def finalize_candidate_metrics(
     stability = float(raw_metrics.get("stability") or (1.0 if status == "pass" else 0.0))
     complexity = float(raw_metrics.get("complexity") or _estimate_complexity(source_code))
     line_count = int(raw_metrics.get("line_count") or _line_count(source_code))
-    memory_bonus = 1.0 if memory_applied else 0.0
-
-    if status == "error":
-        score = -1.0
-    else:
-        score = (
-            J_SCORE_WEIGHTS["correctness"] * correctness
-            + J_SCORE_WEIGHTS["objective_signal"] * objective_signal
-            + J_SCORE_WEIGHTS["memory_bonus"] * memory_bonus
-            + J_SCORE_WEIGHTS["stability"] * stability
-            - J_SCORE_WEIGHTS["complexity"] * complexity
-            - J_SCORE_WEIGHTS["line_count_penalty"] * (line_count / LINE_COUNT_NORMALIZER)
-        )
+    computed_values = {
+        "status": status,
+        "verifier_status": verifier_status,
+        "objective": objective,
+        "objective_score": objective_score,
+        "objective_signal": objective_signal,
+        "correctness": correctness,
+        "stability": stability,
+        "complexity": complexity,
+        "line_count": line_count,
+        "line_count_normalized": line_count / LINE_COUNT_NORMALIZER,
+        "memory_applied": 1.0 if memory_applied else 0.0,
+        "benchmark_ms": raw_metrics.get("benchmark_ms"),
+    }
+    for key, value in raw_metrics.items():
+        if key not in computed_values:
+            computed_values[key] = value
+    gate_passed = evaluate_gate(selection_spec, computed_values)
+    primary_score = float(raw_metrics.get("primary_score") or objective_score)
+    tie_break_score = float(raw_metrics.get("tie_break_score") or compute_tie_break_score(selection_spec, computed_values))
 
     metrics = {
         "status": status,
         "verifier_status": verifier_status,
+        "gate_passed": gate_passed,
         "correctness": correctness,
         "passed_tests": int(raw_metrics.get("passed_tests") or 0),
         "total_tests": int(raw_metrics.get("total_tests") or 0),
@@ -200,9 +208,10 @@ def finalize_candidate_metrics(
         "objective": round(objective, 6),
         "objective_score": round(objective_score, 6),
         "objective_signal": round(objective_signal, 6),
+        "primary_score": round(primary_score, 6),
+        "tie_break_score": round(tie_break_score, 6),
         "error": raw_metrics.get("error"),
         "test_results": list(raw_metrics.get("test_results") or []),
-        "J": round(float(raw_metrics.get("J", score)), 4),
     }
     for key, value in raw_metrics.items():
         if key not in metrics:
@@ -236,7 +245,6 @@ def error_candidate_metrics(
             "objective_signal": 0.0,
             "error": error,
             "test_results": [],
-            "J": ERROR_CANDIDATE_J,
         },
     )
 

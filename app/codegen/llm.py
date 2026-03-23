@@ -33,7 +33,8 @@ from app.configs.prompts import (
     SUCCESS_REFLECTION_SYSTEM_PROMPT,
     TRIM_DEFAULT_LIMIT,
 )
-from app.configs.codegen import PROPOSAL_J_GUIDANCE
+from app.codegen.selection import prompt_summary
+from app.configs.codegen import PROPOSAL_SELECTION_GUIDANCE
 from app.codegen.config import ROOT, RuntimeConfig, load_runtime_config
 from app.codegen.errors import LlmResponseError, LlmTransportError
 
@@ -571,10 +572,12 @@ def _proposal_prompt(
     memories: list[dict[str, Any]],
 ) -> tuple[str, str]:
     objective_spec = task.get("objective_spec") or {}
+    selection_spec = task.get("selection_spec") or {}
     objective_name = objective_spec.get("display_name") or task.get("objective_label") or "objective"
     objective_direction = objective_spec.get("direction") or task.get("objective_direction") or "max"
     objective_formula = objective_spec.get("formula") or task.get("objective_label") or "objective"
     objective_summary = objective_spec.get("summary_template") or ""
+    selection_summary = prompt_summary(selection_spec)
     memory_lines = [
         "- "
         + json.dumps(
@@ -588,7 +591,7 @@ def _proposal_prompt(
                 "successful_strategy": memory.get("successful_strategy"),
                 "prompt_fragment": memory.get("prompt_fragment"),
                 "candidate_summary": memory.get("candidate_summary"),
-                "delta_J": memory.get("delta_J"),
+                "delta_primary_score": memory.get("delta_primary_score"),
             }
         )
         for memory in memories
@@ -600,7 +603,9 @@ def _proposal_prompt(
                 "generation": item.get("generation"),
                 "candidate": item.get("agent"),
                 "objective": item.get("metrics", {}).get("objective"),
-                "J": item.get("metrics", {}).get("J"),
+                "primary_score": item.get("metrics", {}).get("primary_score"),
+                "tie_break_score": item.get("metrics", {}).get("tie_break_score"),
+                "gate_passed": item.get("metrics", {}).get("gate_passed"),
                 "status": item.get("metrics", {}).get("status"),
                 "candidate_summary": item.get("candidate_summary"),
                 "strategy": item.get("strategy"),
@@ -622,17 +627,22 @@ def _proposal_prompt(
         f"Objective direction: {objective_direction}\n"
         f"Objective formula: {objective_formula}\n"
         f"Objective summary: {objective_summary}\n"
-        f"{PROPOSAL_J_GUIDANCE}\n"
+        f"{PROPOSAL_SELECTION_GUIDANCE}\n"
+        f"{selection_summary}\n"
         f"Prompt context: {task.get('prompt_context') or 'n/a'}\n"
         f"Generation: {generation}\n"
         f"Selected parent summary: {parent_candidate['candidate_summary']}\n"
         f"Selected parent objective: {parent_candidate['metrics']['objective']}\n"
         f"Selected parent objective_score: {parent_candidate['metrics'].get('objective_score')}\n"
-        f"Selected parent J: {parent_candidate['metrics']['J']}\n"
+        f"Selected parent primary_score: {parent_candidate['metrics'].get('primary_score')}\n"
+        f"Selected parent tie_break_score: {parent_candidate['metrics'].get('tie_break_score')}\n"
+        f"Selected parent gate_passed: {parent_candidate['metrics'].get('gate_passed')}\n"
         f"Global best summary: {current_best['candidate_summary']}\n"
         f"Global best objective: {current_best['metrics']['objective']}\n"
         f"Global best objective_score: {current_best['metrics'].get('objective_score')}\n"
-        f"Global best J: {current_best['metrics']['J']}\n"
+        f"Global best primary_score: {current_best['metrics'].get('primary_score')}\n"
+        f"Global best tie_break_score: {current_best['metrics'].get('tie_break_score')}\n"
+        f"Global best gate_passed: {current_best['metrics'].get('gate_passed')}\n"
         "Baseline source:\n"
         f"{current_best['baseline_source']}\n"
         "Selected parent editable file:\n"
@@ -684,7 +694,7 @@ def reflect_strategy_experience(
     generation: int,
     previous_best: dict[str, Any],
     winner: dict[str, Any],
-    delta_j: float,
+    delta_primary_score: float,
     outcome: str,
     rejection_reason: str | None = None,
 ) -> tuple[dict[str, str], dict[str, Any]]:
@@ -706,11 +716,12 @@ def reflect_strategy_experience(
         f"Winner rationale: {winner['rationale']}\n"
         f"Winner verifier_status: {winner['metrics']['verifier_status']}\n"
         f"Winner objective: {winner['metrics']['objective']}\n"
-        f"Winner J: {winner['metrics']['J']}\n"
+        f"Winner primary_score: {winner['metrics'].get('primary_score')}\n"
+        f"Winner tie_break_score: {winner['metrics'].get('tie_break_score')}\n"
         f"Winner error: {winner['metrics'].get('error')}\n"
         f"Failed tests: {json.dumps(failed_tests)}\n"
         f"Rejection reason: {rejection_reason or 'n/a'}\n"
-        f"delta_J: {delta_j}\n"
+        f"delta_primary_score: {delta_primary_score}\n"
         f"{outcome_instructions}\n"
         f"{REFLECTION_FRAGMENT_INSTRUCTION}"
     )

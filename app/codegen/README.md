@@ -23,7 +23,7 @@ This directory contains the active benchmark-driven codegen loop.
 - imports the declared entry symbol
 - runs deterministic correctness checks first
 - benchmarks only verified candidates
-- computes task-facing `objective` plus internal selection score `J`
+- computes task-facing `objective` plus layered selection metrics
 
 ### Reporting and handoff
 
@@ -32,22 +32,22 @@ This directory contains the active benchmark-driven codegen loop.
 
 ## Objective and Selection
 
-The runner uses two related scores:
+The runner now uses a layered selection contract instead of one global `J`:
 
-- `objective`
-  the task-facing metric declared by the benchmark verifier
-- `J`
-  the always-max internal selection score used to rank verified candidates across tasks
-
-Current `J` formula:
-
-`J = 1.20 * correctness + 0.95 * objective_signal + 0.20 * memory_bonus + 0.15 * stability - 0.18 * complexity - 0.05 * (line_count / 10)`
+- `gate_passed`
+  verifier-side eligibility check; candidates that fail the gate cannot win
+- `primary_score`
+  task-native objective score, normalized so that higher is always better
+- `tie_break_score`
+  track-specific weak preference score used only when primary scores are effectively tied
+- `archive_features`
+  optional diversity metadata for downstream sampling or archive logic; not part of winner selection
 
 Selection rules:
 
-- correctness is gated first
+- correctness or task-validity is gated first
 - failing or erroring candidates do not enter the winner lane
 - generations mutate a selected frontier parent, not only the global incumbent
-- a generation is accepted when it beats its selected parent by `epsilon`
-- the global best updates only when a frontier winner also beats the current best by `epsilon`
+- a generation is accepted when it beats its selected parent on `primary_score` by `epsilon`
+- the global best updates only when a frontier winner also beats the current best on `primary_score`
 - passing but stagnant candidates do not get written back as failure memory

@@ -143,16 +143,19 @@ def public_question_payload(item: object) -> dict[str, object]:
         for key, value in dict(item.get("metadata") or {}).items()
         if str(key) not in PUBLIC_QUESTION_HIDDEN_METADATA_KEYS
     }
+    prompt = item.get("raw_prompt") if item.get("raw_prompt") is not None else item.get("prompt")
+    context = item.get("raw_context") if item.get("raw_context") is not None else item.get("context")
+    choices = item.get("raw_choices") or item.get("choices") or []
     payload: dict[str, object] = {
         "id": item.get("id") or item.get("item_id"),
         "item_id": item.get("item_id"),
         "question_id": item.get("question_id") or item.get("item_id"),
         "name": item.get("name"),
-        "prompt": item.get("prompt"),
+        "prompt": prompt,
         "raw_prompt": item.get("raw_prompt"),
-        "context": item.get("context"),
+        "context": context,
         "raw_context": item.get("raw_context"),
-        "choices": list(item.get("choices") or []),
+        "choices": list(choices),
         "raw_choices": list(item.get("raw_choices") or []),
         "metadata": metadata,
     }
