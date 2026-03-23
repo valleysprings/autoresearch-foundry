@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Callable
 
 from app.codegen.catalog import seed_strategy_experiences
-from app.configs.codegen import ITEM_MEMORY_JSON_NAME, ITEM_MEMORY_MD_NAME
+from app.configs.codegen import ITEM_MEMORY_JSON_NAME, ITEM_MEMORY_MD_NAME, QUESTION_PREVIEW_LIMIT
 from app.codegen.dataset_support import (
     aggregate_candidate,
     aggregate_dataset_metrics,
@@ -19,6 +19,13 @@ from app.memory.store import MemoryStore
 
 
 ProgressCallback = Callable[[dict[str, Any]], None]
+
+
+def _question_preview(prompt: str, *, limit: int = QUESTION_PREVIEW_LIMIT) -> str:
+    normalized = " ".join(str(prompt or "").split())
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[: limit - 3].rstrip() + "..."
 
 
 def _memory_store_for_item(memory_root: Path, dataset_task_id: str, item_id: str) -> MemoryStore:
@@ -36,9 +43,14 @@ def _progress_wrapper(
     dataset_task_id: str,
     item_id: str,
     item_name: str,
+    item_prompt: str,
+    expected_answer: object,
 ) -> ProgressCallback | None:
     if progress_callback is None:
         return None
+
+    item_brief = _question_preview(item_prompt)
+    expected_answer_text = str(expected_answer).strip()
 
     def emit(event: dict[str, Any]) -> None:
         message = event.get("message")
@@ -49,6 +61,8 @@ def _progress_wrapper(
                 "question_task_id": event.get("task_id"),
                 "item_id": item_id,
                 "item_name": item_name,
+                "item_brief": item_brief,
+                "expected_answer": expected_answer_text,
                 "message": f"[{item_id}] {message}" if isinstance(message, str) and message else message,
             }
         )
@@ -82,6 +96,8 @@ def _run_item(
             dataset_task_id=str(task["id"]),
             item_id=str(item["item_id"]),
             item_name=str(item.get("name") or item["item_id"]),
+            item_prompt=str(item.get("raw_prompt") or item["prompt"]),
+            expected_answer=item.get("raw_expected_answer") or item.get("expected_answer"),
         ),
         pace_ms=pace_ms,
     )
@@ -124,7 +140,8 @@ def run_dataset_task(
     if not is_dataset_task(task):
         raise ValueError(f"Task {task['id']} is not a dataset-task.")
 
-    items = load_question_manifest(task)
+    requested_items = max_items if isinstance(max_items, int) and max_items > 0 else int(task.get("dataset_size") or 0) or None
+    items = load_question_manifest(task, min_items=requested_items)
     if isinstance(max_items, int) and max_items > 0:
         items = items[:max_items]
     if progress_callback is not None:
@@ -136,7 +153,7 @@ def run_dataset_task(
             }
         )
 
-    configured_workers = int(task.get("item_workers") or 4)
+    configured_workers = int(task.get("item_workers") or 20)
     max_workers = max(1, min(configured_workers, len(items)))
     if len(items) <= 1:
         item_runs = [
@@ -152,7 +169,9 @@ def run_dataset_task(
             )
         ] if items else []
     else:
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        executor = ThreadPoolExecutor(max_workers=max_workers)
+        futures = []
+        try:
             futures = [
                 executor.submit(
                     _run_item,
@@ -167,7 +186,14 @@ def run_dataset_task(
                 )
                 for item in items
             ]
-            item_runs = [future.result() for future in futures]
+            item_runs = [future.result() for future in as_completed(futures)]
+        except Exception:
+            for future in futures:
+                future.cancel()
+            executor.shutdown(wait=False, cancel_futures=True)
+            raise
+        else:
+            executor.shutdown(wait=True, cancel_futures=False)
 
     item_runs.sort(key=lambda item_run: str(item_run["item_id"]))
     summary = aggregate_dataset_metrics(item_runs)

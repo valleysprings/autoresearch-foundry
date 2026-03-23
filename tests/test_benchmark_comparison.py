@@ -13,12 +13,14 @@ class BenchmarkComparisonTest(unittest.TestCase):
             {
                 "olymmath",
                 "math-500",
-                "aime",
-                "amc",
+                "aime-2024",
+                "aime-2025",
+                "aime-2026",
                 "planbench",
                 "sciq",
                 "qasc",
                 "scienceqa",
+                "livecodebench",
                 "multihop-snapshot-small",
                 "tbench-lite",
             },
@@ -26,13 +28,13 @@ class BenchmarkComparisonTest(unittest.TestCase):
         dataset_tasks = [task for task in comparable_tasks if task.get("local_dataset_only")]
         self.assertEqual(
             {task["id"] for task in dataset_tasks},
-            {"olymmath", "math-500", "aime", "amc", "planbench", "sciq", "qasc", "scienceqa"},
+            {"olymmath", "math-500", "aime-2024", "aime-2025", "aime-2026", "planbench", "sciq", "qasc", "scienceqa", "livecodebench"},
         )
         self.assertEqual(
             {task["track"] for task in comparable_tasks},
-            {"math_verified", "planning_verified", "science_verified", "multihop_qa_snapshot", "terminal_verified"},
+            {"math_verified", "planning_verified", "science_verified", "multihop_qa_snapshot", "terminal_verified", "coding_verified"},
         )
-        self.assertEqual([task["id"] for task in comparable_tasks[:4]], ["olymmath", "math-500", "aime", "amc"])
+        self.assertEqual([task["id"] for task in comparable_tasks[:5]], ["olymmath", "math-500", "aime-2024", "aime-2025", "aime-2026"])
 
 
 if __name__ == "__main__":

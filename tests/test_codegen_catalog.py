@@ -22,10 +22,10 @@ class CodegenCatalogTest(unittest.TestCase):
         self.assertTrue(all(not task["included_in_main_comparison"] for task in experiment_tasks))
         self.assertEqual(
             {task["track"] for task in comparable_tasks},
-            {"math_verified", "planning_verified", "science_verified", "multihop_qa_snapshot", "terminal_verified"},
+            {"math_verified", "planning_verified", "science_verified", "multihop_qa_snapshot", "terminal_verified", "coding_verified"},
         )
         self.assertTrue(all(task["included_in_main_comparison"] for task in comparable_tasks))
-        self.assertEqual([task["id"] for task in comparable_tasks[:4]], ["olymmath", "math-500", "aime", "amc"])
+        self.assertEqual([task["id"] for task in comparable_tasks[:5]], ["olymmath", "math-500", "aime-2024", "aime-2025", "aime-2026"])
 
     def test_main_comparison_filter_returns_only_comparable_tasks(self) -> None:
         main_tasks = load_codegen_tasks(included_in_main_comparison=True)
@@ -38,11 +38,14 @@ class CodegenCatalogTest(unittest.TestCase):
         contains_duplicates = next(task for task in summaries if task["id"] == "contains-duplicates")
         olymmath = next(task for task in summaries if task["id"] == "olymmath")
         math_500 = next(task for task in summaries if task["id"] == "math-500")
-        amc = next(task for task in summaries if task["id"] == "amc")
+        aime_2024 = next(task for task in summaries if task["id"] == "aime-2024")
+        aime_2025 = next(task for task in summaries if task["id"] == "aime-2025")
+        aime_2026 = next(task for task in summaries if task["id"] == "aime-2026")
         planbench = next(task for task in summaries if task["id"] == "planbench")
         sciq = next(task for task in summaries if task["id"] == "sciq")
         qasc = next(task for task in summaries if task["id"] == "qasc")
         scienceqa = next(task for task in summaries if task["id"] == "scienceqa")
+        livecodebench = next(task for task in summaries if task["id"] == "livecodebench")
         planbench_lite = next(task for task in summaries if task["id"] == "planbench-lite")
 
         self.assertEqual(contains_duplicates["benchmark_tier"], "experiment")
@@ -55,7 +58,12 @@ class CodegenCatalogTest(unittest.TestCase):
         self.assertEqual(olymmath["split"], "en-hard:test")
         self.assertEqual(math_500["track"], "math_verified")
         self.assertEqual(math_500["split"], "test")
-        self.assertEqual(amc["dataset_size"], 4)
+        self.assertEqual(aime_2024["dataset_size"], 30)
+        self.assertEqual(aime_2024["split"], "train:2024-full")
+        self.assertEqual(aime_2025["dataset_size"], 30)
+        self.assertEqual(aime_2025["split"], "AIME2025-I:test + AIME2025-II:test")
+        self.assertEqual(aime_2026["dataset_size"], 30)
+        self.assertEqual(aime_2026["split"], "test")
         self.assertTrue(planbench["local_dataset_only"])
         self.assertEqual(planbench["dataset_size"], 2270)
         self.assertEqual(planbench["track"], "planning_verified")
@@ -68,6 +76,10 @@ class CodegenCatalogTest(unittest.TestCase):
         self.assertEqual(qasc["split"], "validation")
         self.assertEqual(scienceqa["dataset_size"], 768)
         self.assertEqual(scienceqa["split"], "validation:natural-science:text-only:biology-chemistry-physics")
+        self.assertEqual(livecodebench["dataset_size"], 1055)
+        self.assertEqual(livecodebench["track"], "coding_verified")
+        self.assertEqual(livecodebench["split"], "release_v6:test")
+        self.assertTrue(livecodebench["included_in_main_comparison"])
         self.assertEqual(planbench_lite["dataset_size"], 4)
         self.assertEqual(planbench_lite["track"], "small_experiments")
         self.assertFalse(planbench_lite["included_in_main_comparison"])

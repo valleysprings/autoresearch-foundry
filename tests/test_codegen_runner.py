@@ -19,9 +19,12 @@ from app.codegen.llm import _proposal_prompt
 from app.codegen.config import RuntimeConfig
 from app.codegen.llm import ProposalRuntime
 from app.codegen.trainer import run_codegen_task
-from app.entries.discrete_demo import generate_discrete_payload, write_discrete_artifacts
+from app.entries.runner import generate_discrete_payload, write_discrete_artifacts
 from app.memory.store import MemoryStore
 from tests.helpers import chat_response, make_runtime
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _file_with_entry(symbol: str, args: str, body: str) -> str:
@@ -268,6 +271,20 @@ class CodegenRunnerTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir, patch.dict(os.environ, {}, clear=True):
             with self.assertRaises(ConfigError):
                 generate_discrete_payload(task_id="contains-duplicates", runs_root=Path(tmp_dir), env_root=Path(tmp_dir))
+
+    def test_math_tasks_fail_fast_when_math_verify_is_missing(self) -> None:
+        runtime = make_runtime([])
+        with tempfile.TemporaryDirectory() as tmp_dir, patch("app.entries.runner.importlib.util.find_spec", return_value=None):
+            with self.assertRaises(ConfigError) as raised:
+                generate_discrete_payload(
+                    task_id="aime-2026",
+                    proposal_runtime=runtime,
+                    runs_root=Path(tmp_dir),
+                    branching_factor=1,
+                    max_items=1,
+                )
+        self.assertIn("math-verify", str(raised.exception))
+        self.assertIn("aime-2026", str(raised.exception))
 
     def test_invalid_llm_output_fails_immediately(self) -> None:
         runtime = make_runtime([chat_response({"candidates": [{"name": "bad"}]})])
@@ -803,8 +820,29 @@ class CodegenRunnerTest(unittest.TestCase):
             task["item_workers"] = 1
         runtime = make_runtime([chat_response(QUESTION_SOLVER_PROPOSAL_PAYLOAD) for _ in comparable_tasks])
         with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            for task in comparable_tasks:
+                if task["id"] != "livecodebench":
+                    continue
+                livecodebench_manifest = tmp / "livecodebench-questions.json"
+                livecodebench_item = {
+                    "item_id": "livecodebench-test-item",
+                    "name": "livecodebench-test-item",
+                    "prompt": "Read two integers and print their sum.",
+                    "context": "Synthetic LiveCodeBench stdin sample.",
+                    "expected_answer": "Pass all public and private tests.",
+                    "metadata": {
+                        "problem_file": str(ROOT / "tests" / "fixtures" / "livecodebench" / "problems" / "stdin_problem.json"),
+                        "platform": "atcoder",
+                        "evaluation_mode": "stdin",
+                    },
+                }
+                livecodebench_manifest.write_text(json.dumps({"items": [livecodebench_item]}, indent=2))
+                task["item_manifest_path"] = str(livecodebench_manifest)
+                task["dataset_size"] = 1
+                task["lazy_item_manifest"] = False
             with (
-                patch("app.entries.discrete_demo.load_codegen_tasks", return_value=comparable_tasks),
+                patch("app.entries.runner.load_codegen_tasks", return_value=comparable_tasks),
                 patch(
                     "app.codegen.trainer.reflect_strategy_experience",
                     return_value=(REFLECTION_PAYLOAD, {"selected_model": "deepseek-chat", "attempt": 1}),
@@ -812,7 +850,7 @@ class CodegenRunnerTest(unittest.TestCase):
             ):
                 payload = generate_discrete_payload(
                     proposal_runtime=runtime,
-                    runs_root=Path(tmp_dir),
+                    runs_root=tmp,
                     generation_budget=1,
                     candidate_budget=1,
                     branching_factor=1,
@@ -896,6 +934,8 @@ class CodegenRunnerTest(unittest.TestCase):
             self.assertTrue(all(item_run["memory_before_count"] == 2 for item_run in result["item_runs"]))
             self.assertTrue(any(event.get("item_id") == items[0]["item_id"] for event in events))
             self.assertTrue(any(event.get("item_id") == items[1]["item_id"] for event in events))
+            self.assertTrue(any(event.get("item_brief") for event in events if event.get("item_id") == items[0]["item_id"]))
+            self.assertTrue(any(event.get("expected_answer") == items[0]["expected_answer"] for event in events if event.get("item_id") == items[0]["item_id"]))
 
     def test_dataset_runs_stay_inline_without_handoff_artifacts(self) -> None:
         runtime = make_runtime(
@@ -917,7 +957,7 @@ class CodegenRunnerTest(unittest.TestCase):
             manifest.write_text(json.dumps(items, indent=2))
             task["item_manifest_path"] = str(manifest)
             task["dataset_size"] = len(items)
-            with patch("app.entries.discrete_demo.load_codegen_tasks", return_value=[task]):
+            with patch("app.entries.runner.load_codegen_tasks", return_value=[task]):
                 artifact_path = write_discrete_artifacts(
                     task_id="sciq",
                     proposal_runtime=runtime,

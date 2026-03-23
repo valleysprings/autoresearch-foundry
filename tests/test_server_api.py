@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import json
 import threading
 import tempfile
@@ -31,6 +32,41 @@ class ServerApiTest(unittest.TestCase):
         thread = threading.Thread(target=httpd.serve_forever, daemon=True)
         thread.start()
         return httpd, thread
+
+    def test_stalled_job_fails_fast_without_http_server(self) -> None:
+        def hang(*_args, **_kwargs):
+            time.sleep(10)
+            raise AssertionError("stalled job should have been terminated before this returns")
+
+        with (
+            patch.object(server, "JOB_STALL_TIMEOUT_S", 0.1),
+            patch.object(server, "JOB_PROCESS_START_METHOD", "fork"),
+            patch.object(server, "write_discrete_artifacts", side_effect=hang),
+        ):
+            job_id = server._start_job(
+                "contains-duplicates",
+                make_runtime([]),
+                branching_factor=None,
+                generation_budget=None,
+                candidate_budget=None,
+                item_workers=None,
+                max_items=None,
+            )
+            try:
+                deadline = time.time() + 5
+                payload = {}
+                while time.time() < deadline:
+                    with server.JOB_LOCK:
+                        payload = dict(server.JOBS[job_id])
+                    if payload["status"] != "running":
+                        break
+                    time.sleep(0.05)
+                self.assertEqual(payload["status"], "failed")
+                self.assertEqual(payload["error_type"], "runtime_error")
+                self.assertIn("stalled", str(payload["error"]).lower())
+            finally:
+                with server.JOB_LOCK:
+                    server.JOBS.pop(job_id, None)
 
     def test_latest_run_reads_cached_payload_without_starting_a_run(self) -> None:
         cached_payload = {"summary": {"generated_at": "cached"}, "runs": [], "task_catalog": []}
@@ -75,6 +111,38 @@ class ServerApiTest(unittest.TestCase):
                 httpd.server_close()
                 thread.join(timeout=5)
 
+    def test_stalled_job_is_terminated_after_timeout(self) -> None:
+        def hang(*_args, **_kwargs):
+            time.sleep(10)
+            raise AssertionError("stalled job should have been terminated before this returns")
+
+        with (
+            patch.object(server, "JOB_STALL_TIMEOUT_S", 0.1),
+            patch.object(server, "write_discrete_artifacts", side_effect=hang),
+        ):
+            httpd, thread = self._serve()
+            try:
+                status, start_payload = _fetch_json(
+                    f"http://127.0.0.1:{httpd.server_port}/api/run-task?task_id=contains-duplicates",
+                    method="POST",
+                )
+                self.assertEqual(status, 202)
+                job_id = start_payload["job_id"]
+                deadline = time.time() + 5
+                payload = {}
+                while time.time() < deadline:
+                    _, payload = _fetch_json(f"http://127.0.0.1:{httpd.server_port}/api/job?job_id={job_id}")
+                    if payload["status"] != "running":
+                        break
+                    time.sleep(0.05)
+                self.assertEqual(payload["status"], "failed")
+                self.assertEqual(payload["error_type"], "runtime_error")
+                self.assertIn("stalled", str(payload["error"]).lower())
+            finally:
+                httpd.shutdown()
+                httpd.server_close()
+                thread.join(timeout=5)
+
     def test_runtime_endpoint_reports_available_models(self) -> None:
         with patch.object(server.ProposalRuntime, "from_env", return_value=make_runtime([])):
             httpd, thread = self._serve()
@@ -96,11 +164,14 @@ class ServerApiTest(unittest.TestCase):
             contains_duplicates = next(task for task in payload["tasks"] if task["id"] == "contains-duplicates")
             olymmath = next(task for task in payload["tasks"] if task["id"] == "olymmath")
             math_500 = next(task for task in payload["tasks"] if task["id"] == "math-500")
-            amc = next(task for task in payload["tasks"] if task["id"] == "amc")
+            aime_2024 = next(task for task in payload["tasks"] if task["id"] == "aime-2024")
+            aime_2025 = next(task for task in payload["tasks"] if task["id"] == "aime-2025")
+            aime_2026 = next(task for task in payload["tasks"] if task["id"] == "aime-2026")
             planbench = next(task for task in payload["tasks"] if task["id"] == "planbench")
             sciq = next(task for task in payload["tasks"] if task["id"] == "sciq")
             qasc = next(task for task in payload["tasks"] if task["id"] == "qasc")
             scienceqa = next(task for task in payload["tasks"] if task["id"] == "scienceqa")
+            livecodebench = next(task for task in payload["tasks"] if task["id"] == "livecodebench")
             planbench_lite = next(task for task in payload["tasks"] if task["id"] == "planbench-lite")
             self.assertEqual(contains_duplicates["benchmark_tier"], "experiment")
             self.assertEqual(contains_duplicates["track"], "small_experiments")
@@ -111,7 +182,12 @@ class ServerApiTest(unittest.TestCase):
             self.assertTrue(olymmath["local_dataset_only"])
             self.assertEqual(math_500["track"], "math_verified")
             self.assertEqual(math_500["split"], "test")
-            self.assertEqual(amc["dataset_size"], 4)
+            self.assertEqual(aime_2024["dataset_size"], 30)
+            self.assertEqual(aime_2024["split"], "train:2024-full")
+            self.assertEqual(aime_2025["dataset_size"], 30)
+            self.assertEqual(aime_2025["split"], "AIME2025-I:test + AIME2025-II:test")
+            self.assertEqual(aime_2026["dataset_size"], 30)
+            self.assertEqual(aime_2026["split"], "test")
             self.assertEqual(planbench["dataset_size"], 2270)
             self.assertTrue(planbench["local_dataset_only"])
             self.assertEqual(planbench["track"], "planning_verified")
@@ -123,10 +199,14 @@ class ServerApiTest(unittest.TestCase):
             self.assertEqual(qasc["split"], "validation")
             self.assertEqual(scienceqa["dataset_size"], 768)
             self.assertEqual(scienceqa["split"], "validation:natural-science:text-only:biology-chemistry-physics")
+            self.assertEqual(livecodebench["dataset_size"], 1055)
+            self.assertEqual(livecodebench["track"], "coding_verified")
+            self.assertEqual(livecodebench["split"], "release_v6:test")
+            self.assertTrue(livecodebench["local_dataset_only"])
             self.assertEqual(planbench_lite["dataset_size"], 4)
             self.assertEqual(planbench_lite["track"], "small_experiments")
             self.assertFalse(planbench_lite["included_in_main_comparison"])
-            self.assertEqual([task["id"] for task in payload["tasks"][:4]], ["olymmath", "math-500", "aime", "amc"])
+            self.assertEqual([task["id"] for task in payload["tasks"][:5]], ["olymmath", "math-500", "aime-2024", "aime-2025", "aime-2026"])
         finally:
             httpd.shutdown()
             httpd.server_close()
@@ -483,6 +563,64 @@ class ServerApiTest(unittest.TestCase):
                 httpd.shutdown()
                 httpd.server_close()
                 thread.join(timeout=5)
+
+    def test_bind_server_reuses_port_after_stopping_stale_autoresearch_listener(self) -> None:
+        sentinel_httpd = object()
+        with (
+            patch.object(
+                server,
+                "ThreadingHTTPServer",
+                side_effect=[OSError(errno.EADDRINUSE, "Address already in use"), sentinel_httpd],
+            ) as http_server,
+            patch.object(server, "_stop_managed_listener_for_port", return_value=[4321]) as stop_listener,
+        ):
+            httpd, bound_port, note = server._bind_server("127.0.0.1", 8000, "auto")
+            self.assertIs(httpd, sentinel_httpd)
+            self.assertEqual(bound_port, 8000)
+            self.assertIn("4321", note or "")
+            stop_listener.assert_called_once_with(8000)
+            self.assertEqual(http_server.call_count, 2)
+
+    def test_bind_server_moves_to_next_port_when_requested_port_is_busy(self) -> None:
+        sentinel_httpd = object()
+        with (
+            patch.object(
+                server,
+                "ThreadingHTTPServer",
+                side_effect=[OSError(errno.EADDRINUSE, "Address already in use"), sentinel_httpd],
+            ) as http_server,
+            patch.object(server, "_stop_managed_listener_for_port", return_value=[]),
+            patch.object(server, "_next_available_port", return_value=8001) as next_port,
+        ):
+            httpd, bound_port, note = server._bind_server("127.0.0.1", 8000, "next")
+            self.assertIs(httpd, sentinel_httpd)
+            self.assertEqual(bound_port, 8001)
+            self.assertIn("8001", note or "")
+            next_port.assert_called_once_with("127.0.0.1", 8001)
+            self.assertEqual(http_server.call_count, 2)
+
+    def test_bind_server_kill_mode_fails_if_no_managed_listener_can_be_stopped(self) -> None:
+        with (
+            patch.object(
+                server,
+                "ThreadingHTTPServer",
+                side_effect=OSError(errno.EADDRINUSE, "Address already in use"),
+            ),
+            patch.object(server, "_stop_managed_listener_for_port", return_value=[]),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "no stale autoresearch server could be stopped"):
+                server._bind_server("127.0.0.1", 8000, "kill")
+
+    def test_stop_managed_listener_only_kills_current_workspace_server(self) -> None:
+        with (
+            patch.object(server, "_listening_pids", return_value=[1111, 2222]),
+            patch.object(server, "_command_for_pid", side_effect=["python3 -m app serve", "python3 -m app serve"]),
+            patch.object(server, "_cwd_for_pid", side_effect=[str(server.ROOT), "/tmp/other-project"]),
+            patch.object(server, "_terminate_pid", return_value=True) as terminate_pid,
+        ):
+            stopped = server._stop_managed_listener_for_port(8000)
+            self.assertEqual(stopped, [1111])
+            terminate_pid.assert_called_once_with(1111)
 
 
 if __name__ == "__main__":

@@ -9,6 +9,9 @@ from app.codegen.dataset_support import build_micro_task, load_question_manifest
 from app.codegen.verifier import evaluate_materialized_candidate, materialize_candidate
 
 
+ROOT = Path(__file__).resolve().parents[1]
+
+
 class CodegenVerifierTest(unittest.TestCase):
     def setUp(self) -> None:
         tasks = load_codegen_tasks()
@@ -176,11 +179,12 @@ class CodegenVerifierTest(unittest.TestCase):
         dataset_tasks = [task for task in load_codegen_tasks(included_in_main_comparison=True) if task.get("local_dataset_only")]
         self.assertEqual(
             {task["id"] for task in dataset_tasks},
-            {"olymmath", "math-500", "aime", "amc", "planbench", "sciq", "qasc", "scienceqa"},
+            {"olymmath", "math-500", "aime-2024", "aime-2025", "aime-2026", "planbench", "sciq", "qasc", "scienceqa", "livecodebench"},
         )
+        eager_dataset_tasks = [task for task in dataset_tasks if not task.get("lazy_item_manifest")]
         with tempfile.TemporaryDirectory() as tmp_dir:
             workspace = Path(tmp_dir)
-            for task in dataset_tasks:
+            for task in eager_dataset_tasks:
                 items = load_question_manifest(task)
                 micro_task = build_micro_task(task, items[0])
                 source = Path(task["editable_path"]).read_text()
@@ -200,6 +204,135 @@ class CodegenVerifierTest(unittest.TestCase):
                 self.assertEqual(metrics["total_tests"], 1)
                 self.assertEqual(len(metrics["test_results"]), 1)
                 self.assertEqual(metrics["test_results"][0]["name"], items[0]["name"])
+
+    def test_livecodebench_lazy_manifest_can_prepare_on_demand(self) -> None:
+        task = next(task for task in load_codegen_tasks() if task["id"] == "livecodebench")
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            data_dir = tmp / "data"
+            data_dir.mkdir(parents=True, exist_ok=True)
+            prepare_path = tmp / "prepare.py"
+            prepare_path.write_text(
+                (
+                    "import json\n"
+                    "from pathlib import Path\n\n"
+                    "root = Path(__file__).resolve().parent\n"
+                    "data_dir = root / 'data'\n"
+                    "data_dir.mkdir(parents=True, exist_ok=True)\n"
+                    "(data_dir / 'questions.json').write_text(json.dumps({'items': [{\n"
+                    "  'item_id': 'lazy-livecodebench-sample',\n"
+                    "  'name': 'lazy-livecodebench-sample',\n"
+                    "  'prompt': 'Write a solver.',\n"
+                    "  'context': 'Synthetic coding task.',\n"
+                    "  'expected_answer': 'Pass all public and private tests.',\n"
+                    "  'metadata': {'problem_file': 'problems/lazy-livecodebench-sample.json'}\n"
+                    "}]}, indent=2))\n"
+                )
+            )
+            lazy_task = {
+                **task,
+                "task_dir": str(tmp),
+                "item_manifest_path": str(data_dir / "questions.json"),
+                "editable_path": task["editable_path"],
+                "verifier_path": task["verifier_path"],
+            }
+            items = load_question_manifest(lazy_task, min_items=1)
+            self.assertEqual(len(items), 1)
+            self.assertEqual(items[0]["item_id"], "lazy-livecodebench-sample")
+
+    def test_livecodebench_stdin_candidate_passes_cached_problem(self) -> None:
+        task = next(task for task in load_codegen_tasks() if task["id"] == "livecodebench")
+        item = {
+            "id": "livecodebench-stdin-sample",
+            "item_id": "livecodebench-stdin-sample",
+            "question_id": "livecodebench-stdin-sample",
+            "raw_item_id": "livecodebench-stdin-sample",
+            "name": "sum-two-integers",
+            "prompt": "Read two integers and print their sum.",
+            "raw_prompt": "Read two integers and print their sum.",
+            "context": "Platform: atcoder. Evaluation mode: stdin.",
+            "raw_context": "Platform: atcoder. Evaluation mode: stdin.",
+            "choices": [],
+            "raw_choices": [],
+            "expected_answer": "Pass all public and private tests.",
+            "raw_expected_answer": "Pass all public and private tests.",
+            "metadata": {
+                "problem_file": str(ROOT / "tests" / "fixtures" / "livecodebench" / "problems" / "stdin_problem.json"),
+                "platform": "atcoder",
+                "evaluation_mode": "stdin",
+            },
+        }
+        micro_task = build_micro_task(task, item)
+        _, source_path, source_code = self._materialize(
+            micro_task,
+            (
+                "from __future__ import annotations\n\n"
+                "import sys\n\n"
+                "def solve() -> None:\n"
+                "    left, right = map(int, sys.stdin.read().split())\n"
+                "    print(left + right)\n\n"
+                "class Solution:\n"
+                "    pass\n\n"
+                "if __name__ == '__main__':\n"
+                "    solve()\n"
+            ),
+        )
+        metrics = evaluate_materialized_candidate(
+            task=micro_task,
+            source_path=source_path,
+            source_code=source_code,
+            baseline_metrics=None,
+            memory_applied=False,
+        )
+        self.assertEqual(metrics["status"], "pass")
+        self.assertEqual(metrics["total_tests"], 2)
+        self.assertEqual(metrics["test_results"][0]["actual"], "5")
+
+    def test_livecodebench_functional_candidate_passes_cached_problem(self) -> None:
+        task = next(task for task in load_codegen_tasks() if task["id"] == "livecodebench")
+        item = {
+            "id": "livecodebench-functional-sample",
+            "item_id": "livecodebench-functional-sample",
+            "question_id": "livecodebench-functional-sample",
+            "raw_item_id": "livecodebench-functional-sample",
+            "name": "add-two",
+            "prompt": "Implement Solution.addTwo(a, b) and return the sum.",
+            "raw_prompt": "Implement Solution.addTwo(a, b) and return the sum.",
+            "context": "Platform: leetcode. Evaluation mode: functional. Required method: Solution.addTwo.",
+            "raw_context": "Platform: leetcode. Evaluation mode: functional. Required method: Solution.addTwo.",
+            "choices": [],
+            "raw_choices": [],
+            "expected_answer": "Pass all public and private tests.",
+            "raw_expected_answer": "Pass all public and private tests.",
+            "metadata": {
+                "problem_file": str(ROOT / "tests" / "fixtures" / "livecodebench" / "problems" / "functional_problem.json"),
+                "platform": "leetcode",
+                "evaluation_mode": "functional",
+                "function_name": "addTwo",
+            },
+        }
+        micro_task = build_micro_task(task, item)
+        _, source_path, source_code = self._materialize(
+            micro_task,
+            (
+                "from __future__ import annotations\n\n"
+                "def solve() -> None:\n"
+                "    return None\n\n"
+                "class Solution:\n"
+                "    def addTwo(self, left: int, right: int) -> int:\n"
+                "        return left + right\n"
+            ),
+        )
+        metrics = evaluate_materialized_candidate(
+            task=micro_task,
+            source_path=source_path,
+            source_code=source_code,
+            baseline_metrics=None,
+            memory_applied=False,
+        )
+        self.assertEqual(metrics["status"], "pass")
+        self.assertEqual(metrics["total_tests"], 2)
+        self.assertEqual(metrics["test_results"][0]["actual"], "3")
 
     def test_sciq_question_id_alias_is_available_to_solver(self) -> None:
         task = next(task for task in load_codegen_tasks() if task["id"] == "sciq")
@@ -264,13 +397,13 @@ class CodegenVerifierTest(unittest.TestCase):
         self.assertEqual(metrics["status"], "pass")
         self.assertEqual(metrics["test_results"][0]["actual"], item["expected_answer"])
 
-    def test_amc_choice_letter_answer_is_accepted(self) -> None:
-        task = next(task for task in load_codegen_tasks() if task["id"] == "amc")
-        item = load_question_manifest(task)[0]
+    def test_aime_2026_numeric_answer_is_normalized_before_match(self) -> None:
+        task = next(task for task in load_codegen_tasks() if task["id"] == "aime-2026")
+        item = next(item for item in load_question_manifest(task) if item["item_id"] == "aime-2026-01")
         micro_task = build_micro_task(task, item)
         _, source_path, source_code = self._materialize(
             micro_task,
-            "def solve(question: dict) -> str:\n    return 'C'\n",
+            "def solve(question: dict) -> str:\n    return '0277'\n",
         )
         metrics = evaluate_materialized_candidate(
             task=micro_task,
@@ -280,10 +413,10 @@ class CodegenVerifierTest(unittest.TestCase):
             memory_applied=False,
         )
         self.assertEqual(metrics["status"], "pass")
-        self.assertEqual(metrics["test_results"][0]["actual"], "4")
+        self.assertEqual(metrics["test_results"][0]["actual"], "277")
 
     def test_aime_numeric_answer_is_normalized_before_match(self) -> None:
-        task = next(task for task in load_codegen_tasks() if task["id"] == "aime")
+        task = next(task for task in load_codegen_tasks() if task["id"] == "aime-2024")
         item = next(item for item in load_question_manifest(task) if item["item_id"] == "aime-2024-02")
         micro_task = build_micro_task(task, item)
         _, source_path, source_code = self._materialize(

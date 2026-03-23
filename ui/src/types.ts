@@ -61,6 +61,16 @@ export type CandidateMetrics = {
   total_tests?: number | string;
   verifier_status?: string;
   status?: string;
+  test_results?: CandidateTestResult[];
+};
+
+export type CandidateTestResult = {
+  name?: string;
+  expected?: unknown;
+  actual?: unknown;
+  actual_raw?: unknown;
+  answer_format?: string;
+  passed?: boolean;
 };
 
 export type Candidate = {
@@ -287,6 +297,7 @@ export type ErrorPayload = {
   error_type: string;
   error: string;
   model: string | null;
+  details?: unknown;
 };
 
 export type LiveEvent = {
@@ -296,11 +307,14 @@ export type LiveEvent = {
   question_task_id?: string;
   item_id?: string;
   item_name?: string;
+  item_brief?: string;
+  expected_answer?: string;
   generation?: number;
   branch_id?: string;
   branch_index?: number;
   parent_candidate?: string;
   candidate?: string;
+  candidate_actual?: string;
   timestamp?: string;
   message?: string;
   accepted_to_frontier?: boolean;
@@ -321,6 +335,7 @@ export type JobState = {
   error_type?: string | null;
   error?: string | null;
   model?: string | null;
+  details?: unknown;
   events: LiveEvent[];
   payload?: Payload;
 };

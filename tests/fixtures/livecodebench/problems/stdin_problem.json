@@ -1,0 +1,25 @@
+{
+  "item_id": "livecodebench-stdin-sample",
+  "question_title": "sum-two-integers",
+  "question_content": "Read two integers and print their sum.",
+  "platform": "atcoder",
+  "difficulty": "easy",
+  "evaluation_mode": "stdin",
+  "function_name": null,
+  "public_test_cases": [
+    {
+      "name": "public-1",
+      "input": "2 3",
+      "output": "5\n",
+      "testtype": "stdin"
+    }
+  ],
+  "private_test_cases": [
+    {
+      "name": "private-1",
+      "input": "10 20",
+      "output": "30\n",
+      "testtype": "stdin"
+    }
+  ]
+}

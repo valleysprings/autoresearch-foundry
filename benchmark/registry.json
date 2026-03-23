@@ -56,13 +56,18 @@
       "enabled": true
     },
     {
-      "id": "aime",
-      "path": "math_verified/aime",
+      "id": "aime-2024",
+      "path": "math_verified/aime-2024",
       "enabled": true
     },
     {
-      "id": "amc",
-      "path": "math_verified/amc",
+      "id": "aime-2025",
+      "path": "math_verified/aime-2025",
+      "enabled": true
+    },
+    {
+      "id": "aime-2026",
+      "path": "math_verified/aime-2026",
       "enabled": true
     },
     {
@@ -83,6 +88,11 @@
     {
       "id": "scienceqa",
       "path": "science_verified/scienceqa",
+      "enabled": true
+    },
+    {
+      "id": "livecodebench",
+      "path": "coding_verified/livecodebench",
       "enabled": true
     },
     {

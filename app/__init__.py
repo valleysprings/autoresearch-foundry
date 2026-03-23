@@ -1,1 +1,1 @@
-"""Local-first autoresearch flywheel demo package."""
+"""Autoresearch workbench package with deterministic verification."""

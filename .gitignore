@@ -7,11 +7,14 @@ runs/
 docs/
 /data/
 /paper/
-/references/
 # Keep only the benchmark registry in git; task assets stay local by default.
 /benchmark/**
 !/benchmark/
 !/benchmark/registry.json
+!/benchmark/math_verified/
+!/benchmark/math_verified/**
+!/benchmark/coding_verified/
+!/benchmark/coding_verified/**
 .pytest_cache/
 node_modules/
 ui/dist/

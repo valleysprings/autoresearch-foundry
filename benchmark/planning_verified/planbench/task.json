@@ -21,7 +21,7 @@
   "generation_budget": 4,
   "candidate_budget": 3,
   "branching_factor": 4,
-  "item_workers": 4,
+  "item_workers": 20,
   "epsilon": 0.02,
   "baseline_summary": "A placeholder solver that returns no plan for the active PlanBench prompt.",
   "objective_spec": {

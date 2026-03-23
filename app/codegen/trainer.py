@@ -244,6 +244,20 @@ def _branch_message(branch_id: str, parent_candidate: dict[str, Any], retrieved_
     return f"{branch_id} parent={parent_candidate['agent']} retrieved_memories={retrieved_count}"
 
 
+def _first_test_actual(metrics: dict[str, Any]) -> str | None:
+    raw_results = metrics.get("test_results")
+    if not isinstance(raw_results, list) or not raw_results:
+        return None
+    first = raw_results[0]
+    if not isinstance(first, dict):
+        return None
+    for key in ("actual", "actual_raw"):
+        value = first.get(key)
+        if value is not None and str(value).strip():
+            return str(value).strip()
+    return None
+
+
 def run_codegen_task(
     task: dict[str, Any],
     store: MemoryStore,
@@ -448,6 +462,7 @@ def run_codegen_task(
                     branch_index=branch_index,
                     parent_candidate=parent_candidate["agent"],
                     candidate=candidate["agent"],
+                    candidate_actual=_first_test_actual(metrics),
                     accepted_to_frontier=False,
                     improved_global_best=False,
                     memory_delta=0,
@@ -644,6 +659,7 @@ def run_codegen_task(
             branch_index=winner_branch["branch_index"],
             parent_candidate=winner_branch["parent_candidate"]["agent"],
             candidate=current_best["agent"],
+            candidate_actual=_first_test_actual(current_best["metrics"]),
             accepted_to_frontier=winner_branch["winner_accepted"],
             improved_global_best=winner_branch["winner_improved_global_best"],
             memory_delta=memory_delta,

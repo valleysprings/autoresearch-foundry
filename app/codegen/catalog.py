@@ -28,17 +28,20 @@ TRACK_ORDER = {
     "science_verified": 4,
     "multihop_qa_snapshot": 5,
     "terminal_verified": 6,
-    "small_experiments": 7,
+    "coding_verified": 7,
+    "small_experiments": 8,
 }
 TASK_ORDER = {
     "olymmath": 0,
     "math-500": 1,
-    "aime": 2,
-    "amc": 3,
-    "planbench": 4,
-    "sciq": 5,
-    "qasc": 6,
-    "scienceqa": 7,
+    "aime-2024": 2,
+    "aime-2025": 3,
+    "aime-2026": 4,
+    "planbench": 5,
+    "sciq": 6,
+    "qasc": 7,
+    "scienceqa": 8,
+    "livecodebench": 9,
 }
 
 
@@ -90,6 +93,7 @@ def _normalize_task(task: dict[str, Any]) -> dict[str, Any]:
     normalized["split"] = str(split).strip() if isinstance(split, str) and split.strip() else None
     item_manifest = normalized.get("item_manifest")
     normalized["item_manifest"] = str(item_manifest).strip() if isinstance(item_manifest, str) and item_manifest.strip() else None
+    normalized["lazy_item_manifest"] = bool(normalized.get("lazy_item_manifest"))
     normalized["prompt_context"] = str(normalized.get("prompt_context") or "")
     normalized["allow_browsing"] = bool(normalized.get("allow_browsing", False))
     normalized["verifier_path"] = str(normalized["verifier_path"])
@@ -139,10 +143,11 @@ def _load_task(entry: dict[str, Any]) -> dict[str, Any]:
     item_manifest = task.get("item_manifest")
     if isinstance(item_manifest, str) and item_manifest.strip():
         item_manifest_path = task_dir / item_manifest
-        if not item_manifest_path.exists():
+        if not item_manifest_path.exists() and not bool(task.get("lazy_item_manifest")):
             raise FileNotFoundError(f"Question manifest not found: {item_manifest_path}")
         merged["item_manifest_path"] = str(item_manifest_path)
-        merged["dataset_size"] = _count_manifest_items(item_manifest_path)
+        if item_manifest_path.exists():
+            merged["dataset_size"] = _count_manifest_items(item_manifest_path)
     data_file = task.get("data_file")
     if isinstance(data_file, str) and data_file.strip():
         merged["data_path"] = str(task_dir / data_file)
@@ -199,7 +204,7 @@ def list_codegen_task_summaries() -> list[dict[str, Any]]:
             "generation_budget": task["generation_budget"],
             "candidate_budget": task["candidate_budget"],
             "branching_factor": task["branching_factor"],
-            "item_workers": int(task.get("item_workers") or 4),
+            "item_workers": int(task.get("item_workers") or 20),
             "benchmark_tier": task["benchmark_tier"],
             "track": task["track"],
             "dataset_id": task["dataset_id"],

@@ -1,0 +1,64 @@
+{
+  "items": [
+    {
+      "item_id": "amc12-2024-seed-01",
+      "name": "AMC 12 2024 seed 1",
+      "prompt": "If 2x + 3 = 11, what is x?",
+      "choices": ["2", "3", "4", "5", "6"],
+      "expected_answer": "4",
+      "metadata": {
+        "dataset": "amc",
+        "source_split": "amc12-2024",
+        "source_index": 0,
+        "subject": "algebra",
+        "answer_format": "choice",
+        "correct_choice_index": 2
+      }
+    },
+    {
+      "item_id": "amc12-2024-seed-02",
+      "name": "AMC 12 2024 seed 2",
+      "prompt": "What is the area of a right triangle with legs 6 and 8?",
+      "choices": ["12", "18", "24", "30", "48"],
+      "expected_answer": "24",
+      "metadata": {
+        "dataset": "amc",
+        "source_split": "amc12-2024",
+        "source_index": 1,
+        "subject": "geometry",
+        "answer_format": "choice",
+        "correct_choice_index": 2
+      }
+    },
+    {
+      "item_id": "amc12-2024-seed-03",
+      "name": "AMC 12 2024 seed 3",
+      "prompt": "How many positive divisors does 36 have?",
+      "choices": ["6", "8", "9", "10", "12"],
+      "expected_answer": "9",
+      "metadata": {
+        "dataset": "amc",
+        "source_split": "amc12-2024",
+        "source_index": 2,
+        "subject": "number theory",
+        "answer_format": "choice",
+        "correct_choice_index": 2
+      }
+    },
+    {
+      "item_id": "amc12-2024-seed-04",
+      "name": "AMC 12 2024 seed 4",
+      "prompt": "What is the sum of the interior angles of a hexagon, in degrees?",
+      "choices": ["540", "600", "660", "720", "900"],
+      "expected_answer": "720",
+      "metadata": {
+        "dataset": "amc",
+        "source_split": "amc12-2024",
+        "source_index": 3,
+        "subject": "geometry",
+        "answer_format": "choice",
+        "correct_choice_index": 3
+      }
+    }
+  ]
+}

@@ -107,11 +107,11 @@ The generated repo should usually contain:
 - `ui/app.js`
 - `data/tasks.json`
 - `data/experiences.json`
-- `paper/outline.md`
-- `docs/framework.md`
-- `docs/demo.md`
+- `references/README.md`
+- `references/backend-modules.md`
+- `references/runtime-flow.md`
 
-Use the references in this skill for the intended content of `docs/framework.md`, `docs/demo.md`, and `paper/outline.md`.
+Use the references in this skill for the intended content of the repo map and runtime-flow docs.
 
 ## Quality bar
 
@@ -121,12 +121,12 @@ Before finishing, verify all of the following:
 - The mechanism is visible from logs or UI.
 - The evaluator is deterministic.
 - Memory is written only after a measurable improvement.
-- The paper outline states what is organized, what the mechanism is, and why it should work.
+- The references clearly explain module ownership and the end-to-end runtime flow.
 
 ## Resources
 
-- Framework design: `references/framework.md`
-- Demo wireframe and narration: `references/demo-wireframe.md`
-- Paper structure: `references/paper-structure.md`
-- Codex execution plan: `references/codex-runbook.md`
+- Reference index: `references/README.md`
+- Backend ownership map: `references/backend-modules.md`
+- Frontend ownership map: `references/frontend-modules.md`
+- Runtime flow: `references/runtime-flow.md`
 - Starter repo generator: `scripts/bootstrap_local_demo.py`

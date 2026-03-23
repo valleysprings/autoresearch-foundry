@@ -1,0 +1,29 @@
+{
+  "id": "olymmath-numeric-small",
+  "title": "OlymMATH Numeric Small",
+  "description": "Optimize a single-file numeric solver on a small exact-answer olympiad-style benchmark.",
+  "benchmark_tier": "comparable",
+  "track": "math_verified",
+  "dataset_id": "olymmath_numeric_small_v1",
+  "answer_metric": "exact_match_rate",
+  "family": "math",
+  "task_signature": ["single-file-optimization", "comparable-benchmark", "exact-numeric-math"],
+  "source_type": "benchmark-task",
+  "editable_file": "editable.py",
+  "verifier": "verifier.py",
+  "entry_symbol": "solve",
+  "generation_budget": 4,
+  "candidate_budget": 3,
+  "branching_factor": 4,
+  "epsilon": 0.02,
+  "baseline_summary": "A placeholder solver that does not parse the problem and therefore misses the benchmark set.",
+  "objective_spec": {
+    "display_name": "Exact match rate",
+    "direction": "max",
+    "unit": "ratio",
+    "summary_template": "Higher exact-match rate is better on the hidden exact-answer benchmark.",
+    "formula": "exact_match_rate = num_exact_matches / total_items"
+  },
+  "prompt_context": "Edit editable.py only. The entry symbol solve(problem: str) must return a numeric answer as text. Preserve the function signature and avoid hard-coding per-item ids.",
+  "data_file": "data/problems.json"
+}

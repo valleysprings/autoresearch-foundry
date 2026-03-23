@@ -1,0 +1,25 @@
+{
+  "item_id": "livecodebench-functional-sample",
+  "question_title": "add-two",
+  "question_content": "Implement Solution.addTwo(a, b) and return the sum.",
+  "platform": "leetcode",
+  "difficulty": "easy",
+  "evaluation_mode": "functional",
+  "function_name": "addTwo",
+  "public_test_cases": [
+    {
+      "name": "public-1",
+      "input": "1\n2",
+      "output": "3",
+      "testtype": "functional"
+    }
+  ],
+  "private_test_cases": [
+    {
+      "name": "private-1",
+      "input": "10\n5",
+      "output": "15",
+      "testtype": "functional"
+    }
+  ]
+}

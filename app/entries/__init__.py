@@ -1,1 +1,1 @@
-# Entry modules for local CLIs.
+# Internal process entrypoints for CLI and HTTP surfaces.

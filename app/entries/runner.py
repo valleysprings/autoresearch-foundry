@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import subprocess
+import sys
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
 from app.codegen.catalog import list_codegen_task_summaries, load_codegen_tasks, seed_strategy_experiences
+from app.codegen.errors import ConfigError
 from app.configs.codegen import (
     DEFAULT_SESSION_ID,
     DELTA_FORMULA,
@@ -68,6 +71,21 @@ def git_remote(root: Path) -> str:
     return result.stdout.strip() or "unknown"
 
 
+def _validate_runtime_dependencies(tasks: list[dict[str, Any]]) -> None:
+    math_tasks = [str(task["id"]) for task in tasks if str(task.get("track") or "") == "math_verified"]
+    if not math_tasks:
+        return
+    if importlib.util.find_spec("math_verify") is not None:
+        return
+    task_list = ", ".join(sorted(math_tasks))
+    raise ConfigError(
+        "math_verified tasks require the 'math-verify' package in the active Python interpreter. "
+        f"Current interpreter: {sys.executable}. "
+        f"Affected tasks: {task_list}. "
+        "Install it in this interpreter and restart the server."
+    )
+
+
 def generate_discrete_payload(
     task_id: str | None = None,
     progress_callback: ProgressCallback | None = None,
@@ -103,6 +121,7 @@ def generate_discrete_payload(
                 patched["item_workers"] = item_workers
             overridden_tasks.append(patched)
         tasks = overridden_tasks
+    _validate_runtime_dependencies(tasks)
 
     active_runs_root = runs_root or RUNS
     active_workspace_root = workspace_root or (active_runs_root / "workspace" / "current")
@@ -184,7 +203,7 @@ def generate_discrete_payload(
     return {
         "run_mode": "llm-required",
         "summary": {
-            "project": "autoresearch-with-experience-replay",
+            "project": "autoresearch-foundry",
             "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
             "git_commit": git_commit(ROOT),
             "source_repo": git_remote(ROOT),
@@ -231,7 +250,7 @@ def empty_discrete_payload(
     return {
         "run_mode": "llm-required",
         "summary": {
-            "project": "autoresearch-with-experience-replay",
+            "project": "autoresearch-foundry",
             "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
             "git_commit": git_commit(ROOT),
             "source_repo": git_remote(ROOT),
@@ -343,8 +362,8 @@ def write_discrete_artifacts(
     return out
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the strict LLM-required codegen demo.")
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="Run autoresearch tasks from the CLI.")
     parser.add_argument("--task", help="Run only one task id from the codegen catalog.")
     parser.add_argument("--list-tasks", action="store_true", help="List available task ids.")
     parser.add_argument("--generation-budget", type=int, help="Override generation budget for this run.")
@@ -352,7 +371,7 @@ def main() -> None:
     parser.add_argument("--branching-factor", type=int, help="Override branching factor for this run.")
     parser.add_argument("--item-workers", type=int, help="Override dataset item worker count for this run.")
     parser.add_argument("--max-items", type=int, help="Run only the first N items from each dataset task.")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.list_tasks:
         for task in list_codegen_task_summaries():

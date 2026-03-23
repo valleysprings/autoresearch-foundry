@@ -54,7 +54,7 @@ def make_runtime(responses: Sequence[object], *, model: str = "deepseek-chat") -
             primary_model=model,
             available_models=(model, "kimi-k2.5", "glm-5"),
             temperature=0.2,
-            max_tokens=1400,
+            max_tokens=4096,
             timeout_s=45,
             llm_concurrency=20,
         ),

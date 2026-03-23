@@ -92,6 +92,10 @@ pre {
   gap: 10px;
 }
 
+.intro-button-row {
+  justify-content: flex-start;
+}
+
 .topbar,
 .panel-header,
 .accordion-toggle {
@@ -251,9 +255,32 @@ h4 {
   max-width: 60ch;
 }
 
+.hero-block {
+  flex: 1 1 100%;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.hero-title {
+  max-width: none;
+  width: 100%;
+  line-height: 0.96;
+  text-wrap: balance;
+}
+
+.hero-copy {
+  max-width: 74ch;
+}
+
 .field {
   display: grid;
   gap: 8px;
+}
+
+.launcher-warning {
+  color: var(--warn);
+  line-height: 1.45;
 }
 
 .field-label,
@@ -375,9 +402,58 @@ h4 {
   gap: 4px;
 }
 
+.live-item-id {
+  font-size: 0.8rem;
+}
+
 .live-item-message {
   margin: 0;
   line-height: 1.45;
+}
+
+.brief-panel,
+.response-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.brief-question {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.response-panel.good {
+  border-color: rgba(20, 95, 82, 0.26);
+  background: linear-gradient(180deg, var(--panel-strong), rgba(20, 95, 82, 0.08));
+}
+
+.response-panel.warn {
+  border-color: rgba(164, 106, 33, 0.3);
+  background: linear-gradient(180deg, var(--panel-strong), rgba(164, 106, 33, 0.1));
+}
+
+.response-value {
+  min-height: 84px;
+  display: grid;
+  align-items: center;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: var(--code);
+  border: 1px solid var(--line);
+  font-family: "SFMono-Regular", "Menlo", monospace;
+  font-size: 1.25rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.response-value.good {
+  border-color: rgba(20, 95, 82, 0.26);
+  color: var(--good);
+}
+
+.response-value.warn {
+  border-color: rgba(164, 106, 33, 0.26);
+  color: var(--warn);
 }
 
 .metric-card {
@@ -552,6 +628,35 @@ h4 {
   border-color: rgba(200, 83, 32, 0.32);
 }
 
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(17, 23, 31, 0.42);
+  backdrop-filter: blur(10px);
+}
+
+.modal-card {
+  width: min(760px, 100%);
+  max-height: min(90vh, 920px);
+  overflow: auto;
+  padding: 22px;
+  border-radius: 24px;
+  background: var(--panel-strong);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 16px;
+}
+
+.modal-copy {
+  margin: 0;
+  line-height: 1.6;
+}
+
 @media (max-width: 980px) {
   .control-grid,
   .control-grid.triple,
@@ -583,6 +688,11 @@ h4 {
   .task-card,
   .subpanel,
   .detail-card {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .modal-card {
     padding: 16px;
     border-radius: 20px;
   }

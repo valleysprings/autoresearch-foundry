@@ -1,17 +1,12 @@
-# autoresearch-with-experience-replay
+# autoresearch-foundry
 
-Strict LLM-required autoresearch for direct Python code generation.
+## Motivation
 
-The active flywheel is:
+This repo is a workbench for one question: can an LLM keep improving Python solutions when generation stays inside the model, but checking and selection stay outside it?
 
-`strategy memory retrieval -> LLM candidate generation -> deterministic materialize/test/benchmark -> winner selection -> memory write-back -> artifacts/UI`
+The project is intentionally strict about that boundary. The model is not an optional helper, and the verifier is not allowed to drift into another opaque model call. Every run depends on a configured LLM, every candidate is materialized locally, and every comparison is decided by deterministic tests or benchmarks.
 
-There is no degraded mode:
-
-- no deterministic local fallback
-- no offline mode
-- no secondary model rotation
-- any config or model failure aborts the run
+That constraint matters because the useful artifact is not just the latest answer. It is the trail of strategies, failures, and write-backs that can be reused in the next run. The goal is to make iterative code research inspectable instead of magical.
 
 ## Theme
 
@@ -28,11 +23,12 @@ The benchmark source of truth lives under [benchmark/](/Users/david/coding/2026/
 
 The active research lane is dataset-first:
 
-- each comparable benchmark task is a real local dataset such as `olymmath`, `math-500`, `aime`, `amc`, `planbench`, `sciq`, `qasc`, or `scienceqa`
+- each comparable benchmark task is a real local dataset such as `olymmath`, `math-500`, `aime-2024`, `aime-2025`, `aime-2026`, `planbench`, `sciq`, `qasc`, or `scienceqa`
+- coding is now represented by `livecodebench`, wired as a lazy local cache over the full `release_v6` coding set
 - each dataset fans out into independent question-runs
 - each question-run evolves its own solver trajectory and emits its own artifacts
 
-Only [benchmark/registry.json](/Users/david/coding/2026/autoresearcher-MA/benchmark/registry.json) is intended to sync by default. Dataset assets under `benchmark/`, plus `paper/` and `references/`, stay local.
+Only [benchmark/registry.json](/Users/david/coding/2026/autoresearcher-MA/benchmark/registry.json) is intended to sync by default. Dataset assets under `benchmark/`, plus notes under `references/`, stay local.
 
 ## 5-Layer Architecture
 
@@ -57,6 +53,8 @@ Detailed implementation notes now live next to the code:
   [app/memory/README.md](/Users/david/coding/2026/autoresearcher-MA/app/memory/README.md)
 - benchmark registry and task layout:
   [benchmark/README.md](/Users/david/coding/2026/autoresearcher-MA/benchmark/README.md)
+- backend/frontend module map and runtime flow:
+  [references/README.md](/Users/david/coding/2026/autoresearcher-MA/references/README.md)
 
 ## Configuration
 
@@ -88,14 +86,28 @@ For benchmark layout, dataset-task metadata, and how to add a new real dataset, 
 You can cap how many real dataset items a run fans out into:
 
 ```bash
-python3 -m app.entries.discrete_demo --task olymmath --max-items 100
+python3 -m app --task olymmath --max-items 100
 ```
+
+`livecodebench` uses the same `--max-items` switch. The first run materializes only the requested prefix of items into a local cache under [benchmark/coding_verified/livecodebench/data/](/Users/david/coding/2026/autoresearcher-MA/benchmark/coding_verified/livecodebench/data), so small runs avoid pulling the full 1055-problem release at once.
+
+## Run Surfaces
+
+There are two user-facing ways to run the same backend:
+
+- CLI mode writes artifacts directly under `runs/`
+- Web mode serves the UI plus the same run orchestration over HTTP
+
+The shared task runner lives in [app/entries/runner.py](/Users/david/coding/2026/autoresearcher-MA/app/entries/runner.py).
+
+The internal [app/entries/](/Users/david/coding/2026/autoresearcher-MA/app/entries) package just means process entrypoints. It is not the recommended user-facing module path anymore.
 
 ## API And Artifacts
 
 Useful endpoints:
 
 ```bash
+python3 -m app serve
 curl http://127.0.0.1:8000/api/tasks
 curl http://127.0.0.1:8000/api/latest-run
 curl http://127.0.0.1:8000/api/runtime
@@ -111,14 +123,40 @@ Successful runs emit artifacts under `runs/`, including:
 
 ## Run The Project
 
+List available tasks from the CLI:
+
+```bash
+python3 -m app --list-tasks
+```
+
 Run one task from the CLI:
 
 ```bash
-python3 -m app.entries.discrete_demo --task olymmath --max-items 25
+python3 -m app --task olymmath --max-items 25
 ```
 
 Run another math benchmark task:
 
 ```bash
-python3 -m app.entries.discrete_demo --task math-500 --max-items 25
+python3 -m app --task math-500 --max-items 25
+```
+
+Start the web UI and API on `127.0.0.1:8000`:
+
+```bash
+cd ui && npm install && npm run build
+python3 -m app serve
+```
+
+If port `8000` is already occupied, `serve` now defaults to:
+
+- reusing `8000` after stopping a stale autoresearch server process
+- otherwise moving to the next free port
+
+You can override that behavior explicitly:
+
+```bash
+python3 -m app serve --port 8001
+python3 -m app serve --port-conflict next
+python3 -m app serve --port-conflict kill
 ```

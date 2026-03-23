@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +13,8 @@ from app.configs.codegen import (
     DATASET_SINGLE_QUESTION_INSTRUCTION,
     QUESTION_PREVIEW_LIMIT,
 )
+
+VALID_MATH_ANSWER_FORMATS = {"symbolic", "numeric", "choice"}
 
 
 def is_dataset_task(task: dict[str, Any]) -> bool:
@@ -29,19 +33,31 @@ def _preview(text: str, *, limit: int = QUESTION_PREVIEW_LIMIT) -> str:
     return normalized[: limit - 3].rstrip() + "..."
 
 
-def load_question_manifest(task: dict[str, Any]) -> list[dict[str, Any]]:
+def load_question_manifest(task: dict[str, Any], min_items: int | None = None) -> list[dict[str, Any]]:
     manifest_path_raw = task.get("item_manifest_path")
     if not isinstance(manifest_path_raw, str) or not manifest_path_raw.strip():
         raise FileNotFoundError(f"Task {task.get('id') or '<unknown>'} is missing item_manifest_path.")
 
     manifest_path = Path(manifest_path_raw)
+    if not manifest_path.exists() and bool(task.get("lazy_item_manifest")):
+        _run_task_prepare(task, min_items=min_items)
+
     if not manifest_path.exists():
         raise FileNotFoundError(f"Question manifest not found: {manifest_path}")
 
-    payload = json.loads(manifest_path.read_text())
-    raw_items = payload["items"] if isinstance(payload, dict) and "items" in payload else payload
-    if not isinstance(raw_items, list):
-        raise ValueError(f"Question manifest must contain a list of items: {manifest_path}")
+    raw_items = _load_manifest_items(manifest_path)
+
+    if bool(task.get("lazy_item_manifest")):
+        default_requested_items = task.get("dataset_size") if min_items is None else min_items
+        requested_items = max(0, int(default_requested_items or 0))
+        if requested_items > 0 and len(raw_items) < requested_items:
+            _run_task_prepare(task, min_items=requested_items)
+            raw_items = _load_manifest_items(manifest_path)
+        if requested_items > 0 and len(raw_items) < requested_items:
+            raise ValueError(
+                f"Task {task.get('id') or '<unknown>'} prepared only {len(raw_items)} items "
+                f"but {requested_items} were requested."
+            )
 
     normalized: list[dict[str, Any]] = []
     for index, raw_item in enumerate(raw_items, start=1):
@@ -57,6 +73,18 @@ def load_question_manifest(task: dict[str, Any]) -> list[dict[str, Any]]:
         normalized_item_id = _slugify(item_id)
         raw_context = raw_item.get("context")
         raw_choices = list(raw_item.get("choices") or [])
+        metadata = dict(raw_item.get("metadata") or {})
+        if str(task.get("track") or "") == "math_verified":
+            answer_format = str(metadata.get("answer_format") or "").strip().lower()
+            if answer_format not in VALID_MATH_ANSWER_FORMATS:
+                raise ValueError(
+                    f"Math question manifest item {index} must declare metadata.answer_format in "
+                    f"{sorted(VALID_MATH_ANSWER_FORMATS)}: {manifest_path}"
+                )
+            if answer_format == "choice" and not isinstance(metadata.get("correct_choice_index"), int):
+                raise ValueError(
+                    f"Choice-form math question manifest item {index} must declare metadata.correct_choice_index: {manifest_path}"
+                )
         normalized.append(
             {
                 "id": normalized_item_id,
@@ -72,10 +100,41 @@ def load_question_manifest(task: dict[str, Any]) -> list[dict[str, Any]]:
                 "raw_choices": raw_choices,
                 "expected_answer": canonical_text(expected),
                 "raw_expected_answer": expected,
-                "metadata": dict(raw_item.get("metadata") or {}),
+                "metadata": metadata,
             }
         )
     return normalized
+
+
+def _load_manifest_items(path: Path) -> list[dict[str, Any]]:
+    payload = json.loads(path.read_text())
+    raw_items = payload["items"] if isinstance(payload, dict) and "items" in payload else payload
+    if not isinstance(raw_items, list):
+        raise ValueError(f"Question manifest must contain a list of items: {path}")
+    return raw_items
+
+
+def _run_task_prepare(task: dict[str, Any], *, min_items: int | None) -> None:
+    task_dir = Path(str(task.get("task_dir") or "")).resolve()
+    prepare_path = task_dir / "prepare.py"
+    if not prepare_path.exists():
+        raise FileNotFoundError(f"Task {task.get('id') or '<unknown>'} is missing prepare.py for lazy manifest loading.")
+
+    args = [sys.executable, str(prepare_path)]
+    if isinstance(min_items, int) and min_items > 0:
+        args.extend(["--items", str(min_items)])
+    completed = subprocess.run(
+        args,
+        cwd=task_dir,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        stderr = completed.stderr.strip()
+        stdout = completed.stdout.strip()
+        details = stderr or stdout or f"returncode={completed.returncode}"
+        raise RuntimeError(f"Task {task.get('id') or '<unknown>'} prepare.py failed: {details}")
 
 
 def micro_task_id(dataset_task_id: str, item_id: str) -> str:

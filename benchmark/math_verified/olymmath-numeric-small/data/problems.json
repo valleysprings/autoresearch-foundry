@@ -1,0 +1,24 @@
+{
+  "items": [
+    {
+      "name": "crt-smallest-integer",
+      "problem": "Find the smallest positive integer n such that n leaves remainder 1 when divided by 2, 3, 4, 5, and 6, and n is divisible by 7.",
+      "answer": "301"
+    },
+    {
+      "name": "heron-area",
+      "problem": "A triangle has side lengths 13, 14, and 15. What is its area?",
+      "answer": "84"
+    },
+    {
+      "name": "divisor-count",
+      "problem": "How many positive divisors does 360 have?",
+      "answer": "24"
+    },
+    {
+      "name": "quadratic-symmetric",
+      "problem": "If x + 1/x = 3 and x > 0, what is x^2 + 1/x^2?",
+      "answer": "7"
+    }
+  ]
+}
