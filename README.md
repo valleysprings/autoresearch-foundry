@@ -44,7 +44,7 @@ Only [benchmark/registry.json](benchmark/registry.json) is intended to sync by d
 4. **Memory / reporting / artifacts**
    [app/memory/](app/memory/) persists prompt-ready strategy experiences as JSON + markdown; `runs/` stores payloads, traces, reports, and materialized candidates.
 5. **Config / runtime**
-   Repo-root `.env` plus shell env override the runtime model settings. The configured model is required for every proposal and memory reflection step.
+   Repo-root `.env` carries secrets and model identity; versioned Python config carries the default runtime knobs. The configured model is required for every proposal and memory reflection step.
 
 The active implementation path is [app/codegen/](app/codegen/).
 
@@ -67,15 +67,16 @@ Required keys:
 
 - `AUTORESEARCH_API_KEY`
 - `AUTORESEARCH_API_BASE`
-- `AUTORESEARCH_PRIMARY_MODEL`
-- `AUTORESEARCH_TEMPERATURE`
-- `AUTORESEARCH_MAX_TOKENS`
-- `AUTORESEARCH_TIMEOUT_S`
 
 Optional:
 
+- `AUTORESEARCH_PRIMARY_MODEL`
 - `AUTORESEARCH_AVAILABLE_MODELS`
-  comma-separated allowlist for the frontend model picker
+  temporary shell overrides; the committed defaults live in [app/configs/runtime.py](app/configs/runtime.py)
+- `AUTORESEARCH_TEMPERATURE`
+- `AUTORESEARCH_MAX_TOKENS`
+- `AUTORESEARCH_TIMEOUT_S`
+  temporary shell overrides; the committed defaults live in [app/configs/runtime.py](app/configs/runtime.py)
 
 See [.env.example](.env.example).
 
@@ -184,5 +185,3 @@ This repo is not a fork of any one project, but a few nearby repos were especial
 ## License
 
 This repository is released under the [MIT License](LICENSE).
-
-MIT is the better default here because the project is a lightweight research workbench and the priority is low-friction reuse, forking, and adaptation. If explicit patent language becomes important later, Apache-2.0 would be the next license to consider.

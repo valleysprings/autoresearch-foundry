@@ -5,7 +5,19 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from urllib.parse import urlparse
 
-from app.configs.runtime import AVAILABLE_MODELS_ENV_KEY, DEFAULT_LLM_CONCURRENCY, LLM_CONCURRENCY_ENV_KEY, REQUIRED_ENV_KEYS, ROOT
+from app.configs.runtime import (
+    AVAILABLE_MODELS_ENV_KEY,
+    DEFAULT_AVAILABLE_MODELS,
+    DEFAULT_LLM_CONCURRENCY,
+    DEFAULT_PRIMARY_MODEL,
+    DEFAULT_RUNTIME_MAX_TOKENS,
+    DEFAULT_RUNTIME_TEMPERATURE,
+    DEFAULT_RUNTIME_TIMEOUT_S,
+    LLM_CONCURRENCY_ENV_KEY,
+    PRIMARY_MODEL_ENV_KEY,
+    REQUIRED_ENV_KEYS,
+    ROOT,
+)
 from app.codegen.errors import ConfigError
 
 
@@ -49,8 +61,13 @@ def _require_non_empty(name: str) -> str:
     return value.strip()
 
 
-def _parse_float(name: str) -> float:
-    value = _require_non_empty(name)
+def _parse_float(name: str, *, default: float | None = None) -> float:
+    value = os.getenv(name)
+    if value is None or not value.strip():
+        if default is None:
+            raise ConfigError(f"Missing required environment variable {name}.")
+        return default
+    value = value.strip()
     try:
         parsed = float(value)
     except ValueError as exc:
@@ -60,8 +77,13 @@ def _parse_float(name: str) -> float:
     return parsed
 
 
-def _parse_int(name: str) -> int:
-    value = _require_non_empty(name)
+def _parse_int(name: str, *, default: int | None = None) -> int:
+    value = os.getenv(name)
+    if value is None or not value.strip():
+        if default is None:
+            raise ConfigError(f"Missing required environment variable {name}.")
+        return default
+    value = value.strip()
     try:
         parsed = int(value)
     except ValueError as exc:
@@ -95,13 +117,21 @@ def _parse_api_base(name: str) -> str:
 def _parse_available_models(primary_model: str) -> tuple[str, ...]:
     raw_value = os.getenv(AVAILABLE_MODELS_ENV_KEY, "")
     models: list[str] = []
-    for item in raw_value.split(","):
+    source = raw_value.split(",") if raw_value.strip() else list(DEFAULT_AVAILABLE_MODELS)
+    for item in source:
         model = item.strip()
         if model and model not in models:
             models.append(model)
     if primary_model not in models:
         models.insert(0, primary_model)
     return tuple(models)
+
+
+def _primary_model() -> str:
+    value = os.getenv(PRIMARY_MODEL_ENV_KEY)
+    if value is None or not value.strip():
+        return DEFAULT_PRIMARY_MODEL
+    return value.strip()
 
 
 @dataclass(slots=True)
@@ -145,14 +175,14 @@ class RuntimeConfig:
 
 def load_runtime_config(root: Path | None = None) -> RuntimeConfig:
     load_repo_env(root or ROOT)
-    primary_model = _require_non_empty("AUTORESEARCH_PRIMARY_MODEL")
+    primary_model = _primary_model()
     return RuntimeConfig(
         api_key=_require_non_empty("AUTORESEARCH_API_KEY"),
         api_base=_parse_api_base("AUTORESEARCH_API_BASE"),
         primary_model=primary_model,
         available_models=_parse_available_models(primary_model),
-        temperature=_parse_float("AUTORESEARCH_TEMPERATURE"),
-        max_tokens=_parse_int("AUTORESEARCH_MAX_TOKENS"),
-        timeout_s=_parse_int("AUTORESEARCH_TIMEOUT_S"),
+        temperature=_parse_float("AUTORESEARCH_TEMPERATURE", default=DEFAULT_RUNTIME_TEMPERATURE),
+        max_tokens=_parse_int("AUTORESEARCH_MAX_TOKENS", default=DEFAULT_RUNTIME_MAX_TOKENS),
+        timeout_s=_parse_int("AUTORESEARCH_TIMEOUT_S", default=DEFAULT_RUNTIME_TIMEOUT_S),
         llm_concurrency=_parse_optional_positive_int(LLM_CONCURRENCY_ENV_KEY, default=DEFAULT_LLM_CONCURRENCY),
     )
