@@ -1,0 +1,44 @@
+{
+  "items": [
+    {
+      "name": "line-a-b-c",
+      "problem": {
+        "roads": [["A", "B"], ["B", "C"]],
+        "start": "A",
+        "package_start": "B",
+        "goal": "C"
+      },
+      "optimal_steps": 4
+    },
+    {
+      "name": "triangle-route",
+      "problem": {
+        "roads": [["A", "B"], ["B", "C"], ["A", "C"]],
+        "start": "B",
+        "package_start": "A",
+        "goal": "C"
+      },
+      "optimal_steps": 4
+    },
+    {
+      "name": "chain-d-c-b-a",
+      "problem": {
+        "roads": [["D", "C"], ["C", "B"], ["B", "A"]],
+        "start": "D",
+        "package_start": "D",
+        "goal": "A"
+      },
+      "optimal_steps": 5
+    },
+    {
+      "name": "branching-hub",
+      "problem": {
+        "roads": [["Hub", "North"], ["Hub", "South"], ["South", "East"]],
+        "start": "North",
+        "package_start": "South",
+        "goal": "East"
+      },
+      "optimal_steps": 4
+    }
+  ]
+}

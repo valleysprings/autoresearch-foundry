@@ -1,0 +1,64 @@
+{
+  "items": [
+    {
+      "item_id": "line-a-b-c",
+      "name": "line-a-b-c",
+      "prompt": "Roads connect A-B and B-C. The robot starts at A, the package starts at B, and the delivery goal is C. Return a valid list[str] plan using drive, pickup, and drop actions.",
+      "context": {
+        "problem": {
+          "roads": [["A", "B"], ["B", "C"]],
+          "start": "A",
+          "package_start": "B",
+          "goal": "C"
+        },
+        "optimal_steps": 4
+      },
+      "expected_answer": "valid plan"
+    },
+    {
+      "item_id": "triangle-route",
+      "name": "triangle-route",
+      "prompt": "Roads connect A-B, B-C, and A-C. The robot starts at B, the package starts at A, and the delivery goal is C. Return a valid list[str] plan using drive, pickup, and drop actions.",
+      "context": {
+        "problem": {
+          "roads": [["A", "B"], ["B", "C"], ["A", "C"]],
+          "start": "B",
+          "package_start": "A",
+          "goal": "C"
+        },
+        "optimal_steps": 4
+      },
+      "expected_answer": "valid plan"
+    },
+    {
+      "item_id": "chain-d-c-b-a",
+      "name": "chain-d-c-b-a",
+      "prompt": "Roads connect D-C, C-B, and B-A. The robot starts at D, the package starts at D, and the delivery goal is A. Return a valid list[str] plan using drive, pickup, and drop actions.",
+      "context": {
+        "problem": {
+          "roads": [["D", "C"], ["C", "B"], ["B", "A"]],
+          "start": "D",
+          "package_start": "D",
+          "goal": "A"
+        },
+        "optimal_steps": 5
+      },
+      "expected_answer": "valid plan"
+    },
+    {
+      "item_id": "branching-hub",
+      "name": "branching-hub",
+      "prompt": "Roads connect Hub-North, Hub-South, and South-East. The robot starts at North, the package starts at South, and the delivery goal is East. Return a valid list[str] plan using drive, pickup, and drop actions.",
+      "context": {
+        "problem": {
+          "roads": [["Hub", "North"], ["Hub", "South"], ["South", "East"]],
+          "start": "North",
+          "package_start": "South",
+          "goal": "East"
+        },
+        "optimal_steps": 4
+      },
+      "expected_answer": "valid plan"
+    }
+  ]
+}

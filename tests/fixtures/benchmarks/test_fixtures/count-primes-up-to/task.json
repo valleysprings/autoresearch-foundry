@@ -1,0 +1,29 @@
+{
+  "id": "count-primes-up-to",
+  "title": "Optimize count_primes_up_to",
+  "description": "Test-only prime counting fixture with deterministic correctness checks and a real benchmark.",
+  "benchmark_tier": "experiment",
+  "track": "test_fixtures",
+  "dataset_id": "count-primes-up-to-v1",
+  "answer_metric": "speedup_vs_baseline",
+  "family": "math",
+  "task_signature": ["single-file-optimization", "test-fixture", "prime-counting"],
+  "source_type": "benchmark-task",
+  "editable_file": "editable.py",
+  "verifier": "verifier.py",
+  "entry_symbol": "count_primes_up_to",
+  "generation_budget": 6,
+  "candidate_budget": 3,
+  "branching_factor": 4,
+  "epsilon": 0.15,
+  "baseline_summary": "Naive trial division for every candidate integer.",
+  "objective_spec": {
+    "display_name": "Speedup vs baseline",
+    "direction": "max",
+    "unit": "x",
+    "summary_template": "Higher speedup is better. This task maximizes runtime gain over the checked-in baseline.",
+    "formula": "speedup_vs_baseline = baseline_ms / candidate_ms"
+  },
+  "prompt_context": "Edit editable.py only. Preserve count_primes_up_to(limit) semantics and return the number of primes at or below limit.",
+  "data_file": "data/eval.json"
+}

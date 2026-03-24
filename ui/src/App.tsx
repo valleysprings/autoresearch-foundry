@@ -85,6 +85,10 @@ type TaskGroup = {
   tasks: TaskSummary[];
 };
 
+const IDLE_LATEST_RUN_POLL_MS = 15000;
+const LIVE_JOB_POLL_MS = 500;
+const LIVE_JOB_BACKGROUND_POLL_MS = 1500;
+
 function shortPath(path?: string | null): string {
   return path ? path.replace(/^runs\//, "") : "n/a";
 }
@@ -147,12 +151,71 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
+function pageVisible(): boolean {
+  return document.visibilityState === "visible";
+}
+
 function numeric(value: string | number | undefined | null): number {
   if (typeof value === "number") {
     return value;
   }
   const parsed = Number(value ?? 0);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function average(values: number[]): number | null {
+  if (!values.length) {
+    return null;
+  }
+  return values.reduce((total, value) => total + value, 0) / values.length;
+}
+
+function firstRoundWinner(run: { generations?: Generation[] | null }): Candidate | null {
+  if (!Array.isArray(run.generations) || !run.generations.length) {
+    return null;
+  }
+  return run.generations[0]?.winner ?? null;
+}
+
+function improvementRatio(finalValue: string | number | undefined | null, anchorValue: string | number | undefined | null): number | null {
+  const anchor = numeric(anchorValue);
+  if (Math.abs(anchor) < 1e-9) {
+    return null;
+  }
+  return numeric(finalValue) / anchor;
+}
+
+function itemRunImprovementRatio(itemRun: ItemRun): number | null {
+  const roundOne = firstRoundWinner(itemRun);
+  return roundOne ? improvementRatio(itemRun.winner.metrics.primary_score, roundOne.metrics.primary_score) : null;
+}
+
+function runImprovementRatio(run: Run): number | null {
+  if (Array.isArray(run.item_runs) && run.item_runs.length) {
+    const ratios = run.item_runs
+      .map((itemRun) => itemRunImprovementRatio(itemRun))
+      .filter((value): value is number => value != null);
+    return average(ratios);
+  }
+  const roundOne = firstRoundWinner(run);
+  return roundOne ? improvementRatio(run.winner.metrics.primary_score, roundOne.metrics.primary_score) : null;
+}
+
+function formatMultiplier(value: number | null, digits = 4): string {
+  return value == null ? "n/a" : `${value.toFixed(digits)}x`;
+}
+
+function ratioTone(value: number | null): "" | "good" | "warn" {
+  if (value == null) {
+    return "";
+  }
+  if (value > 1.000001) {
+    return "good";
+  }
+  if (value < 0.999999) {
+    return "warn";
+  }
+  return "";
 }
 
 function passedCandidate(candidate: Candidate | undefined | null): boolean {
@@ -287,36 +350,45 @@ function mergeTaskCatalogs(fallbackCatalog: TaskSummary[], cachedCatalog: TaskSu
   if (!Array.isArray(cachedCatalog) || !cachedCatalog.length) {
     return fallbackCatalog;
   }
-  const merged = [...fallbackCatalog];
-  const seen = new Set(fallbackCatalog.map((task) => task.id));
-  for (const task of cachedCatalog) {
-    if (!seen.has(task.id)) {
-      merged.push(task);
-      seen.add(task.id);
+  const cachedById = new Map(cachedCatalog.map((task) => [task.id, task]));
+  return fallbackCatalog.map((task) => {
+    const cachedTask = cachedById.get(task.id);
+    if (!cachedTask) {
+      return task;
     }
-  }
-  return merged;
+    return {
+      ...task,
+      ...cachedTask,
+      id: task.id,
+      track: task.track,
+      benchmark_tier: task.benchmark_tier,
+      included_in_main_comparison: task.included_in_main_comparison,
+    };
+  });
 }
 
 function normalizePayload(payload: Payload, fallbackCatalog: TaskSummary[]): Payload {
   const taskCatalog = mergeTaskCatalogs(fallbackCatalog, payload.task_catalog);
+  const activeTaskIds = new Set(taskCatalog.map((task) => task.id));
   return {
     ...payload,
     task_catalog: taskCatalog,
     runs: Array.isArray(payload.runs)
-      ? payload.runs.map((run) => {
-          const catalogTask = taskCatalog.find((task) => task.id === run.task?.id);
-          const selectionSpec =
-            run.selection_spec ?? run.task?.selection_spec ?? catalogTask?.selection_spec ?? emptySelectionSpec();
-          return {
-            ...run,
-            selection_spec: selectionSpec,
-            task: {
-              ...run.task,
-              selection_spec: run.task?.selection_spec ?? selectionSpec,
-            },
-          };
-        })
+      ? payload.runs
+          .filter((run) => activeTaskIds.has(String(run.task?.id ?? "")))
+          .map((run) => {
+            const catalogTask = taskCatalog.find((task) => task.id === run.task?.id);
+            const selectionSpec =
+              run.selection_spec ?? run.task?.selection_spec ?? catalogTask?.selection_spec ?? emptySelectionSpec();
+            return {
+              ...run,
+              selection_spec: selectionSpec,
+              task: {
+                ...run.task,
+                selection_spec: run.task?.selection_spec ?? selectionSpec,
+              },
+            };
+          })
       : [],
   };
 }
@@ -340,7 +412,7 @@ function objectiveLabel(spec: ObjectiveSpec): string {
 }
 
 function benchmarkTierLabel(includedInMainComparison: boolean): string {
-  return includedInMainComparison ? "benchmark task" : "smoke check";
+  return includedInMainComparison ? "benchmark task" : "auxiliary task";
 }
 
 function trackLabel(track: string): string {
@@ -350,10 +422,8 @@ function trackLabel(track: string): string {
     deepsearch_verified: "Deep Search",
     browse_snapshot: "Browse",
     science_verified: "Science Reasoning",
-    multihop_qa_snapshot: "Multihop Reasoning",
     terminal_verified: "Terminal",
     coding_verified: "Coding",
-    small_experiments: "Smoke / Regression",
   };
   return labels[track] ?? track.replace(/_/g, " ");
 }
@@ -386,7 +456,7 @@ function datasetIntroCopy(task: TaskSummary): string {
   parts.push(
     task.included_in_main_comparison
       ? "Included in the benchmark task set used for direct task runs."
-      : "Reserved for smoke checks or targeted runs, outside the benchmark task set.",
+      : "Reserved for targeted or auxiliary runs, outside the active benchmark task set.",
   );
   parts.push("A dataset run opens one item at a time, evolves code against that prompt, verifies locally, and then aggregates item outcomes into one report.");
   return parts.join(" ");
@@ -640,13 +710,15 @@ function deltaChart(run: Run) {
   }
   const spec = run.task.objective_spec;
   const label = objectiveLabel(spec);
-  const baselineObjective = numeric(points[0].objective);
-  const baselinePrimaryScore = numeric(points[0].primary_score);
+  const anchorPoint = points.find((point) => numeric(point.generation) > 0) ?? points[0];
+  const anchorLabel = numeric(anchorPoint.generation) > 0 ? "round 1" : "checked-in baseline";
+  const anchorObjective = numeric(anchorPoint.objective);
+  const anchorPrimaryScore = numeric(anchorPoint.primary_score);
   const chartPoints = points.map((point, index) => ({
     generation: point.generation,
     index,
-    objectiveDelta: numeric(point.objective) - baselineObjective,
-    primaryScoreDelta: numeric(point.primary_score) - baselinePrimaryScore,
+    objectiveDelta: numeric(point.objective) - anchorObjective,
+    primaryScoreDelta: numeric(point.primary_score) - anchorPrimaryScore,
     acceptedCount: numeric(point.accepted_count ?? 0),
   }));
   const width = 700;
@@ -672,11 +744,11 @@ function deltaChart(run: Run) {
         })}
         <line className="chart-axis" x1={padding} x2={width - padding} y1={y(0)} y2={y(0)} />
         <path className="chart-line objective-line" d={pathFor("objectiveDelta")} />
-        <path className="chart-line j-line" d={pathFor("primaryScoreDelta")} />
+        <path className="chart-line primary-line" d={pathFor("primaryScoreDelta")} />
         {chartPoints.map((point) => (
           <g key={`chart-${run.task.id}-${point.generation}`}>
             <circle className={`chart-point ${point.acceptedCount > 0 ? "accepted" : "candidate"}`} cx={x(point.index)} cy={y(point.objectiveDelta)} r="4.6" />
-            <circle className={`chart-point j-point ${point.acceptedCount > 0 ? "accepted" : "candidate"}`} cx={x(point.index)} cy={y(point.primaryScoreDelta)} r="4.6" />
+            <circle className={`chart-point primary-point ${point.acceptedCount > 0 ? "accepted" : "candidate"}`} cx={x(point.index)} cy={y(point.primaryScoreDelta)} r="4.6" />
             <text className="chart-label" x={x(point.index)} y={height - 8} textAnchor="middle">
               g{point.generation}
             </text>
@@ -686,11 +758,11 @@ function deltaChart(run: Run) {
       <div className="legend">
         <span className="legend-item">
           <span className="legend-swatch objective-line-swatch" />
-          {label} vs baseline
+          {label} vs {anchorLabel}
         </span>
         <span className="legend-item">
-          <span className="legend-swatch j-line-swatch" />
-          primary score vs baseline
+          <span className="legend-swatch primary-line-swatch" />
+          primary score vs {anchorLabel}
         </span>
         <span className="legend-item">
           <span className="legend-swatch accepted-swatch" />
@@ -838,7 +910,7 @@ function branchCard(branch: Branch, objectiveSpec: ObjectiveSpec, openByDefault 
           <span className={`badge ${branch.memory_delta > 0 ? "good" : branch.memory_delta < 0 ? "warn" : ""}`}>
             memory {branch.memory_delta > 0 ? `+${branch.memory_delta}` : branch.memory_delta}
           </span>
-          <span className="badge">delta primary {formatSigned(branch.delta_primary_score, 4)}</span>
+          <span className="badge">evolve metric {formatSigned(branch.delta_primary_score, 4)}</span>
         </div>
       </summary>
       <div className="detail-body stack">
@@ -888,7 +960,7 @@ function generationCard(generation: Generation, objectiveSpec: ObjectiveSpec, op
           <span className={`badge ${numeric(generation.memory_delta) > 0 ? "good" : numeric(generation.memory_delta) < 0 ? "warn" : ""}`}>
             memory {numeric(generation.memory_delta) > 0 ? `+${generation.memory_delta}` : generation.memory_delta ?? 0}
           </span>
-          <span className="badge">delta primary {formatSigned(generation.delta_primary_score, 4)}</span>
+          <span className="badge">evolve metric {formatSigned(generation.delta_primary_score, 4)}</span>
         </div>
       </summary>
       <div className="detail-body stack">
@@ -1002,6 +1074,8 @@ function itemRunCard(itemRun: ItemRun, objectiveSpec: ObjectiveSpec) {
   const displayName = humanizeItemName(itemRun.item_name, itemRun.item_id);
   const responseOutput = candidateResponseOutput(itemRun.winner);
   const responseStatus = candidateResponseStatus(itemRun.winner);
+  const roundOneWinner = firstRoundWinner(itemRun);
+  const improvement = itemRunImprovementRatio(itemRun);
   return (
     <details className="detail-card generation-card" key={itemRun.item_id}>
       <summary className="detail-summary">
@@ -1016,8 +1090,8 @@ function itemRunCard(itemRun: ItemRun, objectiveSpec: ObjectiveSpec) {
           <span className="badge">
             {objectiveLabel(objectiveSpec)} {formatValue(itemRun.winner.metrics.objective, objectiveUnit)}
           </span>
-          <span className={`badge ${numeric(itemRun.run_delta_primary_score ?? itemRun.delta_primary_score) >= 0 ? "good" : "warn"}`}>
-            delta primary {formatSigned(itemRun.run_delta_primary_score ?? itemRun.delta_primary_score, 4)}
+          <span className={`badge ${ratioTone(improvement)}`}>
+            improvement {formatMultiplier(improvement)}
           </span>
         </div>
       </summary>
@@ -1042,11 +1116,13 @@ function itemRunCard(itemRun: ItemRun, objectiveSpec: ObjectiveSpec) {
         </div>
         <div className="metric-grid compact-metrics">
           {metric("item key", itemRun.item_id)}
-          {metric("baseline status", itemRun.baseline.metrics.verifier_status ?? "n/a")}
+          {metric("checked-in status", itemRun.baseline.metrics.verifier_status ?? "n/a")}
           {metric("selected status", itemRun.winner.metrics.verifier_status ?? "n/a")}
           {metric("generations used", itemRun.generations.length)}
+          {metric("round 1 primary", roundOneWinner ? formatValue(roundOneWinner.metrics.primary_score) : "n/a")}
           {metric("memory ledger", `${itemRun.memory_before_count ?? "n/a"} → ${itemRun.memory_after_count ?? "n/a"}`)}
           {metric("selected primary", formatValue(itemRun.winner.metrics.primary_score))}
+          {metric("improvement vs round 1", formatMultiplier(improvement))}
         </div>
         <p className="small">{itemRun.selection_reason}</p>
         {itemRun.question.context ? (
@@ -1076,6 +1152,8 @@ function runCard(run: Run, defaultSelectionSpec: SelectionSpec, isOpen: boolean,
   const isDatasetRun = Array.isArray(run.item_runs) && run.item_runs.length > 0;
   const transitions = isDatasetRun ? datasetTransitionSummary(run) : null;
   const objectiveUnit = objectiveSpec.unit ? ` ${objectiveSpec.unit}` : "";
+  const roundOneWinner = firstRoundWinner(run);
+  const improvement = runImprovementRatio(run);
   return (
     <article className="task-card completed-card" key={run.task.id}>
       <button className="accordion-toggle" onClick={onToggle} type="button">
@@ -1096,8 +1174,8 @@ function runCard(run: Run, defaultSelectionSpec: SelectionSpec, isOpen: boolean,
               {objectiveLabel(objectiveSpec)} {formatValue(run.winner.metrics.objective, objectiveSpec.unit ? ` ${objectiveSpec.unit}` : "")}
             </span>
           )}
-          <span className={`badge ${numeric(run.run_delta_primary_score ?? run.delta_primary_score) >= 0 ? "good" : "warn"}`}>
-            run delta primary {formatSigned(run.run_delta_primary_score ?? run.delta_primary_score, 4)}
+          <span className={`badge ${ratioTone(improvement)}`}>
+            improvement {formatMultiplier(improvement)}
           </span>
         </div>
       </button>
@@ -1113,10 +1191,11 @@ function runCard(run: Run, defaultSelectionSpec: SelectionSpec, isOpen: boolean,
           {metricTemplate(objectiveSpec, selectionSpec)}
 
           <div className="metric-grid">
-            {metric("baseline objective", formatValue(run.baseline.metrics.objective, objectiveUnit))}
+            {metric("checked-in objective", formatValue(run.baseline.metrics.objective, objectiveUnit))}
+            {metric("round 1 objective", roundOneWinner ? formatValue(roundOneWinner.metrics.objective, objectiveUnit) : "n/a")}
             {metric("selected objective", formatValue(run.winner.metrics.objective, objectiveUnit))}
             {metric("objective delta", formatSigned(run.run_delta_objective ?? 0, 4) + objectiveUnit)}
-            {metric("run delta primary", formatSigned(run.run_delta_primary_score ?? run.delta_primary_score, 4))}
+            {metric("improvement vs round 1", formatMultiplier(improvement))}
             {metric(isDatasetRun ? "items" : "generations", isDatasetRun ? run.dataset_summary?.total_items ?? run.item_runs?.length ?? 0 : run.generations.length)}
             {metric("new memories", run.added_experiences?.length ?? 0)}
             {metric("memory ledger", `${run.memory_before_count ?? "n/a"} → ${run.memory_after_count ?? "n/a"}`)}
@@ -1132,12 +1211,12 @@ function runCard(run: Run, defaultSelectionSpec: SelectionSpec, isOpen: boolean,
               </div>
               <div className="metric-grid compact-metrics">
                 {metric("dataset size", run.dataset_summary?.total_items ?? 0)}
-                {metric("baseline solved", run.dataset_summary?.baseline_passed ?? 0)}
+                {metric("checked-in solved", run.dataset_summary?.baseline_passed ?? 0)}
                 {metric("selected solved", run.dataset_summary?.winner_passed ?? 0)}
                 {metric("fail -> pass", transitions?.improved ?? 0)}
                 {metric("pass -> fail", transitions?.regressed ?? 0)}
                 {metric("solve rate", formatValue(run.dataset_summary?.solved_ratio))}
-                {metric("avg delta primary", formatValue(run.dataset_summary?.avg_delta_primary_score))}
+                {metric("avg improvement", formatMultiplier(improvement))}
                 {metric("still failing", run.dataset_summary?.failure_count ?? 0)}
               </div>
               <section className="stack">
@@ -1220,6 +1299,7 @@ export function App() {
   const [error, setError] = useState<ErrorPayload | null>(null);
   const [openCompletedTasks, setOpenCompletedTasks] = useState<Record<string, boolean>>({});
   const pollToken = useRef(0);
+  const hydratedTaskId = useRef<string | null>(null);
 
   const selectedTask = useMemo(
     () => payload.task_catalog.find((task) => task.id === selectedTaskId) ?? payload.task_catalog[0] ?? null,
@@ -1302,11 +1382,18 @@ export function App() {
         }
         const defaultTaskId = initialTaskId(tasks, latest);
         setSelectedTaskId(defaultTaskId);
-        const taskPayload = defaultTaskId ? normalizePayload(await loadLatestRun(defaultTaskId), tasks) : emptyPayload(tasks);
-        if (cancelled) {
-          return;
+        const scopedLatest = scopedPayloadOrEmpty(latest, defaultTaskId, tasks);
+        if (defaultTaskId && scopedLatest.runs.length) {
+          hydratedTaskId.current = defaultTaskId;
+          setPayload(scopedLatest);
+        } else {
+          const taskPayload = defaultTaskId ? normalizePayload(await loadLatestRun(defaultTaskId), tasks) : emptyPayload(tasks);
+          if (cancelled) {
+            return;
+          }
+          hydratedTaskId.current = defaultTaskId || null;
+          setPayload(scopedPayloadOrEmpty(taskPayload, defaultTaskId, tasks));
         }
-        setPayload(scopedPayloadOrEmpty(taskPayload, defaultTaskId, tasks));
         setOpenCompletedTasks({});
         setLiveJob(null);
         setError(null);
@@ -1341,6 +1428,10 @@ export function App() {
     if (!selectedTaskId || liveJob?.status === "running" || liveJob?.status === "loading") {
       return;
     }
+    if (hydratedTaskId.current === selectedTaskId) {
+      hydratedTaskId.current = null;
+      return;
+    }
     let cancelled = false;
     async function loadSelectedTaskReport() {
       try {
@@ -1366,24 +1457,69 @@ export function App() {
   }, [selectedTaskId, liveJob?.status]);
 
   useEffect(() => {
-    if (liveJob?.status === "running" || liveJob?.status === "loading") {
+    if (!selectedTaskId || liveJob?.status === "running" || liveJob?.status === "loading") {
       return undefined;
     }
 
-    const timer = window.setInterval(async () => {
+    let cancelled = false;
+    let timer: number | null = null;
+
+    const clearTimer = () => {
+      if (timer !== null) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+    };
+
+    const schedule = (delayMs: number) => {
+      clearTimer();
+      timer = window.setTimeout(() => {
+        void tick();
+      }, delayMs);
+    };
+
+    const tick = async () => {
+      if (cancelled || !pageVisible()) {
+        return;
+      }
       try {
-        const latest = await loadLatestRun(selectedTaskId || undefined);
+        const latest = await loadLatestRun(selectedTaskId);
+        if (cancelled) {
+          return;
+        }
         setPayload((previous) => {
           const normalized = normalizePayload(latest, previous.task_catalog);
           return scopedPayloadOrEmpty(normalized, selectedTaskId, previous.task_catalog);
         });
       } catch {
         return;
+      } finally {
+        if (!cancelled && pageVisible()) {
+          schedule(IDLE_LATEST_RUN_POLL_MS);
+        }
       }
-    }, 5000);
+    };
+
+    const onVisibilityChange = () => {
+      if (cancelled) {
+        return;
+      }
+      if (!pageVisible()) {
+        clearTimer();
+        return;
+      }
+      schedule(0);
+    };
+
+    if (pageVisible()) {
+      schedule(IDLE_LATEST_RUN_POLL_MS);
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
-      window.clearInterval(timer);
+      cancelled = true;
+      clearTimer();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [liveJob?.status, selectedTaskId]);
 
@@ -1439,7 +1575,7 @@ export function App() {
       let job = await loadJob(start.job_id);
       while (job.status === "running" && token === pollToken.current) {
         setLiveJob(job);
-        await sleep(280);
+        await sleep(pageVisible() ? LIVE_JOB_POLL_MS : LIVE_JOB_BACKGROUND_POLL_MS);
         job = await loadJob(start.job_id);
       }
       if (token !== pollToken.current) {

@@ -1,51 +1,6 @@
 {
   "tasks": [
     {
-      "id": "contains-duplicates",
-      "path": "small_experiments/contains-duplicates",
-      "enabled": true
-    },
-    {
-      "id": "first-repeated-value",
-      "path": "small_experiments/first-repeated-value",
-      "enabled": true
-    },
-    {
-      "id": "has-overlap",
-      "path": "small_experiments/has-overlap",
-      "enabled": true
-    },
-    {
-      "id": "most-frequent-item",
-      "path": "small_experiments/most-frequent-item",
-      "enabled": true
-    },
-    {
-      "id": "deduplicate-preserve-order",
-      "path": "small_experiments/deduplicate-preserve-order",
-      "enabled": true
-    },
-    {
-      "id": "missing-number",
-      "path": "small_experiments/missing-number",
-      "enabled": true
-    },
-    {
-      "id": "count-primes-up-to",
-      "path": "small_experiments/count-primes-up-to",
-      "enabled": true
-    },
-    {
-      "id": "count-change-ways",
-      "path": "small_experiments/count-change-ways",
-      "enabled": true
-    },
-    {
-      "id": "count-n-queens",
-      "path": "small_experiments/count-n-queens",
-      "enabled": true
-    },
-    {
       "id": "olymmath",
       "path": "math_verified/olymmath",
       "enabled": true
@@ -72,7 +27,17 @@
     },
     {
       "id": "planbench",
-      "path": "planning_verified/planbench",
+      "path": "reasoning_verified/planbench",
+      "enabled": true
+    },
+    {
+      "id": "arc-challenge",
+      "path": "reasoning_verified/arc-challenge",
+      "enabled": true
+    },
+    {
+      "id": "longbench-v2",
+      "path": "longcontext_verified/longbench-v2",
       "enabled": true
     },
     {
@@ -91,18 +56,13 @@
       "enabled": true
     },
     {
+      "id": "openbookqa",
+      "path": "science_verified/openbookqa",
+      "enabled": true
+    },
+    {
       "id": "livecodebench",
       "path": "coding_verified/livecodebench",
-      "enabled": true
-    },
-    {
-      "id": "planbench-lite",
-      "path": "small_experiments/planbench-lite",
-      "enabled": true
-    },
-    {
-      "id": "multihop-snapshot-small",
-      "path": "multihop_qa_snapshot/multihop-snapshot-small",
       "enabled": true
     },
     {

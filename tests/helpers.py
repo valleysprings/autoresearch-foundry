@@ -1,11 +1,19 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 import json
 import threading
 from collections.abc import Sequence
+from pathlib import Path
+from unittest.mock import patch
 
+from app.codegen import catalog
 from app.codegen.config import RuntimeConfig
 from app.codegen.llm import ProposalRuntime
+
+ROOT = Path(__file__).resolve().parents[1]
+FIXTURE_BENCHMARK_ROOT = ROOT / "tests" / "fixtures" / "benchmarks"
+FIXTURE_REGISTRY_PATH = FIXTURE_BENCHMARK_ROOT / "registry.json"
 
 
 def chat_response(payload: dict, *, model: str = "deepseek-chat") -> str:
@@ -60,3 +68,38 @@ def make_runtime(responses: Sequence[object], *, model: str = "deepseek-chat") -
         ),
         transport=QueueTransport(responses),
     )
+
+
+@contextmanager
+def patched_fixture_catalog():
+    with (
+        patch.object(catalog, "BENCHMARK_ROOT", FIXTURE_BENCHMARK_ROOT),
+        patch.object(catalog, "REGISTRY_PATH", FIXTURE_REGISTRY_PATH),
+    ):
+        yield
+
+
+def load_fixture_codegen_tasks(
+    task_id: str | None = None,
+    *,
+    included_in_main_comparison: bool | None = None,
+) -> list[dict[str, object]]:
+    with patched_fixture_catalog():
+        return catalog.load_codegen_tasks(
+            task_id,
+            included_in_main_comparison=included_in_main_comparison,
+        )
+
+
+def list_fixture_codegen_task_summaries() -> list[dict[str, object]]:
+    with patched_fixture_catalog():
+        return catalog.list_codegen_task_summaries()
+
+
+@contextmanager
+def patch_runner_fixture_catalog():
+    with (
+        patch("app.entries.runner.load_codegen_tasks", side_effect=load_fixture_codegen_tasks),
+        patch("app.entries.runner.list_codegen_task_summaries", side_effect=list_fixture_codegen_task_summaries),
+    ):
+        yield

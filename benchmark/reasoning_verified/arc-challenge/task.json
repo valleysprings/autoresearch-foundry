@@ -1,0 +1,41 @@
+{
+  "id": "arc-challenge",
+  "title": "ARC-Challenge",
+  "description": "Evolve a single-file solver independently for each ARC-Challenge validation multiple-choice reasoning question.",
+  "benchmark_tier": "comparable",
+  "track": "reasoning_verified",
+  "dataset_id": "ai2_arc_arc_challenge",
+  "dataset_size": 299,
+  "local_dataset_only": true,
+  "lazy_item_manifest": true,
+  "item_manifest": "data/questions.json",
+  "split": "validation:ARC-Challenge",
+  "allow_browsing": false,
+  "answer_metric": "accuracy",
+  "family": "science",
+  "task_signature": [
+    "single-file-optimization",
+    "dataset-task",
+    "reasoning",
+    "science-question-solving",
+    "arc-challenge"
+  ],
+  "source_type": "dataset-task",
+  "editable_file": "editable.py",
+  "verifier": "verifier.py",
+  "entry_symbol": "solve",
+  "generation_budget": 4,
+  "candidate_budget": 3,
+  "branching_factor": 4,
+  "epsilon": 0.02,
+  "baseline_summary": "A placeholder dataset-level solver template that returns the first available answer choice.",
+  "objective_spec": {
+    "display_name": "Accuracy",
+    "direction": "max",
+    "unit": "ratio",
+    "summary_template": "Higher accuracy is better across independently evolved ARC-Challenge question runs.",
+    "formula": "accuracy = solved_questions / total_questions"
+  },
+  "prompt_context": "Edit editable.py only. The entry symbol solve(question: dict) must return the best answer string for the current ARC-Challenge reasoning question.",
+  "function_name": "solve"
+}

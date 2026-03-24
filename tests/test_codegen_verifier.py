@@ -9,6 +9,7 @@ from app.codegen.benchmark_support import public_question_payload
 from app.codegen.catalog import load_codegen_tasks
 from app.codegen.dataset_support import build_micro_task, load_question_manifest
 from app.codegen.verifier import evaluate_materialized_candidate, materialize_candidate
+from tests.helpers import load_fixture_codegen_tasks
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -71,7 +72,7 @@ def logistics_line(step: str) -> str:
 
 class CodegenVerifierTest(unittest.TestCase):
     def setUp(self) -> None:
-        tasks = load_codegen_tasks()
+        tasks = load_fixture_codegen_tasks()
         self.task = next(task for task in tasks if task["id"] == "contains-duplicates")
 
     def _materialize(self, task: dict, file_body: str) -> tuple[Path, str, str]:
@@ -176,7 +177,7 @@ class CodegenVerifierTest(unittest.TestCase):
             self.assertGreater(metrics["primary_score"], baseline_metrics["primary_score"])
 
     def test_math_experiment_candidate_improves_benchmark(self) -> None:
-        task = next(task for task in load_codegen_tasks() if task["id"] == "count-primes-up-to")
+        task = next(task for task in load_fixture_codegen_tasks() if task["id"] == "count-primes-up-to")
         with tempfile.TemporaryDirectory() as tmp_dir:
             workspace = Path(tmp_dir)
             baseline_source = Path(task["editable_path"]).read_text()
@@ -230,14 +231,28 @@ class CodegenVerifierTest(unittest.TestCase):
         comparable_tasks = [task for task in comparable_tasks if not task.get("local_dataset_only")]
         self.assertEqual(
             {task["id"] for task in comparable_tasks},
-            {"multihop-snapshot-small", "tbench-lite"},
+            {"tbench-lite"},
         )
 
     def test_dataset_question_microtasks_generate_item_level_records(self) -> None:
         dataset_tasks = [task for task in load_codegen_tasks(included_in_main_comparison=True) if task.get("local_dataset_only")]
         self.assertEqual(
             {task["id"] for task in dataset_tasks},
-            {"olymmath", "math-500", "aime-2024", "aime-2025", "aime-2026", "planbench", "sciq", "qasc", "scienceqa", "livecodebench"},
+            {
+                "olymmath",
+                "math-500",
+                "aime-2024",
+                "aime-2025",
+                "aime-2026",
+                "planbench",
+                "arc-challenge",
+                "longbench-v2",
+                "sciq",
+                "qasc",
+                "scienceqa",
+                "openbookqa",
+                "livecodebench",
+            },
         )
         eager_dataset_tasks = [task for task in dataset_tasks if not task.get("lazy_item_manifest")]
         with tempfile.TemporaryDirectory() as tmp_dir:

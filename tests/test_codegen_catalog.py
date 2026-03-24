@@ -11,47 +11,45 @@ from app.codegen.catalog import list_codegen_task_summaries, load_codegen_tasks
 
 
 class CodegenCatalogTest(unittest.TestCase):
-    def test_small_experiments_and_comparable_tracks_are_classified(self) -> None:
+    def test_active_registry_contains_only_comparable_tasks(self) -> None:
         tasks = load_codegen_tasks()
         experiment_tasks = [task for task in tasks if task["benchmark_tier"] == "experiment"]
         comparable_tasks = [task for task in tasks if task["benchmark_tier"] == "comparable"]
 
-        self.assertTrue(experiment_tasks)
+        self.assertFalse(experiment_tasks)
         self.assertTrue(comparable_tasks)
-        self.assertTrue(all(task["track"] == "small_experiments" for task in experiment_tasks))
-        self.assertTrue(all(not task["included_in_main_comparison"] for task in experiment_tasks))
         self.assertEqual(
             {task["track"] for task in comparable_tasks},
-            {"math_verified", "planning_verified", "science_verified", "multihop_qa_snapshot", "terminal_verified", "coding_verified"},
+            {"math_verified", "reasoning_verified", "longcontext_verified", "science_verified", "terminal_verified", "coding_verified"},
         )
         self.assertTrue(all(task["included_in_main_comparison"] for task in comparable_tasks))
         self.assertEqual([task["id"] for task in comparable_tasks[:5]], ["olymmath", "math-500", "aime-2024", "aime-2025", "aime-2026"])
 
-    def test_main_comparison_filter_returns_only_comparable_tasks(self) -> None:
+    def test_main_comparison_filter_returns_all_active_tasks(self) -> None:
+        all_tasks = load_codegen_tasks()
         main_tasks = load_codegen_tasks(included_in_main_comparison=True)
+        self.assertEqual([task["id"] for task in main_tasks], [task["id"] for task in all_tasks])
         self.assertTrue(main_tasks)
         self.assertTrue(all(task["benchmark_tier"] == "comparable" for task in main_tasks))
-        self.assertNotIn("small_experiments", {task["track"] for task in main_tasks})
 
     def test_task_summaries_include_benchmark_metadata(self) -> None:
         summaries = list_codegen_task_summaries()
-        contains_duplicates = next(task for task in summaries if task["id"] == "contains-duplicates")
         olymmath = next(task for task in summaries if task["id"] == "olymmath")
         math_500 = next(task for task in summaries if task["id"] == "math-500")
         aime_2024 = next(task for task in summaries if task["id"] == "aime-2024")
         aime_2025 = next(task for task in summaries if task["id"] == "aime-2025")
         aime_2026 = next(task for task in summaries if task["id"] == "aime-2026")
         planbench = next(task for task in summaries if task["id"] == "planbench")
+        arc_challenge = next(task for task in summaries if task["id"] == "arc-challenge")
+        longbench = next(task for task in summaries if task["id"] == "longbench-v2")
         sciq = next(task for task in summaries if task["id"] == "sciq")
         qasc = next(task for task in summaries if task["id"] == "qasc")
         scienceqa = next(task for task in summaries if task["id"] == "scienceqa")
+        openbookqa = next(task for task in summaries if task["id"] == "openbookqa")
         livecodebench = next(task for task in summaries if task["id"] == "livecodebench")
-        planbench_lite = next(task for task in summaries if task["id"] == "planbench-lite")
-
-        self.assertEqual(contains_duplicates["benchmark_tier"], "experiment")
-        self.assertEqual(contains_duplicates["track"], "small_experiments")
-        self.assertEqual(contains_duplicates["answer_metric"], "speedup_vs_baseline")
-        self.assertFalse(contains_duplicates["included_in_main_comparison"])
+        summary_ids = {task["id"] for task in summaries}
+        self.assertNotIn("contains-duplicates", summary_ids)
+        self.assertNotIn("planbench-lite", summary_ids)
 
         self.assertTrue(olymmath["local_dataset_only"])
         self.assertEqual(olymmath["dataset_size"], 100)
@@ -66,9 +64,17 @@ class CodegenCatalogTest(unittest.TestCase):
         self.assertEqual(aime_2026["split"], "test")
         self.assertTrue(planbench["local_dataset_only"])
         self.assertEqual(planbench["dataset_size"], 2270)
-        self.assertEqual(planbench["track"], "planning_verified")
+        self.assertEqual(planbench["track"], "reasoning_verified")
         self.assertTrue(planbench["included_in_main_comparison"])
         self.assertEqual(planbench["split"], "task_1_plan_generation:train")
+        self.assertEqual(planbench["selection_spec"]["profile"], "plan_length")
+        self.assertEqual(arc_challenge["dataset_size"], 299)
+        self.assertEqual(arc_challenge["track"], "reasoning_verified")
+        self.assertEqual(arc_challenge["split"], "validation:ARC-Challenge")
+        self.assertEqual(longbench["dataset_size"], 503)
+        self.assertEqual(longbench["track"], "longcontext_verified")
+        self.assertEqual(longbench["split"], "train")
+        self.assertTrue(longbench["included_in_main_comparison"])
         self.assertEqual(sciq["dataset_size"], 1000)
         self.assertEqual(sciq["track"], "science_verified")
         self.assertEqual(sciq["split"], "validation")
@@ -76,13 +82,13 @@ class CodegenCatalogTest(unittest.TestCase):
         self.assertEqual(qasc["split"], "validation")
         self.assertEqual(scienceqa["dataset_size"], 768)
         self.assertEqual(scienceqa["split"], "validation:natural-science:text-only:biology-chemistry-physics")
+        self.assertEqual(openbookqa["dataset_size"], 500)
+        self.assertEqual(openbookqa["track"], "science_verified")
+        self.assertEqual(openbookqa["split"], "validation:additional")
         self.assertEqual(livecodebench["dataset_size"], 1055)
         self.assertEqual(livecodebench["track"], "coding_verified")
         self.assertEqual(livecodebench["split"], "release_v6:test")
         self.assertTrue(livecodebench["included_in_main_comparison"])
-        self.assertEqual(planbench_lite["dataset_size"], 4)
-        self.assertEqual(planbench_lite["track"], "small_experiments")
-        self.assertFalse(planbench_lite["included_in_main_comparison"])
 
     def test_missing_local_benchmark_assets_are_skipped(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

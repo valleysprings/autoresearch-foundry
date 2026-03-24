@@ -23,14 +23,14 @@ REGISTRY_PATH = CONFIG_REGISTRY_PATH
 
 TRACK_ORDER = {
     "math_verified": 0,
+    "reasoning_verified": 1,
     "planning_verified": 1,
+    "longcontext_verified": 2,
     "deepsearch_verified": 2,
     "browse_snapshot": 3,
     "science_verified": 4,
-    "multihop_qa_snapshot": 5,
-    "terminal_verified": 6,
-    "coding_verified": 7,
-    "small_experiments": 8,
+    "terminal_verified": 5,
+    "coding_verified": 6,
 }
 TASK_ORDER = {
     "olymmath": 0,
@@ -39,10 +39,13 @@ TASK_ORDER = {
     "aime-2025": 3,
     "aime-2026": 4,
     "planbench": 5,
-    "sciq": 6,
-    "qasc": 7,
-    "scienceqa": 8,
-    "livecodebench": 9,
+    "arc-challenge": 6,
+    "longbench-v2": 7,
+    "sciq": 8,
+    "qasc": 9,
+    "scienceqa": 10,
+    "openbookqa": 11,
+    "livecodebench": 12,
 }
 
 

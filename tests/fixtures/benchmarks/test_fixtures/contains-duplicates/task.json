@@ -1,0 +1,29 @@
+{
+  "id": "contains-duplicates",
+  "title": "Optimize contains_duplicates",
+  "description": "Test-only duplicate detector fixture with deterministic correctness checks and a real benchmark.",
+  "benchmark_tier": "experiment",
+  "track": "test_fixtures",
+  "dataset_id": "contains-duplicates-v1",
+  "answer_metric": "speedup_vs_baseline",
+  "family": "set-logic",
+  "task_signature": ["single-file-optimization", "test-fixture", "duplicate-detection"],
+  "source_type": "benchmark-task",
+  "editable_file": "editable.py",
+  "verifier": "verifier.py",
+  "entry_symbol": "contains_duplicates",
+  "generation_budget": 3,
+  "candidate_budget": 3,
+  "branching_factor": 4,
+  "epsilon": 0.2,
+  "baseline_summary": "Nested-loop duplicate detection with O(n^2) behavior.",
+  "objective_spec": {
+    "display_name": "Speedup vs baseline",
+    "direction": "max",
+    "unit": "x",
+    "summary_template": "Higher speedup is better. This task maximizes runtime gain over the checked-in baseline.",
+    "formula": "speedup_vs_baseline = baseline_ms / candidate_ms"
+  },
+  "prompt_context": "Edit editable.py only. Preserve contains_duplicates(values) semantics and return a boolean.",
+  "data_file": "data/eval.json"
+}

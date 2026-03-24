@@ -50,6 +50,12 @@ body,
   min-height: 100%;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scrollbar-gutter: stable;
+}
+
 body {
   margin: 0;
   color: var(--ink);
@@ -109,6 +115,7 @@ pre {
 .subpanel,
 .branch-pill-card,
 .template-card {
+  min-width: 0;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 24px;
@@ -147,6 +154,15 @@ pre {
 .template-grid {
   display: grid;
   gap: 14px;
+}
+
+.control-grid > *,
+.metric-grid > *,
+.split-grid > *,
+.artifact-grid > *,
+.branch-grid > *,
+.template-grid > * {
+  min-width: 0;
 }
 
 .control-grid {
@@ -212,6 +228,8 @@ pre {
 .summary-pill {
   text-transform: none;
   letter-spacing: 0.02em;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 h1,
@@ -274,6 +292,7 @@ h4 {
 }
 
 .field {
+  min-width: 0;
   display: grid;
   gap: 8px;
 }
@@ -291,6 +310,7 @@ h4 {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--muted);
+  overflow-wrap: anywhere;
 }
 
 .control,
@@ -308,6 +328,12 @@ h4 {
   background: var(--panel-strong);
   color: var(--ink);
   padding: 0 14px;
+}
+
+.control {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .action {
@@ -556,8 +582,8 @@ h4 {
   background: #c35a18;
 }
 
-.j-line,
-.j-line-swatch {
+.primary-line,
+.primary-line-swatch {
   stroke: #176251;
   background: #176251;
 }
@@ -568,7 +594,7 @@ h4 {
   stroke-width: 2;
 }
 
-.chart-point.j-point {
+.chart-point.primary-point {
   stroke: #176251;
 }
 
@@ -626,6 +652,13 @@ h4 {
 
 .error-panel {
   border-color: rgba(200, 83, 32, 0.32);
+}
+
+.error-panel .code-block {
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .modal-overlay {

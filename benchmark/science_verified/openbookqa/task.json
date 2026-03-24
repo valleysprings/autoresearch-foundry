@@ -1,0 +1,41 @@
+{
+  "id": "openbookqa",
+  "title": "OpenBookQA",
+  "description": "Evolve a single-file solver independently for each OpenBookQA validation science question, using the official additional split with the core supporting fact.",
+  "benchmark_tier": "comparable",
+  "track": "science_verified",
+  "dataset_id": "openbookqa",
+  "dataset_size": 500,
+  "local_dataset_only": true,
+  "lazy_item_manifest": true,
+  "item_manifest": "data/questions.json",
+  "split": "validation:additional",
+  "allow_browsing": false,
+  "answer_metric": "accuracy",
+  "family": "science",
+  "task_signature": [
+    "single-file-optimization",
+    "dataset-task",
+    "science-question-solving",
+    "open-book-qa",
+    "multihop-qa"
+  ],
+  "source_type": "dataset-task",
+  "editable_file": "editable.py",
+  "verifier": "verifier.py",
+  "entry_symbol": "solve",
+  "generation_budget": 4,
+  "candidate_budget": 3,
+  "branching_factor": 4,
+  "epsilon": 0.02,
+  "baseline_summary": "A placeholder dataset-level solver template that returns the first available answer choice.",
+  "objective_spec": {
+    "display_name": "Accuracy",
+    "direction": "max",
+    "unit": "ratio",
+    "summary_template": "Higher accuracy is better across independently evolved OpenBookQA question runs.",
+    "formula": "accuracy = solved_questions / total_questions"
+  },
+  "prompt_context": "Edit editable.py only. The entry symbol solve(question: dict) must return the best answer string for the current open-book science question.",
+  "function_name": "solve"
+}

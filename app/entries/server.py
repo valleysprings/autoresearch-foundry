@@ -30,6 +30,7 @@ JOBS: dict[str, dict[str, object]] = {}
 PORT_CONFLICT_MODES = ("auto", "next", "kill", "error")
 JOB_PROCESS_START_METHOD = os.getenv("AUTORESEARCH_JOB_PROCESS_START_METHOD", "spawn").strip().lower() or "spawn"
 JOB_STALL_TIMEOUT_S = 180.0
+QUIET_ACCESS_LOG_PATHS = frozenset({"/api/latest-run", "/api/job", "/api/health"})
 
 
 def _runtime_for_request(model: str | None = None) -> ProposalRuntime:
@@ -244,6 +245,13 @@ def _bind_server(host: str, port: int, port_conflict: str) -> tuple[ThreadingHTT
     raise RuntimeError(
         f"Port {port} is already in use. Re-run with --port-conflict next, --port-conflict kill, or choose another --port."
     )
+
+
+def _should_suppress_request_logging(path: str) -> bool:
+    flag = os.getenv("AUTORESEARCH_LOG_POLLING", "").strip().lower()
+    if flag in {"1", "true", "yes", "on"}:
+        return False
+    return urlparse(path).path in QUIET_ACCESS_LOG_PATHS
 
 
 def _job_process_context() -> multiprocessing.context.BaseContext:
@@ -475,6 +483,11 @@ def _start_job(
 class DemoHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(UI_DIR), **kwargs)
+
+    def log_request(self, code: int | str = "-", size: int | str = "-") -> None:
+        if _should_suppress_request_logging(self.path):
+            return
+        super().log_request(code, size)
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)

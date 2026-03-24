@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Callable
@@ -35,6 +36,48 @@ def _memory_store_for_item(memory_root: Path, dataset_task_id: str, item_id: str
         markdown_path=item_dir / ITEM_MEMORY_MD_NAME,
         title=f"{dataset_task_id}:{item_id} Strategy Memory",
     )
+
+
+def _task_char_limit(task: dict[str, Any], key: str) -> int | None:
+    value = task.get(key)
+    if value is None:
+        return None
+    try:
+        limit = int(value)
+    except (TypeError, ValueError):
+        return None
+    return limit if limit > 0 else None
+
+
+def _serialize_context_for_result(task: dict[str, Any], context: object) -> object:
+    limit = _task_char_limit(task, "result_context_max_chars")
+    if context is None or limit is None:
+        return context
+    if isinstance(context, (dict, list)):
+        text = json.dumps(context, ensure_ascii=True)
+    else:
+        text = str(context)
+    if len(text) <= limit:
+        return context
+    return text[:limit].rstrip() + f"... [truncated from {len(text)} chars in run artifact]"
+
+
+def _question_payload_for_result(task: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": item["item_id"],
+        "item_id": item["item_id"],
+        "question_id": item["item_id"],
+        "name": item.get("name") or item["item_id"],
+        "prompt": item["prompt"],
+        "raw_prompt": item.get("raw_prompt"),
+        "context": _serialize_context_for_result(task, item.get("context")),
+        "raw_context": _serialize_context_for_result(task, item.get("raw_context")),
+        "choices": list(item.get("choices") or []),
+        "raw_choices": list(item.get("raw_choices") or []),
+        "expected_answer": item.get("expected_answer"),
+        "raw_expected_answer": item.get("raw_expected_answer"),
+        "metadata": dict(item.get("metadata") or {}),
+    }
 
 
 def _progress_wrapper(
@@ -108,21 +151,7 @@ def _run_item(
     result["dataset_task_id"] = task["id"]
     result["item_id"] = item["item_id"]
     result["item_name"] = item.get("name") or item["item_id"]
-    result["question"] = {
-        "id": item["item_id"],
-        "item_id": item["item_id"],
-        "question_id": item["item_id"],
-        "name": item.get("name") or item["item_id"],
-        "prompt": item["prompt"],
-        "raw_prompt": item.get("raw_prompt"),
-        "context": item.get("context"),
-        "raw_context": item.get("raw_context"),
-        "choices": list(item.get("choices") or []),
-        "raw_choices": list(item.get("raw_choices") or []),
-        "expected_answer": item.get("expected_answer"),
-        "raw_expected_answer": item.get("raw_expected_answer"),
-        "metadata": dict(item.get("metadata") or {}),
-    }
+    result["question"] = _question_payload_for_result(task, item)
     return result
 
 

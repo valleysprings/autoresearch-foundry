@@ -13,15 +13,15 @@ from unittest.mock import patch
 
 from app.codegen.errors import ConfigError, LlmResponseError, LlmTransportError
 from app.codegen.catalog import load_codegen_tasks, seed_strategy_experiences
-from app.codegen.dataset_runner import run_dataset_task
-from app.codegen.dataset_support import load_question_manifest
+from app.codegen.dataset_runner import _question_payload_for_result, run_dataset_task
+from app.codegen.dataset_support import build_micro_task, load_question_manifest
 from app.codegen.llm import _proposal_prompt
 from app.codegen.config import RuntimeConfig
 from app.codegen.llm import ProposalRuntime
 from app.codegen.trainer import run_codegen_task
 from app.entries.runner import generate_discrete_payload, write_discrete_artifacts
 from app.memory.store import MemoryStore
-from tests.helpers import chat_response, make_runtime
+from tests.helpers import chat_response, load_fixture_codegen_tasks, make_runtime, patch_runner_fixture_catalog
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +29,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def _file_with_entry(symbol: str, args: str, body: str) -> str:
     return f"def {symbol}({args}):\n{textwrap.indent(body.strip(), '    ')}\n"
+
+
+def _fixture_task(task_id: str) -> dict[str, object]:
+    return dict(next(item for item in load_fixture_codegen_tasks() if item["id"] == task_id))
 
 
 def raw_content_response(
@@ -268,7 +272,7 @@ PLANBENCH_PROPOSAL_PAYLOAD = {
 
 class CodegenRunnerTest(unittest.TestCase):
     def test_missing_runtime_config_fails_before_run(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir, patch.dict(os.environ, {}, clear=True):
+        with patch_runner_fixture_catalog(), tempfile.TemporaryDirectory() as tmp_dir, patch.dict(os.environ, {}, clear=True):
             with self.assertRaises(ConfigError):
                 generate_discrete_payload(task_id="contains-duplicates", runs_root=Path(tmp_dir), env_root=Path(tmp_dir))
 
@@ -288,7 +292,7 @@ class CodegenRunnerTest(unittest.TestCase):
 
     def test_invalid_llm_output_fails_immediately(self) -> None:
         runtime = make_runtime([chat_response({"candidates": [{"name": "bad"}]})])
-        with tempfile.TemporaryDirectory() as tmp_dir:
+        with patch_runner_fixture_catalog(), tempfile.TemporaryDirectory() as tmp_dir:
             with self.assertRaises(LlmResponseError):
                 generate_discrete_payload(
                     task_id="contains-duplicates",
@@ -298,7 +302,7 @@ class CodegenRunnerTest(unittest.TestCase):
                 )
 
     def test_proposal_prompt_requests_exact_candidate_budget_and_json_only_output(self) -> None:
-        task = dict(next(item for item in load_codegen_tasks() if item["id"] == "contains-duplicates"))
+        task = _fixture_task("contains-duplicates")
         task["candidate_budget"] = 1
         candidate = {
             "candidate_summary": "Checked-in baseline.",
@@ -326,7 +330,7 @@ class CodegenRunnerTest(unittest.TestCase):
             completion_tokens=4096,
         )
         runtime = make_runtime([truncated_response, truncated_response, truncated_response])
-        with tempfile.TemporaryDirectory() as tmp_dir:
+        with patch_runner_fixture_catalog(), tempfile.TemporaryDirectory() as tmp_dir:
             with self.assertRaises(LlmResponseError) as raised:
                 generate_discrete_payload(
                     task_id="contains-duplicates",
@@ -468,7 +472,7 @@ class CodegenRunnerTest(unittest.TestCase):
                 chat_response(FAILURE_REFLECTION_PAYLOAD),
             ]
         )
-        with tempfile.TemporaryDirectory() as tmp_dir:
+        with patch_runner_fixture_catalog(), tempfile.TemporaryDirectory() as tmp_dir:
             tmp = Path(tmp_dir)
             artifact_path = write_discrete_artifacts(
                 task_id="contains-duplicates",
@@ -507,7 +511,7 @@ class CodegenRunnerTest(unittest.TestCase):
 
     def test_timeout_failure_aborts_run(self) -> None:
         runtime = make_runtime([TimeoutError("timed out")] * 3)
-        with tempfile.TemporaryDirectory() as tmp_dir:
+        with patch_runner_fixture_catalog(), tempfile.TemporaryDirectory() as tmp_dir:
             with self.assertRaises(LlmTransportError):
                 generate_discrete_payload(
                     task_id="contains-duplicates",
@@ -518,7 +522,7 @@ class CodegenRunnerTest(unittest.TestCase):
 
     def test_invalid_http_json_aborts_run(self) -> None:
         runtime = make_runtime(["not-json"] * 3)
-        with tempfile.TemporaryDirectory() as tmp_dir:
+        with patch_runner_fixture_catalog(), tempfile.TemporaryDirectory() as tmp_dir:
             with self.assertRaises(LlmResponseError):
                 generate_discrete_payload(
                     task_id="contains-duplicates",
@@ -534,7 +538,7 @@ class CodegenRunnerTest(unittest.TestCase):
                 chat_response({"failure_pattern": "missing most fields"}),
             ]
         )
-        with tempfile.TemporaryDirectory() as tmp_dir:
+        with patch_runner_fixture_catalog(), tempfile.TemporaryDirectory() as tmp_dir:
             with self.assertRaises(LlmResponseError):
                 generate_discrete_payload(
                     task_id="contains-duplicates",
@@ -551,8 +555,7 @@ class CodegenRunnerTest(unittest.TestCase):
                 chat_response(NON_IMPROVING_PASS_PROPOSAL_PAYLOAD),
             ]
         )
-        task = next(item for item in load_codegen_tasks() if item["id"] == "contains-duplicates")
-        task = dict(task)
+        task = _fixture_task("contains-duplicates")
         task["generation_budget"] = 2
         task["branching_factor"] = 1
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -586,8 +589,7 @@ class CodegenRunnerTest(unittest.TestCase):
                 chat_response(REFLECTION_PAYLOAD),
             ]
         )
-        task = next(item for item in load_codegen_tasks() if item["id"] == "contains-duplicates")
-        task = dict(task)
+        task = _fixture_task("contains-duplicates")
         task["generation_budget"] = 1
         task["branching_factor"] = 1
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -611,8 +613,7 @@ class CodegenRunnerTest(unittest.TestCase):
                 chat_response(REFLECTION_PAYLOAD),
             ]
         )
-        task = next(item for item in load_codegen_tasks() if item["id"] == "planbench-lite")
-        task = dict(task)
+        task = _fixture_task("planbench-lite")
         task["generation_budget"] = 1
         task["candidate_budget"] = 1
         task["branching_factor"] = 1
@@ -642,8 +643,7 @@ class CodegenRunnerTest(unittest.TestCase):
                 chat_response(REFLECTION_PAYLOAD),
             ]
         )
-        task = next(item for item in load_codegen_tasks() if item["id"] == "contains-duplicates")
-        task = dict(task)
+        task = _fixture_task("contains-duplicates")
         task["generation_budget"] = 1
         task["branching_factor"] = 1
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -668,8 +668,7 @@ class CodegenRunnerTest(unittest.TestCase):
                 chat_response(REFLECTION_PAYLOAD),
             ]
         )
-        task = next(item for item in load_codegen_tasks() if item["id"] == "contains-duplicates")
-        task = dict(task)
+        task = _fixture_task("contains-duplicates")
         task["generation_budget"] = 1
         task["branching_factor"] = 1
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -697,8 +696,7 @@ class CodegenRunnerTest(unittest.TestCase):
                 chat_response(REFLECTION_PAYLOAD),
             ]
         )
-        task = next(item for item in load_codegen_tasks() if item["id"] == "contains-duplicates")
-        task = dict(task)
+        task = _fixture_task("contains-duplicates")
         task["generation_budget"] = 2
         task["branching_factor"] = 2
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -832,23 +830,38 @@ class CodegenRunnerTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp = Path(tmp_dir)
             for task in comparable_tasks:
-                if task["id"] != "livecodebench":
+                if task["id"] == "livecodebench":
+                    manifest_path = tmp / "livecodebench-questions.json"
+                    manifest_item = {
+                        "item_id": "livecodebench-test-item",
+                        "name": "livecodebench-test-item",
+                        "prompt": "Read two integers and print their sum.",
+                        "context": "Synthetic LiveCodeBench stdin sample.",
+                        "expected_answer": "Pass all public and private tests.",
+                        "metadata": {
+                            "problem_file": str(ROOT / "tests" / "fixtures" / "livecodebench" / "problems" / "stdin_problem.json"),
+                            "platform": "atcoder",
+                            "evaluation_mode": "stdin",
+                        },
+                    }
+                elif task.get("lazy_item_manifest"):
+                    manifest_path = tmp / f"{task['id']}-questions.json"
+                    manifest_item = {
+                        "item_id": f"{task['id']}-test-item",
+                        "name": f"{task['id']}-test-item",
+                        "prompt": f"Synthetic prompt for {task['id']}.",
+                        "context": "Synthetic dataset sample.",
+                        "choices": ["alpha", "beta", "gamma", "delta"],
+                        "expected_answer": "alpha",
+                        "metadata": {
+                            "correct_choice_index": 0,
+                            "answer_aliases": ["alpha"],
+                        },
+                    }
+                else:
                     continue
-                livecodebench_manifest = tmp / "livecodebench-questions.json"
-                livecodebench_item = {
-                    "item_id": "livecodebench-test-item",
-                    "name": "livecodebench-test-item",
-                    "prompt": "Read two integers and print their sum.",
-                    "context": "Synthetic LiveCodeBench stdin sample.",
-                    "expected_answer": "Pass all public and private tests.",
-                    "metadata": {
-                        "problem_file": str(ROOT / "tests" / "fixtures" / "livecodebench" / "problems" / "stdin_problem.json"),
-                        "platform": "atcoder",
-                        "evaluation_mode": "stdin",
-                    },
-                }
-                livecodebench_manifest.write_text(json.dumps({"items": [livecodebench_item]}, indent=2))
-                task["item_manifest_path"] = str(livecodebench_manifest)
+                manifest_path.write_text(json.dumps({"items": [manifest_item]}, indent=2))
+                task["item_manifest_path"] = str(manifest_path)
                 task["dataset_size"] = 1
                 task["lazy_item_manifest"] = False
             with (
@@ -987,6 +1000,53 @@ class CodegenRunnerTest(unittest.TestCase):
             self.assertEqual(item_run["question"]["id"], items[0]["item_id"])
             self.assertEqual(item_run["question"]["question_id"], items[0]["item_id"])
             self.assertEqual(item_run["question"]["raw_prompt"], items[0]["raw_prompt"])
+
+    def test_external_item_files_can_supply_large_context_without_bloating_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            items_dir = tmp / "items"
+            items_dir.mkdir(parents=True, exist_ok=True)
+            long_context = "context-line-" * 400
+            (items_dir / "item-1.json").write_text(json.dumps({"context": long_context}))
+            manifest = tmp / "questions.json"
+            manifest.write_text(
+                json.dumps(
+                    {
+                        "items": [
+                            {
+                                "item_id": "longbench-v2-0001",
+                                "name": "LongBench synthetic 1",
+                                "prompt": "Which choice is correct?",
+                                "choices": ["alpha", "beta", "gamma", "delta"],
+                                "expected_answer": "beta",
+                                "item_file": "items/item-1.json",
+                                "metadata": {
+                                    "dataset": "longbench-v2",
+                                    "correct_choice_index": 1,
+                                    "answer_aliases": ["beta"],
+                                },
+                            }
+                        ]
+                    }
+                )
+            )
+            task = {
+                "id": "longbench-v2",
+                "title": "LongBench v2",
+                "track": "longcontext_verified",
+                "item_manifest_path": str(manifest),
+                "prompt_context": "Edit editable.py only.",
+                "prompt_context_max_chars": 64,
+                "result_context_max_chars": 48,
+            }
+            items = load_question_manifest(task)
+            self.assertEqual(items[0]["raw_context"], long_context)
+            micro_task = build_micro_task(task, items[0])
+            self.assertIn("full context is still available to solve(question) at runtime", micro_task["prompt_context"])
+            question = _question_payload_for_result(task, items[0])
+            self.assertIsInstance(question["raw_context"], str)
+            self.assertIn("truncated from", question["raw_context"])
+            self.assertLess(len(question["raw_context"]), len(long_context))
 
 
 if __name__ == "__main__":

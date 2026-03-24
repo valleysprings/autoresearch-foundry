@@ -1,0 +1,19 @@
+{
+  "tasks": [
+    {
+      "id": "contains-duplicates",
+      "path": "test_fixtures/contains-duplicates",
+      "enabled": true
+    },
+    {
+      "id": "count-primes-up-to",
+      "path": "test_fixtures/count-primes-up-to",
+      "enabled": true
+    },
+    {
+      "id": "planbench-lite",
+      "path": "test_fixtures/planbench-lite",
+      "enabled": true
+    }
+  ]
+}

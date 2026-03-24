@@ -1,0 +1,28 @@
+{
+  "benchmark": {
+    "kind": "contains_duplicates",
+    "repeats": 14
+  },
+  "tests": [
+    {
+      "name": "unique-values",
+      "args": [[1, 2, 3, 4]],
+      "expected": false
+    },
+    {
+      "name": "has-duplicate",
+      "args": [[1, 2, 3, 2]],
+      "expected": true
+    },
+    {
+      "name": "empty",
+      "args": [[]],
+      "expected": false
+    },
+    {
+      "name": "pair",
+      "args": [[7, 7]],
+      "expected": true
+    }
+  ]
+}

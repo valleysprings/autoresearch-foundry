@@ -236,8 +236,8 @@ def selection_spec_for_task(task: dict[str, Any]) -> dict[str, Any]:
     profile["gate_summary"] = _render_gate_summary(profile["gate"])
     profile["tie_break_formula"] = _render_tie_break_formula(profile["tie_break_metrics"])
     profile["delta_template"] = (
-        "delta_primary_score compares the generation winner against the selected parent; "
-        "run_delta_primary_score compares the final winner against the baseline."
+        "evolve metric compares the generation winner against the selected parent. "
+        "Latest report improvement is shown separately against the round-1 winner."
     )
     profile["archive_summary"] = _render_archive_summary(profile["archive_features"])
     return profile

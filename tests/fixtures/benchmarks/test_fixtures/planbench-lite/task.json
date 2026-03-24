@@ -1,0 +1,33 @@
+{
+  "id": "planbench-lite",
+  "title": "PlanBench Example",
+  "description": "A 4-item local delivery-planning fixture used only by tests.",
+  "benchmark_tier": "experiment",
+  "track": "test_fixtures",
+  "dataset_id": "planbench_lite_v1",
+  "dataset_size": 4,
+  "local_dataset_only": true,
+  "item_manifest": "data/questions.json",
+  "split": "released-seed:local",
+  "answer_metric": "plan_validity",
+  "family": "planning",
+  "task_signature": ["single-file-optimization", "dataset-task", "planning", "test-fixture"],
+  "source_type": "dataset-task",
+  "editable_file": "editable.py",
+  "verifier": "verifier.py",
+  "entry_symbol": "solve",
+  "generation_budget": 4,
+  "candidate_budget": 3,
+  "branching_factor": 4,
+  "epsilon": 0.02,
+  "baseline_summary": "A placeholder planner that returns an empty plan for the active example delivery problem.",
+  "objective_spec": {
+    "display_name": "Solved ratio",
+    "direction": "max",
+    "unit": "ratio",
+    "summary_template": "Higher solved ratio is better across independently evolved example planning item runs. Shorter valid plans break ties.",
+    "formula": "solved_ratio = solved_problems / total_problems"
+  },
+  "prompt_context": "Edit editable.py only. The entry symbol solve(problem: dict) must return a list of action strings for the active delivery problem using the grammar drive/pickup/drop. Do not use browsing or external network access.",
+  "data_file": "data/problems.json"
+}

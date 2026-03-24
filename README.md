@@ -21,13 +21,16 @@ The current implementation is intentionally biased toward pure-function, determi
 
 The benchmark source of truth lives under [benchmark/](benchmark/).
 
-- each comparable benchmark task is a real local dataset such as `olymmath`, `math-500`, `aime-2024`, `aime-2025`, `aime-2026`, `planbench`, `sciq`, `qasc`, or `scienceqa`
+- math comparable benchmarks are real local datasets such as `olymmath`, `math-500`, `aime-2024`, `aime-2025`, and `aime-2026`
+- science QA comparable benchmarks are real local datasets such as `sciq`, `qasc`, `scienceqa`, and `openbookqa`
+- reasoning benchmarks are currently represented by `planbench` and `arc-challenge`
 - coding is now represented by `livecodebench`, wired as a lazy local cache over the full `release_v6` coding set
+- long-context benchmarks are currently represented by `longbench-v2`, wired as a lazy local cache over the official 503-question set
 - there is no standalone `leetcode` task id; LeetCode-style functional problems run as one branch inside `livecodebench`
 - each dataset fans out into independent question-runs
 - each question-run evolves its own solver trajectory and emits its own artifacts
 
-Only [benchmark/registry.json](benchmark/registry.json) is intended to sync by default. Dataset assets under `benchmark/`, plus notes under `references/`, stay local.
+Only [benchmark/registry.json](benchmark/registry.json) is intended to sync by default. Dataset assets materialized under `benchmark/`, plus notes under `references/`, stay local.
 
 ## 5-Layer Architecture
 

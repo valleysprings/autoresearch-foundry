@@ -34,6 +34,29 @@ def _preview(text: str, *, limit: int = QUESTION_PREVIEW_LIMIT) -> str:
     return normalized[: limit - 3].rstrip() + "..."
 
 
+def _task_char_limit(task: dict[str, Any], key: str) -> int | None:
+    value = task.get(key)
+    if value is None:
+        return None
+    try:
+        limit = int(value)
+    except (TypeError, ValueError):
+        return None
+    return limit if limit > 0 else None
+
+
+def _stringify_context(value: Any) -> str:
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=True)
+    return str(value)
+
+
+def _truncate_text(text: str, *, limit: int, note: str) -> str:
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip() + f"... {note}"
+
+
 def _dedupe_item_id(base_item_id: str, raw_item: dict[str, Any], index: int) -> str:
     metadata = dict(raw_item.get("metadata") or {})
     name = str(raw_item.get("name") or "").strip()
@@ -46,6 +69,32 @@ def _dedupe_item_id(base_item_id: str, raw_item: dict[str, Any], index: int) -> 
             parts.append(str(value))
     parts.append(str(index))
     return _slugify("-".join(parts))
+
+
+def _hydrate_manifest_item(raw_item: dict[str, Any], *, manifest_path: Path) -> dict[str, Any]:
+    hydrated = dict(raw_item)
+    item_file = raw_item.get("item_file")
+    if not isinstance(item_file, str) or not item_file.strip():
+        return hydrated
+
+    item_path = manifest_path.parent / item_file
+    if not item_path.exists():
+        raise FileNotFoundError(f"Question item file not found: {item_path}")
+
+    payload = json.loads(item_path.read_text())
+    if not isinstance(payload, dict):
+        raise ValueError(f"Question item file must contain an object: {item_path}")
+
+    raw_metadata = dict(hydrated.get("metadata") or {})
+    payload_metadata = dict(payload.get("metadata") or {})
+    if raw_metadata or payload_metadata:
+        hydrated["metadata"] = {**raw_metadata, **payload_metadata}
+
+    for key, value in payload.items():
+        if key == "metadata":
+            continue
+        hydrated[key] = value
+    return hydrated
 
 
 def load_question_manifest(task: dict[str, Any], min_items: int | None = None) -> list[dict[str, Any]]:
@@ -74,17 +123,24 @@ def load_question_manifest(task: dict[str, Any], min_items: int | None = None) -
                 f"but {requested_items} were requested."
             )
 
+    hydrated_items = [
+        _hydrate_manifest_item(raw_item, manifest_path=manifest_path)
+        for raw_item in raw_items
+        if isinstance(raw_item, dict)
+    ]
+    if len(hydrated_items) != len(raw_items):
+        for index, raw_item in enumerate(raw_items, start=1):
+            if not isinstance(raw_item, dict):
+                raise ValueError(f"Question manifest item {index} must be an object: {manifest_path}")
+
     base_item_ids = [
         _slugify(str(raw_item.get("item_id") or raw_item.get("name") or f"item-{index}"))
-        for index, raw_item in enumerate(raw_items, start=1)
-        if isinstance(raw_item, dict)
+        for index, raw_item in enumerate(hydrated_items, start=1)
     ]
     duplicate_ids = {item_id for item_id, count in Counter(base_item_ids).items() if count > 1}
     used_ids: set[str] = set()
     normalized: list[dict[str, Any]] = []
-    for index, raw_item in enumerate(raw_items, start=1):
-        if not isinstance(raw_item, dict):
-            raise ValueError(f"Question manifest item {index} must be an object: {manifest_path}")
+    for index, raw_item in enumerate(hydrated_items, start=1):
         prompt = raw_item.get("prompt")
         expected = raw_item.get("expected_answer")
         if not isinstance(prompt, str) or not prompt.strip():
@@ -180,10 +236,17 @@ def question_prompt_context(task: dict[str, Any], item: dict[str, Any]) -> str:
         sections.append(f"Question prompt: {prompt}")
     context = item.get("raw_context") if item.get("raw_context") is not None else item.get("context")
     if context:
-        if isinstance(context, (dict, list)):
-            context_text = json.dumps(context, ensure_ascii=True)
-        else:
-            context_text = str(context)
+        context_text = _stringify_context(context)
+        context_limit = _task_char_limit(task, "prompt_context_max_chars")
+        if context_limit is not None:
+            context_text = _truncate_text(
+                context_text,
+                limit=context_limit,
+                note=(
+                    f"[truncated from {len(context_text)} chars; "
+                    "the full context is still available to solve(question) at runtime]"
+                ),
+            )
         sections.append(f"Question context: {context_text}")
     choices = item.get("choices") or []
     if choices:

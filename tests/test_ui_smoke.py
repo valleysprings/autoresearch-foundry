@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 class UiSmokeTest(unittest.TestCase):
     def test_react_app_mentions_llm_required_and_dynamic_runtime(self) -> None:
         source = (ROOT / "ui" / "src" / "App.tsx").read_text()
+        self.assertIn('planning_verified: "Planning"', source)
+        self.assertIn('deepsearch_verified: "Deep Search"', source)
         self.assertIn("llm-required", source)
         self.assertIn("Auto Research Console", source)
         self.assertIn("Auto Research Operations Console", source)
@@ -51,6 +53,10 @@ class UiSmokeTest(unittest.TestCase):
         self.assertNotIn("sidecar", source)
         self.assertNotIn("Cached run reports", source)
         self.assertNotIn("Benchmark Reports", source)
+        self.assertNotIn('reasoning_verified: "Reasoning"', source)
+        self.assertNotIn('longcontext_verified: "Long Context"', source)
+        self.assertNotIn("Multihop Reasoning", source)
+        self.assertNotIn("Smoke / Regression", source)
         self.assertNotIn("Smoke / Regression Reports", source)
         self.assertNotIn("Generation Cap", source)
         self.assertNotIn("Candidates / Branch", source)
@@ -64,6 +70,17 @@ class UiSmokeTest(unittest.TestCase):
         self.assertNotIn("Autoresearch Benchmark Console", source)
         self.assertNotIn("EvoAlgo: Benchmark Workbench", source)
         self.assertIn("/src/main.tsx", source)
+
+    def test_styles_and_polling_guards_prevent_layout_blowout(self) -> None:
+        app_source = (ROOT / "ui" / "src" / "App.tsx").read_text()
+        styles = (ROOT / "ui" / "src" / "styles.css").read_text()
+        self.assertIn('document.addEventListener("visibilitychange"', app_source)
+        self.assertIn("IDLE_LATEST_RUN_POLL_MS", app_source)
+        self.assertIn("LIVE_JOB_BACKGROUND_POLL_MS", app_source)
+        self.assertIn("text-size-adjust: 100%", styles)
+        self.assertIn("scrollbar-gutter: stable;", styles)
+        self.assertIn("min-width: 0;", styles)
+        self.assertIn("width: 100%;", styles)
 
 
 if __name__ == "__main__":
