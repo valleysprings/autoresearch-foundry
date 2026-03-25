@@ -28,7 +28,8 @@ The benchmark source of truth lives under [benchmark/](benchmark/).
 - long-context benchmarks are currently represented by `longbench-v2`, wired as a lazy local cache over the official 503-question set
 - external agent benchmarks are now wired as auxiliary tasks such as `terminal-bench` via Harbor and `tau-bench-*`
 - OR benchmarks are now wired as auxiliary tasks such as `nl4opt`, `industryor`, and `co-bench`
-- there is no standalone `leetcode` task id; LeetCode-style functional problems run as one branch inside `livecodebench`
+
+For each dataset / problem instance:
 - each dataset fans out into independent question-runs
 - each question-run evolves its own solver trajectory and emits its own artifacts
 
