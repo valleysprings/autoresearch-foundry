@@ -1,6 +1,6 @@
 # LiveCodeBench v6
 
-This task mirrors the full `livecodebench/code_generation_lite` `release_v6` problem set as a dataset-task under the existing single-file evolve runtime.
+This task mirrors the full `livecodebench/code_generation_lite` `release_v6` problem set as a dataset task under the current dataset runtime.
 
 It does not depend on the official LiveCodeBench harness. Instead:
 

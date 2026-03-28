@@ -37,10 +37,8 @@ Each task declares three orthogonal dimensions in `task.json`:
   - `wrapper`
   - `implementation`
 - `runtime_backend`
-  where the task executes:
-  - `dataset`
-  - `external`
-  - `single`
+  active registry tasks currently execute under `dataset`
+  `external` remains a legacy disabled path in the codebase; direct local tasks and dataset fan-out both use `dataset`
 
 The task-facing metric is dataset-specific.
 
@@ -60,7 +58,7 @@ Two tiers are supported:
 - `comparable`
   main comparison tasks with local or relatively stable evaluation paths
 - `experiment`
-  useful external tasks that are not yet part of the main headline comparison
+  useful heavier tasks that are not yet part of the main headline comparison
 
 Current `comparable` tasks:
 
@@ -72,15 +70,29 @@ Current `comparable` tasks:
 
 Current `experiment` tasks:
 
-- terminal agent harnesses: `terminal-bench`, `tau-bench-retail`, `tau-bench-airline`
-- OR and optimization tasks: `nl4opt`, `industryor`, `co-bench`
+- OR and optimization tasks: `co-bench`
 
-These experiment tasks do not all have the same operational burden:
+Current enabled experiment-task setup note:
+
+- `co-bench` uses dataset fan-out with the checked-in official evaluator plus local dataset assets
+
+Checked-in but currently disabled external-harness tasks:
 
 - `terminal-bench` requires Harbor plus a working local Docker daemon
 - `tau-bench-*` requires isolated environment setup, but not the Harbor Docker path
 - `nl4opt` and `industryor` require local `coptpy` execution
-- `co-bench` uses the official external evaluator and cloned task repo
+
+## Dataset Preparation
+
+Preparing benchmark-local datasets is a prerequisite after clone.
+
+Run:
+
+```bash
+python benchmark/prepare_datasets.py
+```
+
+If a benchmark is missing local assets, the runtime should now point you at the matching `python benchmark/prepare_datasets.py --task-id ...` command, and OR benchmark setup is materialized under each task's own `benchmark/.../data/` directory.
 
 ## CLI And API
 
@@ -106,7 +118,7 @@ Useful flags:
 - `--item-workers`
 - `--max-items`
 - `--external-config '{"n_tasks": 3}'`
-  only on `run-task`, matching the server-side `external_config` request body
+  only on `run-task`, matching the server-side `external_config` request body for legacy external-harness tasks and fixtures
 - `--pretty`
   render human-readable summaries instead of JSON
 
@@ -118,7 +130,6 @@ python -m app tasks --task-id livecodebench --pretty
 python -m app runtime
 python -m app run-task --task-id livecodebench --max-items 3 --pretty
 python -m app latest-run --task-id livecodebench --pretty
-python -m app run-task --task-id terminal-bench --external-config '{"n_tasks": 2}'
 ```
 
 ## Web Workbench

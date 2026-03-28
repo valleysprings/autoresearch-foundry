@@ -15,7 +15,7 @@
   "task_mode": "answer",
   "optimization_scope": "implementation",
   "task_signature": [
-    "single-file-optimization",
+    "editable-file-optimization",
     "dataset-task",
     "planning",
     "test-fixture"

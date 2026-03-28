@@ -1,7 +1,7 @@
 {
   "id": "olymmath",
   "title": "OlymMATH",
-  "description": "Evolve a single-file solver independently for each OlymMATH en-hard test question in the local answer-available dataset split.",
+  "description": "Evolve the editable solver independently for each OlymMATH en-hard test question in the local answer-available dataset split.",
   "benchmark_tier": "comparable",
   "track": "math_verified",
   "dataset_id": "olymmath",
@@ -16,7 +16,7 @@
   "task_mode": "answer",
   "optimization_scope": "implementation",
   "task_signature": [
-    "single-file-optimization",
+    "editable-file-optimization",
     "dataset-task",
     "math-question-solving"
   ],

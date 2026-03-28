@@ -65,6 +65,20 @@ export type TaskSummary = {
   default_max_items?: number | null;
 };
 
+export type DatasetWarning = {
+  task_id: string;
+  title: string;
+  track: string;
+  manifest_path: string;
+  prepare_command: string;
+  message: string;
+};
+
+export type TaskCatalogPayload = {
+  tasks: TaskSummary[];
+  dataset_warnings?: DatasetWarning[];
+};
+
 export type CandidateMetrics = {
   objective: number | string;
   objective_score?: number | string;

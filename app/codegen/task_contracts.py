@@ -5,7 +5,7 @@ from typing import Any
 
 TASK_MODE_VALUES = frozenset({"answer", "artifact", "agent"})
 OPTIMIZATION_SCOPE_VALUES = frozenset({"prompt", "wrapper", "implementation"})
-RUNTIME_BACKEND_VALUES = frozenset({"single", "dataset", "external"})
+RUNTIME_BACKEND_VALUES = frozenset({"dataset", "external"})
 
 
 def _normalized_string(value: Any) -> str:

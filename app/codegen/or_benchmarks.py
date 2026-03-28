@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import importlib
+import json
 import math
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Any
@@ -31,21 +32,79 @@ _ADD_SCRIPT = (
     'else:\n'
     '    print("No Best Solution")\n'
 )
+def _local_or_dataset_path(task: dict[str, Any], config: dict[str, Any]) -> Path:
+    configured = str(config.get("dataset_path") or "").strip()
+    if configured:
+        return Path(configured)
+    return Path(str(task["task_dir"])) / "data" / "questions.json"
 
 
-def _require_or_modules() -> Any:
-    datasets = importlib.import_module("datasets")
-    importlib.import_module("coptpy")
-    return datasets
+def _prepare_datasets_hint(task: dict[str, Any]) -> str:
+    return f"Run `python benchmark/prepare_datasets.py --task-id {task['id']}` first."
 
 
-def _dataset_rows(dataset_name: str, split: str, *, max_items: int | None) -> list[dict[str, Any]]:
-    datasets = _require_or_modules()
-    dataset = datasets.load_dataset(dataset_name)[split]
-    rows = [dict(row) for row in dataset]
+def _run_local_or_prepare(task: dict[str, Any]) -> None:
+    task_dir = Path(str(task["task_dir"])).resolve()
+    prepare_path = task_dir / "prepare.py"
+    if not prepare_path.exists():
+        raise FileNotFoundError(
+            f"Local dataset is missing for {task['id']} and no prepare.py was found at {prepare_path}. "
+            f"{_prepare_datasets_hint(task)}"
+        )
+    completed = subprocess.run(
+        [sys.executable, str(prepare_path)],
+        cwd=task_dir,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        stderr = completed.stderr.strip()
+        stdout = completed.stdout.strip()
+        details = stderr or stdout or f"returncode={completed.returncode}"
+        raise RuntimeError(f"{prepare_path} failed: {details}")
+
+
+def _load_local_or_dataset_rows(path: Path) -> list[dict[str, Any]]:
+    payload = json.loads(path.read_text())
+    rows = payload.get("items") if isinstance(payload, dict) else payload
+    if not isinstance(rows, list):
+        raise ValueError(f"Local OR dataset manifest must contain a list of items: {path}")
+    normalized: list[dict[str, Any]] = []
+    for index, row in enumerate(rows, start=1):
+        if not isinstance(row, dict):
+            raise ValueError(f"Local OR dataset row {index} is not a JSON object: {path}")
+        question = str(row.get("prompt") or row.get("question") or row.get("en_question") or "").strip()
+        if not question:
+            raise ValueError(f"Local OR dataset row {index} is missing a question prompt: {path}")
+        normalized.append(
+            {
+                "item_id": str(row.get("item_id") or f"or-item-{index:04d}"),
+                "en_question": question,
+                "en_answer": row.get("expected_answer", row.get("answer", row.get("en_answer"))),
+            }
+        )
+    return normalized
+def _dataset_rows(
+    *,
+    task: dict[str, Any],
+    config: dict[str, Any],
+    max_items: int | None,
+) -> tuple[list[dict[str, Any]], str]:
+    local_path = _local_or_dataset_path(task, config)
+    configured_local_path = str(config.get("dataset_path") or "").strip()
+    if not local_path.exists() and not configured_local_path:
+        _run_local_or_prepare(task)
+    if local_path.exists():
+        rows = _load_local_or_dataset_rows(local_path)
+        source_label = str(local_path)
+    else:
+        raise FileNotFoundError(
+            f"Local OR dataset manifest not found: {local_path}. {_prepare_datasets_hint(task)}"
+        )
     if isinstance(max_items, int) and max_items > 0:
         rows = rows[:max_items]
-    return rows
+    return rows, source_label
 
 
 def _or_prompt(question: str) -> str:
@@ -177,15 +236,19 @@ def evaluate_coptpy_value_candidate(
     tolerance = float(config.get("numerical_err_tolerance") or 1e-4)
     dataset_name = str(config.get("dataset_name") or dataset_name)
     dataset_split = str(config.get("dataset_split") or dataset_split)
+    rows, dataset_source = _dataset_rows(
+        task=task,
+        config=config,
+        max_items=max_items,
+    )
 
     emit_progress(
         progress_callback,
         task_id=str(task["id"]),
         phase="external_dataset_loading",
-        message=f"Loading {dataset_name}:{dataset_split}",
+        message=f"Loading {dataset_source}",
         pace_ms=pace_ms,
     )
-    rows = _dataset_rows(dataset_name, dataset_split, max_items=max_items)
     llm_traces: list[dict[str, Any]] = []
     item_results: list[dict[str, Any]] = []
     passed = 0
@@ -266,6 +329,7 @@ def evaluate_coptpy_value_candidate(
         "external_summary": {
             "dataset_name": dataset_name,
             "dataset_split": dataset_split,
+            "dataset_source": dataset_source,
             "passed": passed,
             "total": total,
         },

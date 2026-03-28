@@ -201,18 +201,21 @@ class ServerApiTest(unittest.TestCase):
             aime_2026 = next(task for task in payload["tasks"] if task["id"] == "aime-2026")
             planbench = next(task for task in payload["tasks"] if task["id"] == "planbench")
             arc_challenge = next(task for task in payload["tasks"] if task["id"] == "arc-challenge")
-            longbench = next(task for task in payload["tasks"] if task["id"] == "longbench-v2")
+            longbench = next((task for task in payload["tasks"] if task["id"] == "longbench-v2"), None)
             sciq = next(task for task in payload["tasks"] if task["id"] == "sciq")
             qasc = next(task for task in payload["tasks"] if task["id"] == "qasc")
             scienceqa = next(task for task in payload["tasks"] if task["id"] == "scienceqa")
             openbookqa = next(task for task in payload["tasks"] if task["id"] == "openbookqa")
             livecodebench = next(task for task in payload["tasks"] if task["id"] == "livecodebench")
-            terminal_bench = next(task for task in payload["tasks"] if task["id"] == "terminal-bench")
-            tau_bench_retail = next(task for task in payload["tasks"] if task["id"] == "tau-bench-retail")
-            nl4opt = next(task for task in payload["tasks"] if task["id"] == "nl4opt")
+            co_bench = next(task for task in payload["tasks"] if task["id"] == "co-bench")
             task_ids = {task["id"] for task in payload["tasks"]}
             self.assertNotIn("contains-duplicates", task_ids)
             self.assertNotIn("planbench-lite", task_ids)
+            self.assertNotIn("terminal-bench", task_ids)
+            self.assertNotIn("tau-bench-retail", task_ids)
+            self.assertNotIn("tau-bench-airline", task_ids)
+            self.assertNotIn("nl4opt", task_ids)
+            self.assertNotIn("industryor", task_ids)
             self.assertEqual(olymmath["dataset_id"], "olymmath")
             self.assertEqual(olymmath["dataset_size"], 100)
             self.assertTrue(olymmath["local_dataset_only"])
@@ -228,13 +231,20 @@ class ServerApiTest(unittest.TestCase):
             self.assertTrue(planbench["local_dataset_only"])
             self.assertEqual(planbench["track"], "reasoning_verified")
             self.assertTrue(planbench["included_in_main_comparison"])
+            self.assertEqual(planbench["runtime_backend"], "dataset")
+            self.assertEqual(planbench["task_mode"], "answer")
+            self.assertEqual(planbench["optimization_scope"], "wrapper")
             self.assertEqual(arc_challenge["dataset_size"], 299)
             self.assertEqual(arc_challenge["track"], "reasoning_verified")
             self.assertEqual(arc_challenge["split"], "validation:ARC-Challenge")
-            self.assertEqual(longbench["dataset_size"], 503)
-            self.assertEqual(longbench["track"], "longcontext_verified")
-            self.assertEqual(longbench["split"], "train")
-            self.assertTrue(longbench["included_in_main_comparison"])
+            if longbench is not None:
+                self.assertEqual(longbench["dataset_size"], 503)
+                self.assertEqual(longbench["track"], "longcontext_verified")
+                self.assertEqual(longbench["split"], "train")
+                self.assertTrue(longbench["included_in_main_comparison"])
+            else:
+                warning_ids = {warning["task_id"] for warning in payload.get("dataset_warnings", [])}
+                self.assertIn("longbench-v2", warning_ids)
             self.assertEqual(sciq["track"], "science_verified")
             self.assertEqual(sciq["split"], "validation")
             self.assertEqual(sciq["dataset_size"], 1000)
@@ -255,29 +265,46 @@ class ServerApiTest(unittest.TestCase):
             self.assertFalse(livecodebench["supports_runtime_config"])
             self.assertTrue(livecodebench["supports_max_items"])
             self.assertEqual(livecodebench["default_max_items"], 1055)
-            self.assertEqual(terminal_bench["track"], "agent_verified")
-            self.assertFalse(terminal_bench["included_in_main_comparison"])
-            self.assertEqual(terminal_bench["runtime_backend"], "external")
-            self.assertEqual(terminal_bench["task_mode"], "agent")
-            self.assertEqual(terminal_bench["optimization_scope"], "wrapper")
-            self.assertTrue(terminal_bench["supports_runtime_config"])
-            self.assertEqual(terminal_bench["external_run_config"]["dataset"], "terminal-bench@2.0")
-            self.assertTrue(terminal_bench["supports_max_items"])
-            self.assertEqual(terminal_bench["default_max_items"], 5)
-            self.assertEqual(tau_bench_retail["track"], "agent_verified")
-            self.assertEqual(tau_bench_retail["task_mode"], "agent")
-            self.assertTrue(tau_bench_retail["supports_runtime_config"])
-            self.assertEqual(tau_bench_retail["default_max_items"], 10)
-            self.assertEqual(nl4opt["track"], "or_verified")
-            self.assertFalse(nl4opt["included_in_main_comparison"])
-            self.assertEqual(nl4opt["task_mode"], "artifact")
-            self.assertEqual(nl4opt["optimization_scope"], "wrapper")
-            self.assertTrue(nl4opt["supports_max_items"])
+            self.assertEqual(co_bench["track"], "or_verified")
+            self.assertFalse(co_bench["included_in_main_comparison"])
+            self.assertTrue(co_bench["local_dataset_only"])
+            self.assertEqual(co_bench["runtime_backend"], "dataset")
+            self.assertEqual(co_bench["task_mode"], "artifact")
+            self.assertEqual(co_bench["optimization_scope"], "wrapper")
+            self.assertFalse(co_bench["supports_runtime_config"])
+            self.assertTrue(co_bench["supports_max_items"])
+            self.assertEqual(co_bench["default_max_items"], 36)
+            self.assertFalse(co_bench["run_baseline_verifier"])
+            self.assertTrue(all(task["runtime_backend"] == "dataset" for task in payload["tasks"]))
             self.assertEqual([task["id"] for task in payload["tasks"][:5]], ["olymmath", "math-500", "aime-2024", "aime-2025", "aime-2026"])
         finally:
             httpd.shutdown()
             httpd.server_close()
             thread.join(timeout=5)
+
+    def test_tasks_endpoint_includes_dataset_warnings(self) -> None:
+        warning = {
+            "task_id": "longbench-v2",
+            "title": "LongBench v2",
+            "track": "longcontext_verified",
+            "manifest_path": "/tmp/benchmark/longcontext_verified/longbench-v2/data/questions.json",
+            "prepare_command": "python benchmark/prepare_datasets.py --task-id longbench-v2",
+            "message": "Missing local dataset manifest: /tmp/benchmark/longcontext_verified/longbench-v2/data/questions.json",
+        }
+        with (
+            patch.object(server, "list_codegen_task_summaries", return_value=[]),
+            patch.object(server, "list_missing_local_dataset_warnings", return_value=[warning]),
+        ):
+            httpd, thread = self._serve()
+            try:
+                status, payload = _fetch_json(f"http://127.0.0.1:{httpd.server_port}/api/tasks")
+                self.assertEqual(status, 200)
+                self.assertEqual(payload["tasks"], [])
+                self.assertEqual(payload["dataset_warnings"], [warning])
+            finally:
+                httpd.shutdown()
+                httpd.server_close()
+                thread.join(timeout=5)
 
     def test_invalid_model_override_fails_fast(self) -> None:
         with patch.object(server.ProposalRuntime, "from_env", return_value=make_runtime([])):

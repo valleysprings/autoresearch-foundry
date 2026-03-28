@@ -18,14 +18,7 @@ class CodegenCatalogTest(unittest.TestCase):
 
         self.assertEqual(
             {task["id"] for task in experiment_tasks},
-            {
-                "terminal-bench",
-                "tau-bench-retail",
-                "tau-bench-airline",
-                "nl4opt",
-                "industryor",
-                "co-bench",
-            },
+            {"co-bench"},
         )
         self.assertTrue(comparable_tasks)
         self.assertEqual(
@@ -38,6 +31,7 @@ class CodegenCatalogTest(unittest.TestCase):
                 "coding_verified",
             },
         )
+        self.assertTrue(all(task["runtime_backend"] == "dataset" for task in tasks))
         self.assertTrue(all(task["included_in_main_comparison"] for task in comparable_tasks))
         self.assertEqual([task["id"] for task in comparable_tasks[:5]], ["olymmath", "math-500", "aime-2024", "aime-2025", "aime-2026"])
 
@@ -63,12 +57,15 @@ class CodegenCatalogTest(unittest.TestCase):
         scienceqa = next(task for task in summaries if task["id"] == "scienceqa")
         openbookqa = next(task for task in summaries if task["id"] == "openbookqa")
         livecodebench = next(task for task in summaries if task["id"] == "livecodebench")
-        terminal_bench = next(task for task in summaries if task["id"] == "terminal-bench")
-        tau_bench_retail = next(task for task in summaries if task["id"] == "tau-bench-retail")
-        nl4opt = next(task for task in summaries if task["id"] == "nl4opt")
+        co_bench = next(task for task in summaries if task["id"] == "co-bench")
         summary_ids = {task["id"] for task in summaries}
         self.assertNotIn("contains-duplicates", summary_ids)
         self.assertNotIn("planbench-lite", summary_ids)
+        self.assertNotIn("terminal-bench", summary_ids)
+        self.assertNotIn("tau-bench-retail", summary_ids)
+        self.assertNotIn("tau-bench-airline", summary_ids)
+        self.assertNotIn("nl4opt", summary_ids)
+        self.assertNotIn("industryor", summary_ids)
 
         self.assertTrue(olymmath["local_dataset_only"])
         self.assertEqual(olymmath["dataset_size"], 100)
@@ -86,7 +83,10 @@ class CodegenCatalogTest(unittest.TestCase):
         self.assertEqual(planbench["track"], "reasoning_verified")
         self.assertTrue(planbench["included_in_main_comparison"])
         self.assertEqual(planbench["split"], "task_1_plan_generation:train")
-        self.assertEqual(planbench["selection_spec"]["profile"], "plan_length")
+        self.assertEqual(planbench["runtime_backend"], "dataset")
+        self.assertEqual(planbench["task_mode"], "answer")
+        self.assertEqual(planbench["optimization_scope"], "wrapper")
+        self.assertEqual(planbench["selection_spec"]["profile"], "objective_only")
         self.assertEqual(arc_challenge["dataset_size"], 299)
         self.assertEqual(arc_challenge["track"], "reasoning_verified")
         self.assertEqual(arc_challenge["split"], "validation:ARC-Challenge")
@@ -114,24 +114,18 @@ class CodegenCatalogTest(unittest.TestCase):
         self.assertFalse(livecodebench["supports_runtime_config"])
         self.assertTrue(livecodebench["supports_max_items"])
         self.assertEqual(livecodebench["default_max_items"], 1055)
-        self.assertEqual(terminal_bench["track"], "agent_verified")
-        self.assertFalse(terminal_bench["included_in_main_comparison"])
-        self.assertEqual(terminal_bench["runtime_backend"], "external")
-        self.assertEqual(terminal_bench["task_mode"], "agent")
-        self.assertEqual(terminal_bench["optimization_scope"], "wrapper")
-        self.assertTrue(terminal_bench["supports_runtime_config"])
-        self.assertEqual(terminal_bench["external_run_config"]["agent_name"], "terminus-2")
-        self.assertTrue(terminal_bench["supports_max_items"])
-        self.assertEqual(terminal_bench["default_max_items"], 5)
-        self.assertEqual(tau_bench_retail["track"], "agent_verified")
-        self.assertEqual(tau_bench_retail["task_mode"], "agent")
-        self.assertTrue(tau_bench_retail["supports_runtime_config"])
-        self.assertEqual(tau_bench_retail["default_max_items"], 10)
-        self.assertEqual(nl4opt["track"], "or_verified")
-        self.assertFalse(nl4opt["included_in_main_comparison"])
-        self.assertEqual(nl4opt["task_mode"], "artifact")
-        self.assertEqual(nl4opt["optimization_scope"], "wrapper")
-        self.assertTrue(nl4opt["supports_max_items"])
+        self.assertEqual(co_bench["track"], "or_verified")
+        self.assertFalse(co_bench["included_in_main_comparison"])
+        self.assertTrue(co_bench["local_dataset_only"])
+        self.assertEqual(co_bench["dataset_size"], 36)
+        self.assertEqual(co_bench["split"], "official:test")
+        self.assertEqual(co_bench["runtime_backend"], "dataset")
+        self.assertEqual(co_bench["task_mode"], "artifact")
+        self.assertEqual(co_bench["optimization_scope"], "wrapper")
+        self.assertFalse(co_bench["supports_runtime_config"])
+        self.assertTrue(co_bench["supports_max_items"])
+        self.assertEqual(co_bench["default_max_items"], 36)
+        self.assertFalse(co_bench["run_baseline_verifier"])
 
     def test_missing_local_benchmark_assets_are_skipped(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:

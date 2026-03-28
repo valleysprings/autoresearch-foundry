@@ -22,7 +22,7 @@ REFLECTION_REQUIRED_FIELDS = (
     "tool_trace_summary",
 )
 PROPOSAL_SYSTEM_PROMPT = (
-    "You are the only proposal model in a strict outer-loop single-file Python optimization system. "
+    "You are the only proposal model in a strict outer-loop editable-file Python optimization system. "
     "Return strict JSON with shape "
     '{"candidates":[{"name":"short label","strategy":"one sentence","rationale":"why it should win",'
     '"file_body":"full editable file contents","candidate_summary":"brief code summary"}]}.'

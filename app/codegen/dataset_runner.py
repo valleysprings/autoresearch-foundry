@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from app.codegen.catalog import seed_strategy_experiences
+from app.codegen.errors import AutoresearchError, ConfigError
 from app.configs.codegen import ITEM_MEMORY_JSON_NAME, ITEM_MEMORY_MD_NAME, QUESTION_PREVIEW_LIMIT
 from app.codegen.dataset_support import (
     aggregate_candidate,
@@ -14,7 +15,6 @@ from app.codegen.dataset_support import (
     is_dataset_task,
     load_question_manifest,
 )
-from app.codegen.errors import ConfigError
 from app.codegen.llm import ProposalRuntime
 from app.codegen.task_contracts import infer_optimization_scope, infer_runtime_backend, infer_task_mode
 from app.codegen.trainer import run_codegen_task
@@ -82,7 +82,7 @@ def _question_payload_for_result(task: dict[str, Any], item: dict[str, Any]) -> 
     }
 
 
-def _item_selector_aliases(item: dict[str, Any]) -> set[str]:
+def _item_selector_aliases(item: dict[str, Any], *, position: int | None = None) -> set[str]:
     metadata = dict(item.get("metadata") or {})
     aliases = {
         str(item.get("item_id") or "").strip().lower(),
@@ -94,6 +94,8 @@ def _item_selector_aliases(item: dict[str, Any]) -> set[str]:
     source_index = metadata.get("source_index")
     if isinstance(source_index, int) and source_index >= 0:
         aliases.add(str(source_index + 1))
+    if isinstance(position, int) and position > 0:
+        aliases.add(str(position))
     return {alias for alias in aliases if alias}
 
 
@@ -102,8 +104,8 @@ def _select_requested_items(items: list[dict[str, Any]], selected_item_ids: list
         return items
 
     alias_map: dict[str, list[dict[str, Any]]] = {}
-    for item in items:
-        for alias in _item_selector_aliases(item):
+    for position, item in enumerate(items, start=1):
+        for alias in _item_selector_aliases(item, position=position):
             alias_map.setdefault(alias, []).append(item)
 
     selected: list[dict[str, Any]] = []
@@ -177,6 +179,104 @@ def _progress_wrapper(
     return emit
 
 
+def _error_payload(exc: Exception) -> dict[str, Any]:
+    if isinstance(exc, AutoresearchError):
+        return exc.as_payload()
+    return {
+        "terminal": True,
+        "error_type": "runtime_error",
+        "error": str(exc),
+        "model": None,
+    }
+
+
+def _failed_candidate(
+    *,
+    role: str,
+    summary: str,
+    status: str,
+    error_message: str | None = None,
+) -> dict[str, Any]:
+    return {
+        "agent": role,
+        "label": summary,
+        "strategy": summary,
+        "rationale": error_message or summary,
+        "candidate_summary": summary,
+        "proposal_model": None,
+        "source_code": "",
+        "metrics": {
+            "objective": 0.0,
+            "objective_score": 0.0,
+            "primary_score": 0.0,
+            "tie_break_score": 0.0,
+            "gate_passed": False,
+            "verifier_status": status,
+            "status": status,
+            "error": error_message,
+            "test_results": [],
+        },
+    }
+
+
+def _failed_item_result(
+    *,
+    task: dict[str, Any],
+    item: dict[str, Any],
+    proposal_runtime: ProposalRuntime,
+    memory_before_count: int,
+    memory_after_count: int,
+    exc: Exception,
+) -> dict[str, Any]:
+    error_payload = _error_payload(exc)
+    error_message = str(error_payload.get("error") or exc)
+    error_trace: dict[str, Any] = {
+        "phase": "item_failed",
+        "item_id": item["item_id"],
+        "selected_model": error_payload.get("model") or proposal_runtime.active_model,
+        "error_type": error_payload.get("error_type"),
+        "error": error_message,
+    }
+    details = error_payload.get("details")
+    if isinstance(details, dict):
+        error_trace.update(details)
+    return {
+        "run_mode": "llm-required",
+        "active_model": proposal_runtime.active_model,
+        "selection_spec": dict(task.get("selection_spec") or {}),
+        "baseline": _failed_candidate(
+            role="baseline",
+            summary="Baseline not completed",
+            status="not-run",
+            error_message=error_message,
+        ),
+        "winner": _failed_candidate(
+            role="winner",
+            summary="Question run failed",
+            status="error",
+            error_message=error_message,
+        ),
+        "generations": [],
+        "objective_curve": [],
+        "llm_traces": [error_trace],
+        "memory_before_count": memory_before_count,
+        "memory_after_count": memory_after_count,
+        "positive_experiences_added": 0,
+        "negative_experiences_added": 0,
+        "added_experiences": [],
+        "memory_markdown": "",
+        "delta_primary_score": 0.0,
+        "run_delta_primary_score": 0.0,
+        "run_delta_objective": 0.0,
+        "selection_reason": f"Question run failed before completion: {error_message}",
+        "error_payload": error_payload,
+        "dataset_task_id": task["id"],
+        "item_id": item["item_id"],
+        "item_name": item.get("name") or item["item_id"],
+        "question": _question_payload_for_result(task, item),
+    }
+
+
 def _run_item(
     *,
     task: dict[str, Any],
@@ -192,22 +292,45 @@ def _run_item(
     store = _memory_store_for_item(memory_root, str(task["id"]), str(item["item_id"]))
     store.ensure_seed_records(seed_strategy_experiences())
     before_count = store.count()
-    result = run_codegen_task(
-        micro_task,
-        store,
-        proposal_runtime=proposal_runtime,
-        workspace_root=workspace_root / task["id"] / "item_runs" / item["item_id"],
-        session_id=f"{session_id}-{item['item_id']}",
-        progress_callback=_progress_wrapper(
-            progress_callback=progress_callback,
-            dataset_task_id=str(task["id"]),
-            item_id=str(item["item_id"]),
-            item_name=str(item.get("name") or item["item_id"]),
-            item_prompt=str(item.get("raw_prompt") or item["prompt"]),
-            expected_answer=item.get("raw_expected_answer") or item.get("expected_answer"),
-        ),
-        pace_ms=pace_ms,
+    item_progress = _progress_wrapper(
+        progress_callback=progress_callback,
+        dataset_task_id=str(task["id"]),
+        item_id=str(item["item_id"]),
+        item_name=str(item.get("name") or item["item_id"]),
+        item_prompt=str(item.get("raw_prompt") or item["prompt"]),
+        expected_answer=item.get("raw_expected_answer") or item.get("expected_answer"),
     )
+    try:
+        result = run_codegen_task(
+            micro_task,
+            store,
+            proposal_runtime=proposal_runtime,
+            workspace_root=workspace_root / task["id"] / "item_runs" / item["item_id"],
+            session_id=f"{session_id}-{item['item_id']}",
+            progress_callback=item_progress,
+            pace_ms=pace_ms,
+        )
+    except Exception as exc:
+        after_count = store.count()
+        if item_progress is not None:
+            payload = _error_payload(exc)
+            item_progress(
+                {
+                    "phase": "item_failed",
+                    "selected_model": payload.get("model") or proposal_runtime.active_model,
+                    "error_type": payload.get("error_type"),
+                    "error": payload.get("error"),
+                    "message": f"Question run failed: {payload.get('error') or exc}",
+                }
+            )
+        return _failed_item_result(
+            task=task,
+            item=item,
+            proposal_runtime=proposal_runtime,
+            memory_before_count=before_count,
+            memory_after_count=after_count,
+            exc=exc,
+        )
     after_count = store.count()
     result["memory_before_count"] = before_count
     result["memory_after_count"] = after_count
@@ -250,7 +373,7 @@ def run_dataset_task(
         )
 
     configured_workers = int(task.get("item_workers") or 20)
-    max_workers = max(1, min(configured_workers, len(items)))
+    max_workers = max(1, min(configured_workers, proposal_runtime.config.llm_concurrency, len(items)))
     if len(items) <= 1:
         item_runs = [
             _run_item(
@@ -266,9 +389,10 @@ def run_dataset_task(
         ] if items else []
     else:
         executor = ThreadPoolExecutor(max_workers=max_workers)
-        futures = []
+        future_to_item: dict[Any, dict[str, Any]] = {}
+        item_runs = []
         try:
-            futures = [
+            future_to_item = {
                 executor.submit(
                     _run_item,
                     task=task,
@@ -279,16 +403,25 @@ def run_dataset_task(
                     session_id=session_id,
                     progress_callback=progress_callback,
                     pace_ms=pace_ms,
-                )
+                ): item
                 for item in items
-            ]
-            item_runs = [future.result() for future in as_completed(futures)]
-        except Exception:
-            for future in futures:
-                future.cancel()
-            executor.shutdown(wait=False, cancel_futures=True)
-            raise
-        else:
+            }
+            for future in as_completed(future_to_item):
+                item = future_to_item[future]
+                try:
+                    item_runs.append(future.result())
+                except Exception as exc:
+                    item_runs.append(
+                        _failed_item_result(
+                            task=task,
+                            item=item,
+                            proposal_runtime=proposal_runtime,
+                            memory_before_count=0,
+                            memory_after_count=0,
+                            exc=exc,
+                        )
+                    )
+        finally:
             executor.shutdown(wait=True, cancel_futures=False)
 
     item_runs.sort(key=lambda item_run: str(item_run["item_id"]))
@@ -342,6 +475,7 @@ def run_dataset_task(
             "local_dataset_only": task["local_dataset_only"],
             "split": task.get("split"),
             "included_in_main_comparison": task["included_in_main_comparison"],
+            "run_baseline_verifier": bool(task.get("run_baseline_verifier", True)),
         },
         "baseline": aggregate_candidate("baseline", item_runs, task["objective_label"]),
         "winner": aggregate_candidate("winner", item_runs, task["objective_label"]),

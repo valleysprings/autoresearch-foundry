@@ -1,12 +1,7 @@
 def build_run_config() -> dict:
     return {
-        "repo_url": "https://github.com/sunnweiwei/CO-Bench.git",
-        "problem_names": [
-            "Aircraft landing",
-            "Assignment problem",
-            "TSP",
-        ],
         "timeout_s": 10,
+        "download_max_workers": 2,
     }
 
 

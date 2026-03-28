@@ -18,7 +18,7 @@ from pathlib import Path
 from unittest.mock import Mock
 from urllib.parse import parse_qs, urlparse
 
-from app.codegen.catalog import list_codegen_task_summaries
+from app.codegen.catalog import list_codegen_task_summaries, list_missing_local_dataset_warnings
 from app.codegen.errors import AutoresearchError, ConfigError
 from app.codegen.llm import ProposalRuntime
 from app.configs.prompts import MODEL_COMPLETION_MAX_ATTEMPTS
@@ -588,7 +588,13 @@ class DemoHandler(SimpleHTTPRequestHandler):
             return
 
         if parsed.path == "/api/tasks":
-            _json_response(self, {"tasks": list_codegen_task_summaries()})
+            _json_response(
+                self,
+                {
+                    "tasks": list_codegen_task_summaries(),
+                    "dataset_warnings": list_missing_local_dataset_warnings(),
+                },
+            )
             return
 
         if parsed.path == "/api/runtime":

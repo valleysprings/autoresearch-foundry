@@ -225,6 +225,8 @@ docs/
 /benchmark/**
 !/benchmark/
 !/benchmark/registry.json
+!/benchmark/README.md
+!/benchmark/prepare_datasets.py
 !/benchmark/math_verified/
 !/benchmark/math_verified/**
 !/benchmark/coding_verified/
@@ -251,8 +253,10 @@ docs/
 /benchmark/longcontext_verified/**
 !/benchmark/longcontext_verified/longbench-v2/
 !/benchmark/longcontext_verified/longbench-v2/**
-/benchmark/longcontext_verified/longbench-v2/data/
-/benchmark/longcontext_verified/longbench-v2/data/**
+/benchmark/**/data/
+/benchmark/**/data/**
+/benchmark/**/vendor/
+/benchmark/**/vendor/**
 /benchmark/**/__pycache__/
 /benchmark/**/*.pyc
 node_modules/

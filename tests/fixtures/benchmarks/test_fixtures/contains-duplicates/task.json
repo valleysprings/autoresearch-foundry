@@ -7,11 +7,11 @@
   "dataset_id": "contains-duplicates-v1",
   "answer_metric": "speedup_vs_baseline",
   "family": "set-logic",
-  "runtime_backend": "single",
+  "runtime_backend": "dataset",
   "task_mode": "answer",
   "optimization_scope": "implementation",
   "task_signature": [
-    "single-file-optimization",
+    "editable-file-optimization",
     "test-fixture",
     "duplicate-detection"
   ],

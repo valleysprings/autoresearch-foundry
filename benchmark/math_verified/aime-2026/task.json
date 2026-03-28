@@ -1,7 +1,7 @@
 {
   "id": "aime-2026",
   "title": "AIME 2026",
-  "description": "Evolve a single-file solver independently for each AIME 2026 short-answer question in the local public split.",
+  "description": "Evolve the editable solver independently for each AIME 2026 short-answer question in the local public split.",
   "benchmark_tier": "comparable",
   "track": "math_verified",
   "dataset_id": "aime_2026_full",
@@ -16,7 +16,7 @@
   "task_mode": "answer",
   "optimization_scope": "implementation",
   "task_signature": [
-    "single-file-optimization",
+    "editable-file-optimization",
     "dataset-task",
     "math-question-solving"
   ],

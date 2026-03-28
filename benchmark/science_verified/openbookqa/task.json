@@ -1,7 +1,7 @@
 {
   "id": "openbookqa",
   "title": "OpenBookQA",
-  "description": "Evolve a single-file solver independently for each OpenBookQA validation science question, using the official additional split with the core supporting fact.",
+  "description": "Evolve the editable solver independently for each OpenBookQA validation science question, using the official additional split with the core supporting fact.",
   "benchmark_tier": "comparable",
   "track": "science_verified",
   "dataset_id": "openbookqa",
@@ -17,7 +17,7 @@
   "task_mode": "answer",
   "optimization_scope": "implementation",
   "task_signature": [
-    "single-file-optimization",
+    "editable-file-optimization",
     "dataset-task",
     "science-question-solving",
     "open-book-qa",

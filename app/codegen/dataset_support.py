@@ -35,6 +35,13 @@ def _preview(text: str, *, limit: int = QUESTION_PREVIEW_LIMIT) -> str:
     return normalized[: limit - 3].rstrip() + "..."
 
 
+def _prepare_datasets_hint(task: dict[str, Any]) -> str:
+    task_id = str(task.get("id") or "").strip()
+    if task_id:
+        return f"Run `python benchmark/prepare_datasets.py --task-id {task_id}` first."
+    return "Run `python benchmark/prepare_datasets.py` first."
+
+
 def _task_char_limit(task: dict[str, Any], key: str) -> int | None:
     value = task.get(key)
     if value is None:
@@ -108,7 +115,7 @@ def load_question_manifest(task: dict[str, Any], min_items: int | None = None) -
         _run_task_prepare(task, min_items=min_items)
 
     if not manifest_path.exists():
-        raise FileNotFoundError(f"Question manifest not found: {manifest_path}")
+        raise FileNotFoundError(f"Question manifest not found: {manifest_path}. {_prepare_datasets_hint(task)}")
 
     raw_items = _load_manifest_items(manifest_path)
 
@@ -202,7 +209,10 @@ def _run_task_prepare(task: dict[str, Any], *, min_items: int | None) -> None:
     task_dir = Path(str(task.get("task_dir") or "")).resolve()
     prepare_path = task_dir / "prepare.py"
     if not prepare_path.exists():
-        raise FileNotFoundError(f"Task {task.get('id') or '<unknown>'} is missing prepare.py for lazy manifest loading.")
+        raise FileNotFoundError(
+            f"Task {task.get('id') or '<unknown>'} is missing prepare.py for lazy manifest loading. "
+            f"{_prepare_datasets_hint(task)}"
+        )
 
     args = [sys.executable, str(prepare_path)]
     if isinstance(min_items, int) and min_items > 0:
@@ -218,7 +228,9 @@ def _run_task_prepare(task: dict[str, Any], *, min_items: int | None) -> None:
         stderr = completed.stderr.strip()
         stdout = completed.stdout.strip()
         details = stderr or stdout or f"returncode={completed.returncode}"
-        raise RuntimeError(f"Task {task.get('id') or '<unknown>'} prepare.py failed: {details}")
+        raise RuntimeError(
+            f"Task {task.get('id') or '<unknown>'} prepare.py failed: {details}. {_prepare_datasets_hint(task)}"
+        )
 
 
 def micro_task_id(dataset_task_id: str, item_id: str) -> str:
@@ -305,12 +317,26 @@ def aggregate_dataset_metrics(item_runs: list[dict[str, Any]]) -> dict[str, Any]
     }
 
 
+def _aggregate_verifier_status(statuses: list[object]) -> str:
+    normalized = [str(status or "").strip().lower() for status in statuses if str(status or "").strip()]
+    if not normalized:
+        return "not-run"
+    unique = set(normalized)
+    if len(unique) == 1:
+        return normalized[0]
+    return "mixed"
+
+
 def aggregate_candidate(role: str, item_runs: list[dict[str, Any]], objective_label: str) -> dict[str, Any]:
     objective_total = sum(float(item[role]["metrics"]["objective"] or 0.0) for item in item_runs)
     objective_score_total = sum(float(item[role]["metrics"].get("objective_score") or 0.0) for item in item_runs)
     primary_score_total = sum(float(item[role]["metrics"].get("primary_score") or 0.0) for item in item_runs)
     tie_break_score_total = sum(float(item[role]["metrics"].get("tie_break_score") or 0.0) for item in item_runs)
     total_items = len(item_runs)
+    aggregate_status = _aggregate_verifier_status(
+        [item[role]["metrics"].get("verifier_status") or item[role]["metrics"].get("status") for item in item_runs]
+    )
+    gate_passed = bool(item_runs) and all(bool(item[role]["metrics"].get("gate_passed")) for item in item_runs)
     if total_items:
         objective_total /= total_items
         objective_score_total /= total_items
@@ -330,8 +356,8 @@ def aggregate_candidate(role: str, item_runs: list[dict[str, Any]], objective_la
             "objective_score": round(objective_score_total, 6),
             "primary_score": round(primary_score_total, 6),
             "tie_break_score": round(tie_break_score_total, 6),
-            "gate_passed": True,
-            "verifier_status": "pass",
-            "status": "pass",
+            "gate_passed": gate_passed,
+            "verifier_status": aggregate_status,
+            "status": aggregate_status,
         },
     }

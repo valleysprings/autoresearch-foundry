@@ -1,4 +1,4 @@
-import type { JobState, Payload, RuntimeInfo, TaskSummary } from "./types";
+import type { JobState, Payload, RuntimeInfo, TaskCatalogPayload } from "./types";
 
 type StartJobOptions = {
   branchingFactor?: number | null;
@@ -33,9 +33,8 @@ export async function loadRuntime(model?: string): Promise<RuntimeInfo> {
   return fetchJson<RuntimeInfo>(`/api/runtime${query}`);
 }
 
-export async function loadTasks(): Promise<TaskSummary[]> {
-  const payload = await fetchJson<{ tasks: TaskSummary[] }>("/api/tasks");
-  return payload.tasks;
+export async function loadTasks(): Promise<TaskCatalogPayload> {
+  return fetchJson<TaskCatalogPayload>("/api/tasks");
 }
 
 export async function loadLatestRun(taskId?: string): Promise<Payload> {

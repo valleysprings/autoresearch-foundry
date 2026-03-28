@@ -1,5 +1,23 @@
 import type { Payload, TaskSummary } from "./types";
 
+export function mergeTaskCatalogs(fallbackCatalog: TaskSummary[], cachedCatalog: TaskSummary[] | undefined): TaskSummary[] {
+  if (!Array.isArray(cachedCatalog) || !cachedCatalog.length) {
+    return fallbackCatalog;
+  }
+  const cachedById = new Map(cachedCatalog.map((task) => [task.id, task]));
+  return fallbackCatalog.map((task) => {
+    const cachedTask = cachedById.get(task.id);
+    if (!cachedTask) {
+      return task;
+    }
+    return {
+      ...cachedTask,
+      ...task,
+      id: task.id,
+    };
+  });
+}
+
 export function latestTaskIdFromPayload(payload: Payload | null | undefined): string | null {
   if (!payload || !Array.isArray(payload.runs)) {
     return null;

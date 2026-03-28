@@ -1,7 +1,7 @@
 {
   "id": "arc-challenge",
   "title": "ARC-Challenge",
-  "description": "Evolve a single-file solver independently for each ARC-Challenge validation multiple-choice reasoning question.",
+  "description": "Evolve the editable solver independently for each ARC-Challenge validation multiple-choice reasoning question.",
   "benchmark_tier": "comparable",
   "track": "reasoning_verified",
   "dataset_id": "ai2_arc_arc_challenge",
@@ -17,7 +17,7 @@
   "task_mode": "answer",
   "optimization_scope": "implementation",
   "task_signature": [
-    "single-file-optimization",
+    "editable-file-optimization",
     "dataset-task",
     "reasoning",
     "science-question-solving",

@@ -184,7 +184,7 @@ FULL_FILE_PROPOSAL_PAYLOAD = {
     "candidates": [
         {
             "name": "Full editable file",
-            "strategy": "Return the entire editable file as required by the single-file benchmark contract.",
+            "strategy": "Return the entire editable file as required by the editable-file benchmark contract.",
             "rationale": "The runtime should accept a full file_body payload without any extra wrapping logic.",
             "imports": [],
             "file_body": _file_with_entry("contains_duplicates", "values", "return len(values) != len(set(values))"),
@@ -627,7 +627,7 @@ class CodegenRunnerTest(unittest.TestCase):
                     branching_factor=1,
                 )
 
-    def test_reflection_failure_aborts_run(self) -> None:
+    def test_reflection_failure_is_skipped_for_robustness(self) -> None:
         runtime = make_runtime(
             [
                 chat_response(PROPOSAL_PAYLOAD),
@@ -635,13 +635,18 @@ class CodegenRunnerTest(unittest.TestCase):
             ]
         )
         with patch_runner_fixture_catalog(), tempfile.TemporaryDirectory() as tmp_dir:
-            with self.assertRaises(LlmResponseError):
-                generate_discrete_payload(
-                    task_id="contains-duplicates",
-                    proposal_runtime=runtime,
-                    runs_root=Path(tmp_dir),
-                    branching_factor=1,
-                )
+            payload = generate_discrete_payload(
+                task_id="contains-duplicates",
+                proposal_runtime=runtime,
+                runs_root=Path(tmp_dir),
+                generation_budget=1,
+                branching_factor=1,
+            )
+        run = payload["runs"][0]
+        self.assertEqual(run["winner"]["metrics"]["status"], "pass")
+        self.assertEqual(run["positive_experiences_added"], 0)
+        self.assertEqual(run["negative_experiences_added"], 0)
+        self.assertTrue(any(trace.get("phase") == "memory_reflection_failed" for trace in run["llm_traces"]))
 
     def test_non_improving_passing_candidate_skips_failure_memory_writeback(self) -> None:
         runtime = make_runtime(
@@ -822,6 +827,84 @@ class CodegenRunnerTest(unittest.TestCase):
             self.assertTrue(any(event.get("branch_id") == "g2-b1" for event in events))
             self.assertTrue(any(event.get("branch_id") == "g2-b2" for event in events))
 
+    def test_branch_transport_error_does_not_abort_other_parallel_branches(self) -> None:
+        runtime = make_runtime([])
+        task = _fixture_task("contains-duplicates")
+        task["generation_budget"] = 2
+        task["candidate_budget"] = 1
+        task["branching_factor"] = 2
+
+        candidate_specs = [
+            {
+                "agent": "candidate-1",
+                "label": "Full editable file",
+                "strategy": "Return the full editable file for the fixture task.",
+                "rationale": "A valid branch should still complete even if a sibling branch fails in transport.",
+                "imports": [],
+                "file_body": FULL_FILE_PROPOSAL_PAYLOAD["candidates"][0]["file_body"],
+                "candidate_summary": "Set-cardinality duplicate detector returned as a full editable file.",
+                "run_mode": "llm-required",
+                "proposal_model": "deepseek-chat",
+            }
+        ]
+        proposal_lock = threading.Lock()
+        proposal_calls = 0
+
+        def flaky_proposals(*_args, **_kwargs):
+            nonlocal proposal_calls
+            with proposal_lock:
+                proposal_calls += 1
+                call_number = proposal_calls
+            if call_number == 2:
+                raise LlmTransportError("Model request timed out.", model="deepseek-chat")
+            return candidate_specs, {"selected_model": "deepseek-chat", "parse_status": "ok", "attempt": 1}
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            store = MemoryStore(tmp / "memory.json", markdown_path=tmp / "memory.md")
+            store.ensure_seed_records(seed_strategy_experiences())
+            with patch("app.codegen.trainer.propose_code_candidates", side_effect=flaky_proposals), patch(
+                "app.codegen.trainer.reflect_strategy_experience",
+                return_value=(REFLECTION_PAYLOAD, {"selected_model": "deepseek-chat", "attempt": 1}),
+            ):
+                result = run_codegen_task(
+                    task,
+                    store,
+                    proposal_runtime=runtime,
+                    workspace_root=tmp / "workspace",
+                    session_id="branch-transport-isolated",
+                )
+        self.assertEqual(result["winner"]["metrics"]["status"], "pass")
+        self.assertEqual(len(result["generations"][1]["branches"]), 2)
+        self.assertTrue(any(branch["winner"]["metrics"]["status"] == "error" for branch in result["generations"][1]["branches"]))
+        self.assertTrue(any(trace.get("phase") == "proposal_generation_failed" for trace in result["llm_traces"]))
+
+    def test_reflection_transport_error_does_not_abort_verified_candidate(self) -> None:
+        runtime = make_runtime([chat_response(FULL_FILE_PROPOSAL_PAYLOAD)])
+        task = _fixture_task("contains-duplicates")
+        task["generation_budget"] = 1
+        task["candidate_budget"] = 1
+        task["branching_factor"] = 1
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            store = MemoryStore(tmp / "memory.json", markdown_path=tmp / "memory.md")
+            store.ensure_seed_records(seed_strategy_experiences())
+            with patch(
+                "app.codegen.trainer.reflect_strategy_experience",
+                side_effect=LlmTransportError("Reflection request timed out.", model="deepseek-chat"),
+            ):
+                result = run_codegen_task(
+                    task,
+                    store,
+                    proposal_runtime=runtime,
+                    workspace_root=tmp / "workspace",
+                    session_id="reflection-transport-isolated",
+                )
+        self.assertEqual(result["winner"]["metrics"]["status"], "pass")
+        self.assertEqual(result["positive_experiences_added"], 0)
+        self.assertEqual(result["negative_experiences_added"], 0)
+        self.assertTrue(any(trace.get("phase") == "memory_reflection_failed" for trace in result["llm_traces"]))
+
     def test_min_objective_uses_normalized_objective_score_for_selection(self) -> None:
         baseline_metrics = {
             "status": "pass",
@@ -898,7 +981,7 @@ class CodegenRunnerTest(unittest.TestCase):
                     "formula": "latency_ms = elapsed_ms",
                 },
                 "task_signature": ["python-codegen", "synthetic", "min-objective"],
-                "runtime_backend": "single",
+                "runtime_backend": "dataset",
                 "task_mode": "answer",
                 "optimization_scope": "implementation",
                 "generation_budget": 1,
@@ -922,6 +1005,94 @@ class CodegenRunnerTest(unittest.TestCase):
                 )
             self.assertEqual(result["winner"]["metrics"]["objective"], 6.0)
             self.assertEqual(result["winner"]["metrics"]["objective_score"], -6.0)
+            self.assertTrue(result["generations"][0]["winner_accepted"])
+
+    def test_skipping_baseline_verifier_still_accepts_the_first_passing_candidate(self) -> None:
+        candidate_metrics = {
+            "status": "pass",
+            "verifier_status": "pass",
+            "objective": 0.0,
+            "objective_score": 0.0,
+            "primary_score": 0.0,
+            "tie_break_score": 0.0,
+            "gate_passed": True,
+            "benchmark_ms": 1.0,
+            "passed_tests": 1,
+            "total_tests": 1,
+        }
+        runtime = make_runtime(
+            [
+                chat_response(
+                    {
+                        "candidates": [
+                            {
+                                "name": "Reference-only baseline skip candidate",
+                                "strategy": "Return a full file candidate after skipping the checked-in baseline verifier.",
+                                "rationale": "Heavy verifier tasks should still promote the first verified candidate even when the baseline is reference-only.",
+                                "imports": [],
+                                "file_body": _file_with_entry("solve", "values", "return values[0]"),
+                                "candidate_summary": "Synthetic candidate accepted against a reference-only baseline.",
+                            }
+                        ]
+                    }
+                ),
+                chat_response(REFLECTION_PAYLOAD),
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            editable_path = tmp / "editable.py"
+            editable_path.write_text(_file_with_entry("solve", "values", "return values[0]"))
+            task = {
+                "id": "synthetic-reference-only-baseline",
+                "title": "Synthetic reference-only baseline",
+                "description": "Skip the baseline verifier but still accept the first passing candidate.",
+                "family": "numeric",
+                "function_name": "solve",
+                "entry_symbol": "solve",
+                "editable_file": "editable.py",
+                "editable_filename": "editable.py",
+                "editable_path": str(editable_path),
+                "verifier_path": str(editable_path),
+                "answer_metric": "score",
+                "benchmark_tier": "experiment",
+                "track": "synthetic",
+                "dataset_id": "synthetic_reference_only_v1",
+                "included_in_main_comparison": False,
+                "objective_label": "score",
+                "objective_direction": "max",
+                "objective_spec": {
+                    "display_name": "Score",
+                    "direction": "max",
+                    "unit": "score",
+                    "summary_template": "Higher is better.",
+                    "formula": "score = objective",
+                },
+                "task_signature": ["python-codegen", "synthetic", "reference-only-baseline"],
+                "runtime_backend": "dataset",
+                "task_mode": "answer",
+                "optimization_scope": "implementation",
+                "generation_budget": 1,
+                "candidate_budget": 1,
+                "branching_factor": 1,
+                "epsilon": 0.0,
+                "baseline_summary": "Baseline synthetic solver.",
+                "run_baseline_verifier": False,
+            }
+            store = MemoryStore(tmp / "memory.json", markdown_path=tmp / "memory.md")
+            store.ensure_seed_records(seed_strategy_experiences())
+            with patch("app.codegen.trainer.evaluate_materialized_candidate", return_value=candidate_metrics) as evaluate_candidate:
+                result = run_codegen_task(
+                    task,
+                    store,
+                    proposal_runtime=runtime,
+                    workspace_root=tmp / "workspace",
+                    session_id="reference-only-baseline",
+                )
+
+            evaluate_candidate.assert_called_once()
+            self.assertEqual(result["baseline"]["metrics"]["verifier_status"], "not-run")
+            self.assertEqual(result["winner"]["candidate_id"], "synthetic-reference-only-baseline-g1-b1-c1")
             self.assertTrue(result["generations"][0]["winner_accepted"])
 
     def test_full_sequence_only_runs_comparable_tasks(self) -> None:
@@ -1065,6 +1236,89 @@ class CodegenRunnerTest(unittest.TestCase):
             self.assertTrue(any(event.get("item_brief") for event in events if event.get("item_id") == items[0]["item_id"]))
             self.assertTrue(any(event.get("expected_answer") == items[0]["expected_answer"] for event in events if event.get("item_id") == items[0]["item_id"]))
 
+    def test_dataset_task_isolates_single_item_transport_failure(self) -> None:
+        def transport(request_body, _config):
+            prompt = str(request_body["messages"][1]["content"])
+            if "olymmath-r1" in prompt:
+                raise LlmTransportError("Model request timed out.", model="deepseek-chat")
+            if "Outcome:" in prompt:
+                return chat_response(REFLECTION_PAYLOAD)
+            return chat_response(QUESTION_SOLVER_PROPOSAL_PAYLOAD)
+
+        runtime = ProposalRuntime(
+            RuntimeConfig(
+                api_key="test-key",
+                api_base="https://api.test/v1",
+                primary_model="deepseek-chat",
+                available_models=("deepseek-chat",),
+                temperature=0.2,
+                max_tokens=4096,
+                timeout_s=45,
+                llm_concurrency=2,
+            ),
+            transport=transport,
+        )
+        task = next(item for item in load_codegen_tasks() if item["id"] == "olymmath")
+        task = dict(task)
+        task["generation_budget"] = 1
+        task["candidate_budget"] = 1
+        task["branching_factor"] = 1
+        task["item_workers"] = 2
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            items = [
+                {
+                    "item_id": "olymmath-r1",
+                    "raw_item_id": "olymmath-r1",
+                    "id": "olymmath-r1",
+                    "question_id": "olymmath-r1",
+                    "name": "Remainders mod 2 through 6",
+                    "prompt": "What is the smallest positive integer that leaves remainder 1 when divided by 2, 3, 4, 5, and 6, and leaves remainder 0 when divided by 7?",
+                    "raw_prompt": "What is the smallest positive integer that leaves remainder 1 when divided by 2, 3, 4, 5, and 6, and leaves remainder 0 when divided by 7?",
+                    "context": None,
+                    "raw_context": None,
+                    "choices": [],
+                    "raw_choices": [],
+                    "expected_answer": "301",
+                    "raw_expected_answer": "301",
+                    "metadata": {"dataset": "olymmath", "answer_format": "numeric"},
+                },
+                {
+                    "item_id": "olymmath-r2",
+                    "raw_item_id": "olymmath-r2",
+                    "id": "olymmath-r2",
+                    "question_id": "olymmath-r2",
+                    "name": "Triangle sides 13, 14, 15",
+                    "prompt": "A triangle has side lengths 13, 14, and 15. What is its area?",
+                    "raw_prompt": "A triangle has side lengths 13, 14, and 15. What is its area?",
+                    "context": None,
+                    "raw_context": None,
+                    "choices": [],
+                    "raw_choices": [],
+                    "expected_answer": "84",
+                    "raw_expected_answer": "84",
+                    "metadata": {"dataset": "olymmath", "answer_format": "numeric"},
+                },
+            ]
+            manifest = tmp / "questions.json"
+            manifest.write_text(json.dumps(items, indent=2))
+            task["item_manifest_path"] = str(manifest)
+            task["dataset_size"] = len(items)
+            result = run_dataset_task(
+                task,
+                proposal_runtime=runtime,
+                workspace_root=tmp / "workspace",
+                memory_root=tmp / "item-memory",
+                session_id="dataset-item-transport-isolated",
+            )
+        self.assertEqual(result["dataset_summary"]["total_items"], 2)
+        self.assertEqual(result["dataset_summary"]["winner_passed"], 1)
+        self.assertEqual(result["dataset_summary"]["failure_count"], 1)
+        item_runs = {item_run["item_id"]: item_run for item_run in result["item_runs"]}
+        self.assertEqual(item_runs["olymmath-r2"]["winner"]["metrics"]["status"], "pass")
+        self.assertEqual(item_runs["olymmath-r1"]["winner"]["metrics"]["status"], "error")
+        self.assertEqual(item_runs["olymmath-r1"]["error_payload"]["error_type"], "llm_transport_error")
+
     def test_dataset_task_can_run_selected_item_ids_only(self) -> None:
         runtime = make_runtime(
             [
@@ -1146,6 +1400,70 @@ class CodegenRunnerTest(unittest.TestCase):
             )
             self.assertEqual(result["dataset_summary"]["total_items"], 2)
             self.assertEqual({item_run["item_id"] for item_run in result["item_runs"]}, {"olymmath-r1", "olymmath-r2"})
+
+    def test_numeric_item_selection_is_1_based_from_first_question(self) -> None:
+        runtime = make_runtime(
+            [
+                chat_response(QUESTION_SOLVER_PROPOSAL_PAYLOAD),
+                chat_response(REFLECTION_PAYLOAD),
+            ]
+        )
+        task = next(item for item in load_codegen_tasks() if item["id"] == "planbench")
+        task = dict(task)
+        task["generation_budget"] = 1
+        task["candidate_budget"] = 1
+        task["branching_factor"] = 1
+        task["item_workers"] = 1
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            items = [
+                {
+                    "item_id": "planbench-00002",
+                    "raw_item_id": "planbench-00002",
+                    "id": "planbench-00002",
+                    "question_id": "planbench-00002",
+                    "name": "obfuscated_deceptive_logistics / oneshot / 2",
+                    "prompt": "Synthetic planning prompt 2.",
+                    "raw_prompt": "Synthetic planning prompt 2.",
+                    "context": None,
+                    "raw_context": None,
+                    "choices": [],
+                    "raw_choices": [],
+                    "expected_answer": "move a b",
+                    "raw_expected_answer": "move a b",
+                    "metadata": {"dataset": "planbench", "answer_format": "plan", "domain": "obfuscated_deceptive_logistics"},
+                },
+                {
+                    "item_id": "planbench-00003",
+                    "raw_item_id": "planbench-00003",
+                    "id": "planbench-00003",
+                    "question_id": "planbench-00003",
+                    "name": "obfuscated_deceptive_logistics / oneshot / 3",
+                    "prompt": "Synthetic planning prompt 3.",
+                    "raw_prompt": "Synthetic planning prompt 3.",
+                    "context": None,
+                    "raw_context": None,
+                    "choices": [],
+                    "raw_choices": [],
+                    "expected_answer": "move b c",
+                    "raw_expected_answer": "move b c",
+                    "metadata": {"dataset": "planbench", "answer_format": "plan", "domain": "obfuscated_deceptive_logistics"},
+                },
+            ]
+            manifest = tmp / "questions.json"
+            manifest.write_text(json.dumps(items, indent=2))
+            task["item_manifest_path"] = str(manifest)
+            task["dataset_size"] = len(items)
+            result = run_dataset_task(
+                task,
+                proposal_runtime=runtime,
+                workspace_root=tmp / "workspace",
+                memory_root=tmp / "item-memory",
+                session_id="dataset-first-question-indexing",
+                selected_item_ids=["1"],
+            )
+            self.assertEqual(result["dataset_summary"]["total_items"], 1)
+            self.assertEqual(result["item_runs"][0]["item_id"], "planbench-00002")
 
     def test_dataset_runs_stay_inline_without_handoff_artifacts(self) -> None:
         runtime = make_runtime(

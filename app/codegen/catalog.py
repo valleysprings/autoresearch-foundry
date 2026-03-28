@@ -107,11 +107,10 @@ def _normalize_task(task: dict[str, Any]) -> dict[str, Any]:
     normalized["lazy_item_manifest"] = bool(normalized.get("lazy_item_manifest"))
     normalized["prompt_context"] = str(normalized.get("prompt_context") or "")
     normalized["allow_browsing"] = bool(normalized.get("allow_browsing", False))
+    normalized["run_baseline_verifier"] = bool(normalized.get("run_baseline_verifier", True))
     normalized["verifier_path"] = str(normalized["verifier_path"])
     normalized["editable_path"] = str(normalized["editable_path"])
     normalized["selection_spec"] = selection_spec_for_task(normalized)
-    if normalized["runtime_backend"] == "dataset" and not normalized["local_dataset_only"]:
-        raise ValueError(f"Dataset runtime task {normalized['id']} must declare local_dataset_only=true.")
     if normalized["runtime_backend"] != "dataset" and normalized["local_dataset_only"]:
         raise ValueError(
             f"Task {normalized['id']} declares local_dataset_only=true but runtime_backend={normalized['runtime_backend']!r}."
@@ -200,6 +199,7 @@ def task_summary(task: dict[str, Any]) -> dict[str, Any]:
         "task_mode": task["task_mode"],
         "optimization_scope": task["optimization_scope"],
         "included_in_main_comparison": task["included_in_main_comparison"],
+        "run_baseline_verifier": task["run_baseline_verifier"],
         "supports_runtime_config": external_run_config is not None,
         "external_run_config": external_run_config,
         "supports_max_items": _task_supports_max_items(task),
@@ -261,6 +261,46 @@ def _load_task(entry: dict[str, Any]) -> dict[str, Any]:
     if readme_path.exists():
         merged["readme_path"] = str(readme_path)
     return _normalize_task(merged)
+
+
+def list_missing_local_dataset_warnings() -> list[dict[str, str]]:
+    warnings: list[dict[str, str]] = []
+    for entry in _registry_entries():
+        if not bool(entry.get("enabled", True)):
+            continue
+        relative_path = str(entry.get("path") or "").strip()
+        if not relative_path:
+            continue
+        task_dir = BENCHMARK_ROOT / relative_path
+        task_path = task_dir / "task.json"
+        if not task_path.exists():
+            continue
+        try:
+            payload = json.loads(task_path.read_text())
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(payload, dict) or not bool(payload.get("local_dataset_only")):
+            continue
+        item_manifest = str(payload.get("item_manifest") or "").strip()
+        if not item_manifest:
+            continue
+        manifest_path = task_dir / item_manifest
+        if manifest_path.exists():
+            continue
+        task_id = str(payload.get("id") or entry.get("id") or "").strip() or str(entry.get("id") or "")
+        title = str(payload.get("title") or task_id).strip() or task_id
+        track = str(payload.get("track") or Path(relative_path).parts[0]).strip() or "unknown"
+        warnings.append(
+            {
+                "task_id": task_id,
+                "title": title,
+                "track": track,
+                "manifest_path": str(manifest_path),
+                "prepare_command": f"python benchmark/prepare_datasets.py --task-id {task_id}",
+                "message": f"Missing local dataset manifest: {manifest_path}",
+            }
+        )
+    return warnings
 
 
 def _sort_key(task: dict[str, Any]) -> tuple[int, int, int, str, str]:

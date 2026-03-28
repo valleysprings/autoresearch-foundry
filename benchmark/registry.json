@@ -68,27 +68,27 @@
     {
       "id": "terminal-bench",
       "path": "agent_verified/terminal-bench",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "tau-bench-retail",
       "path": "agent_verified/tau-bench-retail",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "tau-bench-airline",
       "path": "agent_verified/tau-bench-airline",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "nl4opt",
       "path": "or_verified/nl4opt",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "industryor",
       "path": "or_verified/industryor",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "co-bench",

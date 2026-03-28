@@ -627,7 +627,7 @@ def _handle_tasks_command(argv: list[str]) -> None:
     parser.add_argument("--track", help="Filter by track such as coding_verified or agent_verified.")
     parser.add_argument("--tier", choices=["comparable", "experiment"], help="Filter by benchmark tier.")
     parser.add_argument("--mode", choices=["answer", "artifact", "agent"], help="Filter by task contract mode.")
-    parser.add_argument("--backend", choices=["dataset", "external", "single"], help="Filter by runtime backend.")
+    parser.add_argument("--backend", choices=["dataset", "external"], help="Filter by runtime backend.")
     parser.add_argument("--main-only", action="store_true", help="Show only comparable tasks included in the main comparison.")
     parser.add_argument("--pretty", action="store_true", help="Render a human-readable summary instead of JSON.")
     args = parser.parse_args(argv)

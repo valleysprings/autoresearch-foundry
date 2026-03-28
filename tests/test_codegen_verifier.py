@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import os
 import re
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from app.codegen.benchmark_support import public_question_payload
 from app.codegen.catalog import load_codegen_tasks
@@ -13,6 +15,16 @@ from tests.helpers import load_fixture_codegen_tasks
 
 
 ROOT = Path(__file__).resolve().parents[1]
+PLANBENCH_TEST_LAYOUT = {
+    "obfuscated_deceptive_logistics": (
+        "obfuscated_deceptive_logistics/generated_domain.pddl",
+        "obfuscated_deceptive_logistics/generated_basic",
+    ),
+    "logistics": (
+        "logistics/generated_domain.pddl",
+        "logistics/generated_basic",
+    ),
+}
 
 
 def canonical_plan_steps(raw_plan: object) -> list[str]:
@@ -86,6 +98,55 @@ class CodegenVerifierTest(unittest.TestCase):
         )
         self.addCleanup(temp_dir.cleanup)
         return workspace, source_path, source_code
+
+    def _stub_planbench_assets(self, item: dict[str, object], *, expected_plan: str) -> None:
+        raw_context = item.get("raw_context")
+        if not isinstance(raw_context, dict):
+            raise ValueError("PlanBench test item must provide raw_context.")
+        domain = str(raw_context["domain"])
+        instance_id = int(raw_context["instance_id"])
+        if domain not in PLANBENCH_TEST_LAYOUT:
+            raise ValueError(f"Missing PlanBench test layout for domain {domain!r}.")
+        domain_file, instance_dir = PLANBENCH_TEST_LAYOUT[domain]
+
+        temp_dir = tempfile.TemporaryDirectory()
+        root = Path(temp_dir.name)
+        domain_path = root / "instances" / domain_file
+        instance_path = root / "instances" / instance_dir / f"instance-{instance_id}.pddl"
+        validator_path = root / "validate_stub.py"
+
+        domain_path.parent.mkdir(parents=True, exist_ok=True)
+        domain_path.write_text("(define (domain stub))\n")
+        instance_path.parent.mkdir(parents=True, exist_ok=True)
+        instance_path.write_text("(define (problem stub))\n")
+        validator_path.write_text(
+            "#!/usr/bin/env python3\n"
+            "import os\n"
+            "import sys\n"
+            "from pathlib import Path\n"
+            "plan = Path(sys.argv[3]).read_text().strip()\n"
+            "expected = os.environ.get('PLANBENCH_STUB_EXPECTED_PLAN', '').strip()\n"
+            "if plan == expected:\n"
+            "    print('Plan valid')\n"
+            "    raise SystemExit(0)\n"
+            "print('Plan invalid')\n"
+            "raise SystemExit(1)\n"
+        )
+        validator_path.chmod(0o755)
+
+        normalized_expected_plan = "\n".join(f"({step})" for step in canonical_plan_steps(expected_plan))
+        env_patch = patch.dict(
+            os.environ,
+            {
+                "PLANBENCH_OFFICIAL_ROOT": str(root),
+                "PLANBENCH_VAL_BINARY": str(validator_path),
+                "PLANBENCH_STUB_EXPECTED_PLAN": normalized_expected_plan,
+            },
+            clear=False,
+        )
+        env_patch.start()
+        self.addCleanup(env_patch.stop)
+        self.addCleanup(temp_dir.cleanup)
 
     def test_materializer_writes_full_editable_file(self) -> None:
         _, source_path, source_code = self._materialize(
@@ -617,6 +678,7 @@ class CodegenVerifierTest(unittest.TestCase):
         task = next(task for task in load_codegen_tasks() if task["id"] == "planbench")
         item = next(item for item in load_question_manifest(task) if item["metadata"].get("domain") == "obfuscated_deceptive_logistics")
         micro_task = build_micro_task(task, item)
+        self._stub_planbench_assets(item, expected_plan=str(item["expected_answer"]))
         raw_plan = " ".join(
             re.sub(r"\bo(\d+)\b", r"object_\1", step)
             for step in canonical_plan_steps(item["expected_answer"])
@@ -634,15 +696,38 @@ class CodegenVerifierTest(unittest.TestCase):
         )
         self.assertEqual(metrics["status"], "pass")
         self.assertEqual(metrics["test_results"][0]["actual"], canonical_plan_text(item["expected_answer"]))
+        self.assertIn("Plan valid", metrics["test_results"][0]["validator_output"])
 
     def test_planbench_logistics_natural_language_plan_is_accepted(self) -> None:
         task = next(task for task in load_codegen_tasks() if task["id"] == "planbench")
         item = next(item for item in load_question_manifest(task) if item["metadata"].get("domain") == "logistics")
         micro_task = build_micro_task(task, item)
+        self._stub_planbench_assets(item, expected_plan=str(item["expected_answer"]))
         natural_plan = "\n".join(logistics_line(step) for step in canonical_plan_steps(item["expected_answer"]))
         _, source_path, source_code = self._materialize(
             micro_task,
             f"def solve(question: dict) -> str:\n    return {natural_plan!r}\n",
+        )
+        metrics = evaluate_materialized_candidate(
+            task=micro_task,
+            source_path=source_path,
+            source_code=source_code,
+            baseline_metrics=None,
+            memory_applied=False,
+        )
+        self.assertEqual(metrics["status"], "pass")
+        self.assertEqual(metrics["test_results"][0]["actual"], canonical_plan_text(item["expected_answer"]))
+        self.assertIn("Plan valid", metrics["test_results"][0]["validator_output"])
+
+    def test_planbench_parenthesized_pddl_plan_is_accepted(self) -> None:
+        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench")
+        item = next(item for item in load_question_manifest(task) if item["metadata"].get("domain") == "obfuscated_deceptive_logistics")
+        micro_task = build_micro_task(task, item)
+        self._stub_planbench_assets(item, expected_plan=str(item["expected_answer"]))
+        plan_steps = [f"({step})" for step in canonical_plan_steps(item["expected_answer"])]
+        _, source_path, source_code = self._materialize(
+            micro_task,
+            f"def solve(question: dict) -> list[str]:\n    return {plan_steps!r}\n",
         )
         metrics = evaluate_materialized_candidate(
             task=micro_task,

@@ -18,9 +18,8 @@ Every benchmark task should declare three orthogonal dimensions in `task.json`:
   - `implementation`: mutate the solver or program itself
 - `runtime_backend`
   where the task is executed:
-  - `dataset`: local dataset fan-out with per-item runs
-  - `external`: official or external harness execution
-  - `single`: one-off local task
+  - `dataset`: local runtime; `local_dataset_only=true` means dataset fan-out with per-item runs
+  - `external`: legacy custom benchmark harness execution, currently disabled in `benchmark/registry.json`
 
 These fields say what is being optimized. They do not define the headline metric by themselves.
 
@@ -90,11 +89,11 @@ Use `artifact` when `editable.py` defines executable code or another artifact th
 Typical repo examples:
 
 - `livecodebench`
-  single-file program artifact
+  editable Python program artifact
 - `nl4opt` and `industryor`
   generated `coptpy` artifact
 - `co-bench`
-  generated `solve(**kwargs)` artifact scored by the official evaluator
+  generated `solve(**kwargs)` artifact scored by the checked-in official evaluator
 
 Expected metric pattern:
 
@@ -125,20 +124,28 @@ This repo uses two benchmark tiers:
 - `comparable`
   local, relatively stable tasks included in the main comparison set
 - `experiment`
-  external or heavier tasks that are useful, but not yet part of the main headline comparison
+  heavier or not-yet-normalized tasks that are useful, but not yet part of the main headline comparison
 
 Current mapping:
 
 - `comparable`
   math, science QA, reasoning, long-context, and `livecodebench`
 - `experiment`
-  `terminal-bench`, `tau-bench-*`, `nl4opt`, `industryor`, `co-bench`
+  `co-bench`
+
+Checked-in but currently disabled external-harness tasks:
+
+- `terminal-bench`
+- `tau-bench-retail`
+- `tau-bench-airline`
+- `nl4opt`
+- `industryor`
 
 This separation is deliberate: some tasks are scientifically interesting before they are cheap, stable, or normalized enough for headline comparison.
 
 ## 6. Dependency Burden
 
-Not every external task has the same operational cost.
+Not every checked-in non-comparable benchmark has the same operational cost.
 
 - `terminal-bench`
   requires Harbor plus a working local Docker daemon
@@ -147,7 +154,9 @@ Not every external task has the same operational cost.
 - `nl4opt` and `industryor`
   require local `coptpy` execution
 - `co-bench`
-  uses the official external evaluator and cloned task repo
+  uses dataset fan-out plus the checked-in official evaluation framework and local dataset assets
+
+`external` in this repo is about execution shape, not about whether the task is local, cloned, or missing dependencies. `co-bench` is a useful counterexample: it is still an experiment benchmark, but it now uses the generic dataset runner with a benchmark-specific checked-in evaluator and remains enabled while the harness-backed tasks stay disabled.
 
 Do not describe these as if they all have the same setup burden.
 

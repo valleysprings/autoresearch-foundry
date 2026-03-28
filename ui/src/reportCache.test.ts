@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { initialTaskId, latestTaskIdFromPayload, taskScopedPayload } from "./reportCache.ts";
+import { initialTaskId, latestTaskIdFromPayload, mergeTaskCatalogs, taskScopedPayload } from "./reportCache.ts";
 import type { Payload, TaskSummary } from "./types.ts";
 
 function task(id: string): TaskSummary {
@@ -152,4 +152,39 @@ test("returns only the selected task payload when the cached report matches", ()
 
 test("returns null when the cached report belongs to another task", () => {
   assert.equal(taskScopedPayload(payload(["olymmath"]), "livecodebench"), null);
+});
+
+test("prefers current task catalog metadata over stale cached task catalog entries", () => {
+  const current = {
+    ...task("co-bench"),
+    track: "or_verified",
+    benchmark_tier: "experiment",
+    included_in_main_comparison: false,
+    runtime_backend: "dataset",
+    task_mode: "artifact",
+    optimization_scope: "wrapper",
+    supports_runtime_config: false,
+    local_dataset_only: true,
+    dataset_size: 36,
+    default_max_items: 36,
+  };
+  const staleCached = {
+    ...current,
+    runtime_backend: "external",
+    task_mode: "agent",
+    optimization_scope: "prompt",
+    supports_runtime_config: true,
+    local_dataset_only: false,
+    dataset_size: undefined,
+    default_max_items: 3,
+  };
+
+  const [merged] = mergeTaskCatalogs([current], [staleCached]);
+  assert.equal(merged.runtime_backend, "dataset");
+  assert.equal(merged.task_mode, "artifact");
+  assert.equal(merged.optimization_scope, "wrapper");
+  assert.equal(merged.supports_runtime_config, false);
+  assert.equal(merged.local_dataset_only, true);
+  assert.equal(merged.dataset_size, 36);
+  assert.equal(merged.default_max_items, 36);
 });

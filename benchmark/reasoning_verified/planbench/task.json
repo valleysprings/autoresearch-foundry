@@ -1,7 +1,7 @@
 {
   "id": "planbench",
   "title": "PlanBench",
-  "description": "Evolve a single-file solver independently for each PlanBench task_1 plan-generation prompt in the local full snapshot.",
+  "description": "Evaluate direct PlanBench task_1 plan generation in the unified dataset runtime as an answer-adapter task with official-style extraction plus semantic plan validation.",
   "benchmark_tier": "comparable",
   "track": "reasoning_verified",
   "dataset_id": "planbench_task1_plan_generation",
@@ -10,14 +10,16 @@
   "item_manifest": "data/questions.json",
   "split": "task_1_plan_generation:train",
   "allow_browsing": false,
-  "answer_metric": "exact_plan_match_rate",
+  "answer_metric": "valid_plan_rate",
   "family": "planning",
   "runtime_backend": "dataset",
   "task_mode": "answer",
-  "optimization_scope": "implementation",
+  "optimization_scope": "wrapper",
   "task_signature": [
-    "single-file-optimization",
+    "editable-file-optimization",
     "dataset-task",
+    "answer-adapter",
+    "semantic-validator",
     "planning",
     "plan-generation"
   ],
@@ -30,16 +32,16 @@
   "branching_factor": 4,
   "item_workers": 20,
   "epsilon": 0.02,
-  "baseline_summary": "A placeholder solver that returns no plan for the active PlanBench prompt.",
+  "baseline_summary": "A placeholder answer-adapter that returns no plan for the active PlanBench prompt.",
   "objective_spec": {
-    "display_name": "Exact plan match rate",
+    "display_name": "Valid plan rate",
     "direction": "max",
     "unit": "ratio",
-    "summary_template": "Higher exact plan-match rate is better across independently evolved PlanBench prompts.",
-    "formula": "exact_plan_match_rate = exact_matches / total_prompts"
+    "summary_template": "Higher valid-plan rate is better across independently evolved PlanBench prompts.",
+    "formula": "valid_plan_rate = validated_plans / total_prompts"
   },
   "selection_spec": {
-    "profile": "plan_length"
+    "profile": "objective_only"
   },
-  "prompt_context": "Edit editable.py only. The entry symbol solve(question: dict) must return the final plan for the active PlanBench prompt. You may return either a list[str] with one action per step or a newline-separated string of actions. Do not use browsing or external network access."
+  "prompt_context": "Edit editable.py only. This task uses the unified dataset runtime, but it is not an exact-match answer task. Treat solve(question: dict) as the answer-adapter boundary: it receives the public PlanBench prompt payload and must return plan text that the official-style adapter/verifier can extract and semantically validate against the official instance. You may return either a list[str] with one action per step or a newline-separated string of actions. Preserve the declared helper symbols when useful. Do not use browsing or external network access."
 }
