@@ -18,6 +18,10 @@ DATASET_CONFIG = "default"
 FULL_DATASET_SIZE = 12032
 
 
+def _slug(value: str) -> str:
+    return str(value).strip().lower().replace(" ", "-")
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Download and normalize MMLU-Pro into questions.json.")
     parser.add_argument("--config", default=DATASET_CONFIG)
@@ -74,6 +78,7 @@ def main() -> None:
                     "src": str(row.get("src") or "").strip(),
                     "correct_choice_index": correct_choice_index,
                     "answer_aliases": _answer_aliases(correct, correct_choice_index),
+                    "runtime_split_tags": [f"category:{_slug(category)}"] if category else [],
                 },
             }
         )

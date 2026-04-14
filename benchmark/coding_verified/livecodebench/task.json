@@ -1,0 +1,112 @@
+{
+  "id": "livecodebench",
+  "title": "LiveCodeBench",
+  "description": "Evolve the editable Python solution independently for each non-overlapping LiveCodeBench coding problem across releases v1 to v6.",
+  "benchmark_tier": "comparable",
+  "track": "coding_verified",
+  "dataset_id": "livecodebench_all",
+  "dataset_size": 1055,
+  "local_dataset_only": true,
+  "lazy_item_manifest": true,
+  "item_manifest": "data/questions.json",
+  "split": "v1+v2+v3+v4+v5+v6:test",
+  "allow_browsing": false,
+  "answer_metric": "pass_at_1",
+  "family": "coding",
+  "task_mode": "artifact",
+  "interaction_mode": "single_turn",
+  "task_signature": [
+    "editable-file-optimization",
+    "single-turn",
+    "dataset-task",
+    "coding-problem-solving"
+  ],
+  "editable_file": "editable.py",
+  "verifier": "verifier.py",
+  "entry_symbol": "solve",
+  "prepare_ready_paths": [
+    "data/questions.json",
+    "data/source_info.json"
+  ],
+  "runtime_split_selector": {
+    "label": "Split",
+    "default_value": "all",
+    "options": [
+      {
+        "value": "all",
+        "title": "All Releases",
+        "description": "Evaluate across the full LiveCodeBench v1-v6 collection.",
+        "item_count": 1055
+      },
+      {
+        "value": "v1",
+        "title": "v1",
+        "description": "Evaluate only the v1 shard.",
+        "item_count": 400,
+        "match_tags_any": [
+          "release:v1"
+        ]
+      },
+      {
+        "value": "v2",
+        "title": "v2",
+        "description": "Evaluate only the v2 shard.",
+        "item_count": 111,
+        "match_tags_any": [
+          "release:v2"
+        ]
+      },
+      {
+        "value": "v3",
+        "title": "v3",
+        "description": "Evaluate only the v3 shard.",
+        "item_count": 101,
+        "match_tags_any": [
+          "release:v3"
+        ]
+      },
+      {
+        "value": "v4",
+        "title": "v4",
+        "description": "Evaluate only the v4 shard.",
+        "item_count": 101,
+        "match_tags_any": [
+          "release:v4"
+        ]
+      },
+      {
+        "value": "v5",
+        "title": "v5",
+        "description": "Evaluate only the v5 shard.",
+        "item_count": 167,
+        "match_tags_any": [
+          "release:v5"
+        ]
+      },
+      {
+        "value": "v6",
+        "title": "v6",
+        "description": "Evaluate only the v6 shard.",
+        "item_count": 175,
+        "match_tags_any": [
+          "release:v6"
+        ]
+      }
+    ]
+  },
+  "generation_budget": 3,
+  "candidate_budget": 2,
+  "branching_factor": 3,
+  "item_workers": 6,
+  "epsilon": 0.01,
+  "baseline_summary": "A placeholder LiveCodeBench baseline that intentionally fails until the active problem-specific solver is written.",
+  "objective_spec": {
+    "display_name": "Pass@1",
+    "direction": "max",
+    "unit": "ratio",
+    "summary_template": "Higher pass@1 is better: a candidate only scores for a problem when it passes the full official LiveCodeBench test suite.",
+    "formula": "pass@1 = solved_problems / total_problems; for a single item this is 1 if all official tests pass else 0"
+  },
+  "prompt_context": "Edit editable.py only. The active item is a single Python coding problem. For stdin problems, produce a full Python program with solve() and an if __name__ == '__main__' entry that reads stdin and prints stdout. For functional LeetCode-style problems, implement class Solution with the required method from the provided context and keep solve() defined, even if it is unused. Use only the Python standard library and do not use external network access.",
+  "function_name": "solve"
+}

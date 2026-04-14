@@ -198,7 +198,8 @@ def _build_problem_record(item_id: str, row: dict[str, Any], *, source_file: str
     }
 
 
-def _build_manifest_item(problem: dict[str, Any]) -> dict[str, Any]:
+def _build_manifest_item(problem: dict[str, Any], *, metadata_extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    extra = dict(metadata_extra or {})
     problem_file = f"problems/{problem['item_id']}.json"
     return {
         "item_id": problem["item_id"],
@@ -217,6 +218,7 @@ def _build_manifest_item(problem: dict[str, Any]) -> dict[str, Any]:
             "contest_date": problem["contest_date"],
             "public_test_count": len(problem["public_test_cases"]),
             "private_test_count": len(problem["private_test_cases"]),
+            **extra,
         },
     }
 
@@ -274,6 +276,85 @@ def prepare_livecodebench_shard(
             "official_repo": "https://github.com/LiveCodeBench/LiveCodeBench",
         },
         "release": release_version,
+        "prepared_count": len(items),
+        "dataset_size": full_dataset_size,
+        "evaluator_semantics": "official_lcb_runner_testing_util",
+    }
+    _write_json(manifest_path, manifest)
+    _write_json(source_info_path, source_info)
+    print(f"Wrote {len(items)} LiveCodeBench items to {manifest_path}.")
+
+
+def prepare_livecodebench_collection(
+    *,
+    task_root: Path,
+    task_id: str,
+    releases: list[tuple[str, int]],
+) -> None:
+    data_dir = task_root / "data"
+    problems_dir = data_dir / "problems"
+    manifest_path = data_dir / "questions.json"
+    source_info_path = data_dir / "source_info.json"
+
+    args = _parse_args()
+    full_dataset_size = sum(size for _, size in releases)
+    requested_items = full_dataset_size if args.items is None else int(args.items or full_dataset_size)
+    requested_items = max(1, min(requested_items, full_dataset_size))
+
+    existing = _load_existing_manifest(manifest_path)
+    existing_items = list(existing.get("items") or []) if isinstance(existing, dict) else []
+    if len(existing_items) >= requested_items:
+        print(f"Manifest already covers {len(existing_items)} items; requested {requested_items}.")
+        return
+
+    data_dir.mkdir(parents=True, exist_ok=True)
+    problems_dir.mkdir(parents=True, exist_ok=True)
+
+    items: list[dict[str, Any]] = []
+    global_index = 0
+    release_counts: dict[str, int] = {}
+    for release_version, release_size in releases:
+        release_counts[release_version] = release_size
+        for release_index, (file_name, row) in enumerate(_iter_remote_rows(release_version), start=1):
+            global_index += 1
+            item_id = f"{task_id}-{global_index:04d}"
+            problem = _build_problem_record(
+                item_id,
+                row,
+                source_file=f"{HF_DATASET_REPO}:{release_version}:{file_name}",
+                source_row_index=release_index - 1,
+            )
+            _write_json(problems_dir / f"{item_id}.json", problem)
+            items.append(
+                _build_manifest_item(
+                    problem,
+                    metadata_extra={
+                        "release_version": release_version,
+                        "runtime_split_tags": [f"release:{release_version}"],
+                    },
+                )
+            )
+            if global_index >= requested_items:
+                break
+        if global_index >= requested_items:
+            break
+
+    manifest = {
+        "dataset_id": "livecodebench_all",
+        "split": "+".join(release for release, _ in releases),
+        "dataset_size": full_dataset_size,
+        "prepared_count": len(items),
+        "release_counts": release_counts,
+        "items": items,
+    }
+    source_info = {
+        "benchmark": task_id,
+        "sources": {
+            "dataset": f"https://huggingface.co/datasets/{HF_DATASET_REPO}",
+            "official_repo": "https://github.com/LiveCodeBench/LiveCodeBench",
+        },
+        "releases": [release for release, _ in releases],
+        "release_counts": release_counts,
         "prepared_count": len(items),
         "dataset_size": full_dataset_size,
         "evaluator_semantics": "official_lcb_runner_testing_util",

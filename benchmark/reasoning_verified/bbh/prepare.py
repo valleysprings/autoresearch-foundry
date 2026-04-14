@@ -176,6 +176,7 @@ def main() -> None:
                     "source_config": config,
                     "source_split": "train",
                     "source_index": source_index,
+                    "runtime_split_tags": [f"config:{config}"],
                     **extra_metadata,
                 },
             }

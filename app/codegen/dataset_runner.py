@@ -476,6 +476,7 @@ def run_dataset_task(
     max_episodes: int | None = None,
     eval_model: str | None = None,
     selected_item_ids: list[str] | None = None,
+    suite_config: dict[str, Any] | None = None,
     progress_callback: ProgressCallback | None = None,
     pace_ms: int = 0,
 ) -> dict[str, Any]:
@@ -490,7 +491,11 @@ def run_dataset_task(
     uses_episode_limit = str(task_for_run.get("interaction_mode") or "") == "multi_turn"
     requested_limit = max_episodes if uses_episode_limit else max_items
     requested_items = requested_limit if isinstance(requested_limit, int) and requested_limit > 0 else int(task_for_run.get("dataset_size") or 0) or None
-    items = load_question_manifest(task_for_run, min_items=requested_items)
+    items = load_question_manifest(task_for_run, min_items=requested_items, suite_config=suite_config)
+    selected_runtime_split = None
+    runtime_split_selector = task_for_run.get("runtime_split_selector")
+    if isinstance(runtime_split_selector, dict):
+        selected_runtime_split = str((suite_config or {}).get("split") or runtime_split_selector.get("default_value") or "").strip() or None
     if selected_item_ids:
         items = _select_requested_items(items, selected_item_ids)
     elif isinstance(requested_limit, int) and requested_limit > 0:
@@ -617,6 +622,8 @@ def run_dataset_task(
             "run_baseline_verifier": bool(task_for_run.get("run_baseline_verifier", True)),
             "supports_runtime_config": isinstance(task_for_run.get("runtime_suite_config"), dict),
             "suite_run_config": task_for_run.get("runtime_suite_config"),
+            "runtime_split_selector": task_for_run.get("runtime_split_selector"),
+            "selected_runtime_split": selected_runtime_split,
             "supports_max_items": not uses_episode_limit,
             "default_max_items": (task_for_run["dataset_size"] or len(items)) if not uses_episode_limit else None,
             "supports_max_episodes": uses_episode_limit,

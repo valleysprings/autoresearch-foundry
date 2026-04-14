@@ -3244,6 +3244,7 @@ export function App() {
   const [maxItemsInput, setMaxItemsInput] = useState("");
   const [maxEpisodesInput, setMaxEpisodesInput] = useState("");
   const [maxTurnsInput, setMaxTurnsInput] = useState("");
+  const [selectedRuntimeSplit, setSelectedRuntimeSplit] = useState("");
   const [selectedItemIdsInput, setSelectedItemIdsInput] = useState("");
   const [selectedSkillId, setSelectedSkillId] = useState("");
   const [recordSkillEnabled, setRecordSkillEnabled] = useState(false);
@@ -3560,6 +3561,7 @@ export function App() {
     setMaxItemsInput("");
     setMaxEpisodesInput("");
     setMaxTurnsInput("");
+    setSelectedRuntimeSplit(selectedTask.runtime_split_selector?.default_value || "");
     setSelectedItemIdsInput("");
     setSelectedSkillId("");
     setRecordSkillEnabled(false);
@@ -3768,7 +3770,17 @@ export function App() {
     const maxItems = selectedItemIds ? null : supportsMaxItems && maxItemsInput.trim() ? Math.max(1, Math.floor(numeric(maxItemsInput))) : null;
     const maxEpisodes = supportsMaxEpisodes && maxEpisodesInput.trim() ? Math.max(1, Math.floor(numeric(maxEpisodesInput))) : null;
     const maxTurns = supportsMaxEpisodes && maxTurnsInput.trim() ? Math.max(1, Math.floor(numeric(maxTurnsInput))) : null;
-    const suiteConfig = selectedTask?.supports_runtime_config && maxTurns != null ? { max_turns: maxTurns } : null;
+    const suiteConfigEntries: Record<string, unknown> = {};
+    if (selectedTask?.runtime_split_selector) {
+      const selectedSplit = selectedRuntimeSplit || selectedTask.runtime_split_selector.default_value;
+      if (selectedSplit) {
+        suiteConfigEntries.split = selectedSplit;
+      }
+    }
+    if (selectedTask?.supports_runtime_config && maxTurns != null) {
+      suiteConfigEntries.max_turns = maxTurns;
+    }
+    const suiteConfig = Object.keys(suiteConfigEntries).length ? suiteConfigEntries : null;
     pollToken.current += 1;
     const token = pollToken.current;
     setError(null);
@@ -3913,6 +3925,14 @@ export function App() {
   );
   const selectedTaskParallelWorkerDefault = defaultParallelWorkers(selectedTask);
   const selectedTaskLlmConcurrencyDefault = defaultLlmConcurrency(runtimeInfo);
+  const selectedTaskRuntimeSplitSelector = selectedTask?.runtime_split_selector ?? null;
+  const selectedTaskSupportsRuntimeSplit = Boolean(selectedTaskRuntimeSplitSelector);
+  const selectedTaskRuntimeSplitOptions = selectedTaskRuntimeSplitSelector?.options ?? [];
+  const effectiveRuntimeSplit = selectedTaskSupportsRuntimeSplit
+    ? selectedRuntimeSplit || selectedTaskRuntimeSplitSelector?.default_value || ""
+    : "";
+  const selectedTaskRuntimeSplitOption = selectedTaskRuntimeSplitOptions.find((option) => option.value === effectiveRuntimeSplit) ?? null;
+  const selectedTaskVisibleDatasetSize = selectedTaskRuntimeSplitOption?.item_count ?? selectedTask?.dataset_size ?? null;
   const parsedSelectedItemIds = selectedTaskIsDataset ? parseItemIdsInput(selectedItemIdsInput) : null;
   const parsedMaxItems = parsedSelectedItemIds ? null : selectedTaskUsesMaxItems && maxItemsInput.trim() ? Math.max(1, Math.floor(numeric(maxItemsInput))) : null;
   const parsedMaxEpisodes = selectedTaskUsesMaxEpisodes && maxEpisodesInput.trim() ? Math.max(1, Math.floor(numeric(maxEpisodesInput))) : null;
@@ -3940,21 +3960,21 @@ export function App() {
     : selectedTaskUsesMaxEpisodes
       ? parsedMaxEpisodes ?? selectedTaskDefaultMaxEpisodes ?? selectedTaskEpisodeDatasetSize ?? null
       : selectedTaskUsesMaxItems
-        ? parsedMaxItems ?? selectedTaskDefaultMaxItems ?? null
+        ? parsedMaxItems ?? selectedTaskVisibleDatasetSize ?? selectedTaskDefaultMaxItems ?? null
         : null;
   const showDemoCodingWarning = Boolean(selectedTaskIsCoding && requestedEvalCount && requestedEvalCount > 50);
   const evalLimitLabel = "Eval Limit";
-  const maxItemsLabel = selectedTaskUsesMaxItems && selectedTask?.dataset_size
-    ? `${evalLimitLabel} (full dataset = ${selectedTask.dataset_size})`
+  const maxItemsLabel = selectedTaskUsesMaxItems && selectedTaskVisibleDatasetSize
+    ? `${evalLimitLabel} (full dataset = ${selectedTaskVisibleDatasetSize})`
     : selectedTaskUsesMaxItems
       ? selectedTaskDefaultMaxItems
         ? `${evalLimitLabel} (default = ${selectedTaskDefaultMaxItems})`
         : evalLimitLabel
       : evalLimitLabel;
-  const maxItemsHelper = selectedTaskUsesMaxItems && selectedTask?.dataset_size
+  const maxItemsHelper = selectedTaskUsesMaxItems && selectedTaskVisibleDatasetSize
     ? parsedMaxItems
       ? `The first ${parsedMaxItems} ${selectedTaskIsCoding ? "problems" : "items"} will be used for eval.`
-      : `Blank uses the full dataset. The first ${selectedTask.dataset_size} ${selectedTaskIsCoding ? "problems" : "items"} will be used for eval.`
+      : `Blank uses the full dataset. The first ${selectedTaskVisibleDatasetSize} ${selectedTaskIsCoding ? "problems" : "items"} will be used for eval.`
     : selectedTaskUsesMaxItems
       ? parsedMaxItems
         ? `The first ${parsedMaxItems} tasks will be used for eval.`
@@ -4384,18 +4404,40 @@ export function App() {
                   {selectedTaskSupportsParallelWorkers ? parallelEvalHelper : "This task uses its own backend-specific scheduling."}
                 </span>
               </label>
+              {selectedTaskSupportsRuntimeSplit ? (
+                <label className="field">
+                  <span className="field-label">{selectedTaskRuntimeSplitSelector?.label || "Split"}</span>
+                  <select
+                    className="control"
+                    value={effectiveRuntimeSplit}
+                    onChange={(event) => setSelectedRuntimeSplit(event.target.value)}
+                  >
+                    {selectedTaskRuntimeSplitOptions.map((option) => (
+                      <option key={`runtime-split-${option.value}`} value={option.value}>
+                        {option.title}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="small muted">
+                    {selectedTaskRuntimeSplitOption?.description ||
+                      (selectedTaskVisibleDatasetSize
+                        ? `This split exposes ${selectedTaskVisibleDatasetSize} ${selectedTaskIsCoding ? "problems" : "items"} for eval.`
+                        : "Choose the dataset slice to evaluate.")}
+                  </span>
+                </label>
+              ) : null}
               {selectedTaskUsesMaxItems ? (
                 <label className="field">
                   <span className="field-label">{maxItemsLabel}</span>
                   <input
-                    className="control"
-                    type="number"
-                    min={1}
-                    step={1}
-                    placeholder={selectedTaskUsesMaxItems ? (selectedTask?.dataset_size ? "all" : "default") : "n/a"}
-                    value={maxItemsInput}
-                    onChange={(event) => setMaxItemsInput(event.target.value)}
-                    disabled={!selectedTaskUsesMaxItems || Boolean(parsedSelectedItemIds)}
+                  className="control"
+                  type="number"
+                  min={1}
+                  step={1}
+                  placeholder={selectedTaskUsesMaxItems ? (selectedTaskVisibleDatasetSize ? "all" : "default") : "n/a"}
+                  value={maxItemsInput}
+                  onChange={(event) => setMaxItemsInput(event.target.value)}
+                  disabled={!selectedTaskUsesMaxItems || Boolean(parsedSelectedItemIds)}
                   />
                   <span className="small muted">
                     {parsedSelectedItemIds ? "Specific item ids selected: Eval Limit is ignored for this run." : maxItemsHelper}
@@ -4696,6 +4738,7 @@ export function App() {
                 "split",
                 taskBriefTask.split ?? inferSuiteSplitLabel(taskBriefTask.suite_run_config ?? null) ?? "local",
               )}
+              {taskBriefTask.selected_runtime_split ? metric("selected split", taskBriefTask.selected_runtime_split) : null}
               {metric(taskBriefTask.task_mode === "answer" ? "candidate entrypoint" : "candidate file", taskBriefTask.editable_file)}
               {metric("turn mode", interactionModeLabel(taskBriefTask.interaction_mode))}
               {taskBriefTask.supports_max_episodes

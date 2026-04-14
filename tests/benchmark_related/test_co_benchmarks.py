@@ -84,6 +84,7 @@ class CoBenchmarksTest(unittest.TestCase):
             item = manifest["items"][0]
             self.assertEqual(item["name"], "Travelling salesman problem")
             self.assertEqual(item["metadata"]["problem_name"], "Travelling salesman problem")
+            self.assertEqual(item["metadata"]["runtime_split_tags"], ["problem:travelling-salesman-problem"])
             self.assertIn("Travelling salesman description.", item["context"])
             self.assertIn("def solve(**kwargs):", item["context"])
 

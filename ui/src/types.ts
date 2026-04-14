@@ -49,6 +49,20 @@ export type TaskSkill = {
   generated_at?: string | null;
 };
 
+export type RuntimeSplitOption = {
+  value: string;
+  title: string;
+  description?: string | null;
+  item_count?: number | null;
+  match_tags_any?: string[] | null;
+};
+
+export type RuntimeSplitSelector = {
+  label: string;
+  default_value: string;
+  options: RuntimeSplitOption[];
+};
+
 export type TaskSummary = {
   id: string;
   title: string;
@@ -87,6 +101,8 @@ export type TaskSummary = {
   included_in_main_comparison: boolean;
   supports_runtime_config: boolean;
   suite_run_config?: Record<string, unknown> | null;
+  runtime_split_selector?: RuntimeSplitSelector | null;
+  selected_runtime_split?: string | null;
   supports_max_items: boolean;
   default_max_items?: number | null;
   supports_max_episodes: boolean;
@@ -290,6 +306,8 @@ export type RunTask = {
   default_eval_model?: string | null;
   supports_runtime_config?: boolean;
   suite_run_config?: Record<string, unknown> | null;
+  runtime_split_selector?: RuntimeSplitSelector | null;
+  selected_runtime_split?: string | null;
   supports_max_items?: boolean;
   default_max_items?: number | null;
   supports_max_episodes?: boolean;

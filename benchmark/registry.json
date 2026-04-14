@@ -11,23 +11,38 @@
       "enabled": true
     },
     {
+      "id": "aime",
+      "path": "math_verified/aime",
+      "enabled": true
+    },
+    {
       "id": "aime-2024",
       "path": "math_verified/aime-2024",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "aime-2025",
       "path": "math_verified/aime-2025",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "aime-2026",
       "path": "math_verified/aime-2026",
+      "enabled": false
+    },
+    {
+      "id": "planbench-t1",
+      "path": "reasoning_verified/planbench-t1",
       "enabled": true
     },
     {
-      "id": "planbench",
-      "path": "reasoning_verified/planbench",
+      "id": "planbench-t2",
+      "path": "reasoning_verified/planbench-t2",
+      "enabled": true
+    },
+    {
+      "id": "planbench-t3",
+      "path": "reasoning_verified/planbench-t3",
       "enabled": true
     },
     {
@@ -43,6 +58,11 @@
     {
       "id": "mmlu-pro",
       "path": "reasoning_verified/mmlu-pro",
+      "enabled": true
+    },
+    {
+      "id": "acpbench",
+      "path": "reasoning_verified/acpbench",
       "enabled": true
     },
     {
@@ -206,34 +226,39 @@
       "enabled": true
     },
     {
+      "id": "livecodebench",
+      "path": "coding_verified/livecodebench",
+      "enabled": true
+    },
+    {
       "id": "livecodebench-v1",
       "path": "coding_verified/livecodebench-v1",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "livecodebench-v2",
       "path": "coding_verified/livecodebench-v2",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "livecodebench-v3",
       "path": "coding_verified/livecodebench-v3",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "livecodebench-v4",
       "path": "coding_verified/livecodebench-v4",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "livecodebench-v5",
       "path": "coding_verified/livecodebench-v5",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "livecodebench-v6",
       "path": "coding_verified/livecodebench-v6",
-      "enabled": true
+      "enabled": false
     },
     {
       "id": "co-bench",

@@ -9,6 +9,30 @@
   "local_dataset_only": true,
   "item_manifest": "data/questions.json",
   "split": "AIME2025-I:test + AIME2025-II:test",
+  "runtime_split_selector": {
+    "label": "Split",
+    "default_value": "all",
+    "options": [
+      {
+        "value": "all",
+        "title": "All Rounds",
+        "description": "Evaluate across the combined AIME 2025 I and II releases.",
+        "item_count": 30
+      },
+      {
+        "value": "i",
+        "title": "AIME I",
+        "item_count": 15,
+        "match_tags_any": ["round:I"]
+      },
+      {
+        "value": "ii",
+        "title": "AIME II",
+        "item_count": 15,
+        "match_tags_any": ["round:II"]
+      }
+    ]
+  },
   "allow_browsing": false,
   "answer_metric": "exact_match_rate",
   "family": "math",

@@ -162,9 +162,24 @@ def generate_discrete_payload(
     if suite_config is not None:
         if task_id is None or len(tasks) != 1:
             raise ConfigError("suite_config requires running exactly one task.")
-        if not isinstance(tasks[0].get("runtime_suite_config"), dict):
-            raise ConfigError("suite_config is only supported for tasks that declare runtime_suite_config.")
-        tasks = [{**tasks[0], "runtime_suite_config": dict(suite_config)}]
+        task = tasks[0]
+        supports_suite_config = isinstance(task.get("runtime_suite_config"), dict)
+        supports_runtime_split = (
+            is_dataset_task(task)
+            and str(task.get("interaction_mode") or "") == "single_turn"
+            and isinstance(task.get("runtime_split_selector"), dict)
+        )
+        if not supports_suite_config and not supports_runtime_split:
+            raise ConfigError(
+                "suite_config is only supported for tasks that declare runtime_suite_config "
+                "or single-turn dataset tasks that declare runtime_split_selector."
+            )
+        if supports_runtime_split and set(suite_config) - {"split"}:
+            raise ConfigError("Dataset runtime split selection only supports suite_config.split.")
+        if supports_suite_config:
+            tasks = [{**task, "runtime_suite_config": dict(suite_config)}]
+        else:
+            tasks = [{**task, "suite_config": dict(suite_config)}]
     if selected_item_ids is not None:
         if task_id is None or len(tasks) != 1:
             raise ConfigError("item_ids requires running exactly one task.")
@@ -218,6 +233,7 @@ def generate_discrete_payload(
                 max_episodes=max_episodes,
                 eval_model=eval_model,
                 selected_item_ids=selected_item_ids,
+                suite_config=suite_config,
                 progress_callback=progress_callback,
                 pace_ms=pace_ms,
             )

@@ -131,6 +131,8 @@ def main() -> None:
         correct_choice_index = _correct_choice_index(answer_label)
         correct = choices[correct_choice_index]
         item_id = f"longbench-v2-{source_index + 1:04d}"
+        domain = str(row.get("domain") or "").strip()
+        domain_slug = domain.lower().replace(" ", "-")
         context_file = f"items/{item_id}.json"
         _write_json(
             DATA_DIR / context_file,
@@ -151,13 +153,14 @@ def main() -> None:
                     "source_split": "train",
                     "source_index": source_index,
                     "source_id": str(row.get("_id") or ""),
-                    "domain": str(row.get("domain") or "").strip(),
+                    "domain": domain,
                     "sub_domain": str(row.get("sub_domain") or "").strip(),
                     "difficulty": str(row.get("difficulty") or "").strip(),
                     "length": str(row.get("length") or "").strip(),
                     "correct_choice_index": correct_choice_index,
                     "answer_aliases": [correct],
                     "context_char_count": len(str(row.get("context") or "")),
+                    "runtime_split_tags": [f"domain:{domain_slug}"],
                 },
             }
         )

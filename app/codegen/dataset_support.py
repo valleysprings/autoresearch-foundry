@@ -122,7 +122,58 @@ def _maybe_enrich_socialbench_item(task: dict[str, Any], item: dict[str, Any]) -
     return enriched
 
 
-def load_question_manifest(task: dict[str, Any], min_items: int | None = None) -> list[dict[str, Any]]:
+def _task_runtime_split_selector(task: dict[str, Any]) -> dict[str, Any] | None:
+    selector = task.get("runtime_split_selector")
+    return dict(selector) if isinstance(selector, dict) else None
+
+
+def _selected_runtime_split(task: dict[str, Any], suite_config: dict[str, Any] | None) -> str | None:
+    selector = _task_runtime_split_selector(task)
+    if selector is None:
+        return None
+    configured = str((suite_config or {}).get("split") or "").strip()
+    if configured:
+        return configured
+    return str(selector.get("default_value") or "").strip() or None
+
+
+def _selected_runtime_split_option(task: dict[str, Any], suite_config: dict[str, Any] | None) -> dict[str, Any] | None:
+    selector = _task_runtime_split_selector(task)
+    if selector is None:
+        return None
+    selected = _selected_runtime_split(task, suite_config)
+    options = list(selector.get("options") or [])
+    for option in options:
+        if isinstance(option, dict) and str(option.get("value") or "").strip() == selected:
+            return dict(option)
+    available = [str(option.get("value") or "").strip() for option in options if isinstance(option, dict)]
+    raise ValueError(
+        f"Task {task.get('id') or '<unknown>'} does not support split {selected!r}. "
+        f"Available splits: {', '.join(value for value in available if value)}"
+    )
+
+
+def _matches_runtime_split(item: dict[str, Any], option: dict[str, Any] | None) -> bool:
+    if option is None:
+        return True
+    match_tags = [str(tag).strip() for tag in list(option.get("match_tags_any") or []) if str(tag).strip()]
+    if not match_tags:
+        return True
+    metadata = dict(item.get("metadata") or {})
+    item_tags = {
+        str(tag).strip()
+        for tag in list(metadata.get("runtime_split_tags") or [])
+        if str(tag).strip()
+    }
+    return not item_tags.isdisjoint(match_tags)
+
+
+def load_question_manifest(
+    task: dict[str, Any],
+    min_items: int | None = None,
+    *,
+    suite_config: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
     manifest_path_raw = task.get("item_manifest_path")
     if not isinstance(manifest_path_raw, str) or not manifest_path_raw.strip():
         raise FileNotFoundError(f"Task {task.get('id') or '<unknown>'} is missing item_manifest_path.")
@@ -137,7 +188,10 @@ def load_question_manifest(task: dict[str, Any], min_items: int | None = None) -
     raw_items = _load_manifest_items(manifest_path)
 
     if bool(task.get("lazy_item_manifest")):
-        default_requested_items = task.get("dataset_size") if min_items is None else min_items
+        if _task_runtime_split_selector(task) is not None:
+            default_requested_items = task.get("dataset_size")
+        else:
+            default_requested_items = task.get("dataset_size") if min_items is None else min_items
         requested_items = max(0, int(default_requested_items or 0))
         if requested_items > 0 and len(raw_items) < requested_items:
             _run_task_prepare(task, min_items=requested_items)
@@ -215,7 +269,10 @@ def load_question_manifest(task: dict[str, Any], min_items: int | None = None) -
                 },
             )
         )
-    return normalized
+    selected_option = _selected_runtime_split_option(task, suite_config)
+    if selected_option is None:
+        return normalized
+    return [item for item in normalized if _matches_runtime_split(item, selected_option)]
 
 
 def _load_manifest_items(path: Path) -> list[dict[str, Any]]:

@@ -40,6 +40,10 @@ TRACK_ORDER = {
     "or_verified": 9,
     "agent_verified": 10,
 }
+
+VALID_RUNTIME_SPLIT_SELECTOR_OPTION_FIELDS = frozenset(
+    {"value", "title", "description", "item_count", "match_tags_any"}
+)
 VALID_SAFETY_CATEGORIES = frozenset(
     {
         "jailbreak_attack",
@@ -53,52 +57,122 @@ VALID_SAFETY_FOCUS = frozenset(set(VALID_SAFETY_CATEGORIES) | {"should_refuse", 
 TASK_ORDER = {
     "olymmath": 0,
     "math-500": 1,
-    "aime-2024": 2,
-    "aime-2025": 3,
-    "aime-2026": 4,
-    "planbench": 5,
-    "arc-challenge": 6,
-    "bbh": 7,
-    "mmlu-pro": 8,
-    "longbench-v2": 9,
-    "incharacter": 11,
-    "characterbench": 12,
-    "socialbench": 13,
-    "timechara": 14,
-    "rmtbench": 16,
-    "personamem-32k": 17,
-    "personafeedback": 18,
-    "alpsbench-extraction": 19,
-    "alpsbench-update": 20,
-    "alpsbench-retrieval": 21,
-    "alpsbench-utilization": 22,
-    "alpbench": 23,
-    "xstest-refusal-calibration": 24,
-    "harmbench-text-harmful": 25,
-    "jailbreakbench-harmful": 26,
-    "or-bench-hard-1k": 27,
-    "or-bench-toxic": 28,
-    "hallulens-precisewikiqa": 29,
-    "hallulens-mixedentities": 30,
-    "hallulens-longwiki": 31,
-    "longsafety": 32,
-    "tom-gibbs-multiturn-jailbreak": 33,
-    "tau-bench-retail": 34,
-    "tau-bench-airline": 35,
-    "sciq": 36,
-    "qasc": 37,
-    "scienceqa": 38,
-    "openbookqa": 39,
-    "gpqa-diamond": 40,
-    "livecodebench-v1": 41,
-    "livecodebench-v2": 42,
-    "livecodebench-v3": 43,
-    "livecodebench-v4": 44,
-    "livecodebench-v5": 45,
-    "livecodebench-v6": 46,
-    "co-bench": 47,
-    "alfworld": 48,
+    "aime": 2,
+    "aime-2024": 3,
+    "aime-2025": 4,
+    "aime-2026": 5,
+    "planbench-t1": 6,
+    "planbench-t2": 7,
+    "planbench-t3": 8,
+    "acpbench": 9,
+    "arc-challenge": 10,
+    "bbh": 11,
+    "mmlu-pro": 12,
+    "longbench-v2": 13,
+    "incharacter": 14,
+    "characterbench": 15,
+    "socialbench": 16,
+    "timechara": 17,
+    "rmtbench": 18,
+    "personamem-32k": 19,
+    "personafeedback": 20,
+    "alpsbench-extraction": 21,
+    "alpsbench-update": 22,
+    "alpsbench-retrieval": 23,
+    "alpsbench-utilization": 24,
+    "alpbench": 25,
+    "xstest-refusal-calibration": 26,
+    "harmbench-text-harmful": 27,
+    "jailbreakbench-harmful": 28,
+    "or-bench-hard-1k": 29,
+    "or-bench-toxic": 30,
+    "hallulens-precisewikiqa": 31,
+    "hallulens-mixedentities": 32,
+    "hallulens-longwiki": 33,
+    "longsafety": 34,
+    "tom-gibbs-multiturn-jailbreak": 35,
+    "tau-bench-retail": 36,
+    "tau-bench-airline": 37,
+    "sciq": 38,
+    "qasc": 39,
+    "scienceqa": 40,
+    "openbookqa": 41,
+    "gpqa-diamond": 42,
+    "livecodebench": 43,
+    "co-bench": 44,
+    "alfworld": 45,
 }
+
+
+def _normalize_runtime_split_selector(task_id: str, raw_value: Any) -> dict[str, Any] | None:
+    if raw_value is None:
+        return None
+    if not isinstance(raw_value, dict):
+        raise ValueError(f"Task {task_id} has invalid runtime_split_selector={raw_value!r}; expected an object.")
+
+    label = str(raw_value.get("label") or "").strip()
+    default_value = str(raw_value.get("default_value") or "").strip()
+    raw_options = raw_value.get("options")
+    if not label:
+        raise ValueError(f"Task {task_id} runtime_split_selector must declare a non-empty label.")
+    if not default_value:
+        raise ValueError(f"Task {task_id} runtime_split_selector must declare a non-empty default_value.")
+    if not isinstance(raw_options, list) or not raw_options:
+        raise ValueError(f"Task {task_id} runtime_split_selector must declare a non-empty options list.")
+
+    seen_values: set[str] = set()
+    options: list[dict[str, Any]] = []
+    for index, option in enumerate(raw_options, start=1):
+        if not isinstance(option, dict):
+            raise ValueError(f"Task {task_id} runtime_split_selector option {index} must be an object.")
+        unknown_fields = set(option) - VALID_RUNTIME_SPLIT_SELECTOR_OPTION_FIELDS
+        if unknown_fields:
+            raise ValueError(
+                f"Task {task_id} runtime_split_selector option {index} has unsupported fields: {sorted(unknown_fields)}."
+            )
+        value = str(option.get("value") or "").strip()
+        title = str(option.get("title") or "").strip()
+        description = str(option.get("description") or "").strip() or None
+        if not value or not title:
+            raise ValueError(f"Task {task_id} runtime_split_selector option {index} must declare value and title.")
+        if value in seen_values:
+            raise ValueError(f"Task {task_id} runtime_split_selector repeats option value {value!r}.")
+        seen_values.add(value)
+        raw_item_count = option.get("item_count")
+        if raw_item_count is None:
+            item_count = None
+        else:
+            try:
+                item_count = int(raw_item_count)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"Task {task_id} runtime_split_selector option {value!r} has invalid item_count={raw_item_count!r}."
+                ) from exc
+            if item_count <= 0:
+                raise ValueError(f"Task {task_id} runtime_split_selector option {value!r} must have item_count > 0.")
+        raw_match_tags = option.get("match_tags_any")
+        if raw_match_tags is None:
+            match_tags_any: list[str] = []
+        elif isinstance(raw_match_tags, list):
+            match_tags_any = [str(tag).strip() for tag in raw_match_tags if str(tag).strip()]
+        else:
+            raise ValueError(
+                f"Task {task_id} runtime_split_selector option {value!r} has invalid match_tags_any={raw_match_tags!r}."
+            )
+        options.append(
+            {
+                "value": value,
+                "title": title,
+                "description": description,
+                "item_count": item_count,
+                "match_tags_any": match_tags_any,
+            }
+        )
+    if default_value not in seen_values:
+        raise ValueError(
+            f"Task {task_id} runtime_split_selector default_value={default_value!r} is not present in options."
+        )
+    return {"label": label, "default_value": default_value, "options": options}
 
 def _speedup_objective_spec() -> dict[str, str]:
     return speedup_objective_spec()
@@ -265,6 +339,10 @@ def _normalize_task(task: dict[str, Any]) -> dict[str, Any]:
     normalized["lazy_item_manifest"] = bool(normalized.get("lazy_item_manifest"))
     normalized["prompt_context"] = str(normalized.get("prompt_context") or "")
     normalized["allow_browsing"] = bool(normalized.get("allow_browsing", False))
+    normalized["runtime_split_selector"] = _normalize_runtime_split_selector(
+        str(normalized.get("id") or "<unknown>"),
+        normalized.get("runtime_split_selector"),
+    )
     raw_run_baseline_verifier = normalized.get("run_baseline_verifier")
     normalized["run_baseline_verifier"] = True if raw_run_baseline_verifier is None else bool(raw_run_baseline_verifier)
     normalized["verifier_path"] = str(normalized["verifier_path"])
@@ -275,6 +353,11 @@ def _normalize_task(task: dict[str, Any]) -> dict[str, Any]:
             raise ValueError(f"Dataset task {normalized['id']} must declare dataset_size > 0.")
         if normalized["item_manifest"] is None:
             raise ValueError(f"Dataset task {normalized['id']} must declare item_manifest.")
+    if normalized["runtime_split_selector"] is not None:
+        if not normalized["local_dataset_only"] or normalized["interaction_mode"] != "single_turn":
+            raise ValueError(
+                f"Task {normalized['id']} runtime_split_selector is only supported for single-turn dataset tasks."
+            )
     return normalized
 
 
@@ -400,6 +483,7 @@ def task_summary(task: dict[str, Any]) -> dict[str, Any]:
         "run_baseline_verifier": task["run_baseline_verifier"],
         "supports_runtime_config": suite_run_config is not None,
         "suite_run_config": suite_run_config,
+        "runtime_split_selector": task.get("runtime_split_selector"),
         "supports_max_items": _task_supports_max_items(task),
         "default_max_items": _task_default_max_items(task, suite_run_config),
         "supports_max_episodes": _task_supports_max_episodes(task),

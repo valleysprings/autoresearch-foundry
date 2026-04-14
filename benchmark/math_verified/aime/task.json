@@ -1,0 +1,72 @@
+{
+  "id": "aime",
+  "title": "AIME",
+  "description": "Return the final answer for each aggregate AIME short-answer question across the 2024 train release, the combined 2025 I/II test releases, and the 2026 test release.",
+  "benchmark_tier": "comparable",
+  "track": "math_verified",
+  "dataset_id": "aime_all_years",
+  "dataset_size": 90,
+  "local_dataset_only": true,
+  "lazy_item_manifest": true,
+  "item_manifest": "data/questions.json",
+  "split": "2024:train + 2025:(I+II):test + 2026:test",
+  "runtime_split_selector": {
+    "label": "Split",
+    "default_value": "all",
+    "options": [
+      {
+        "value": "all",
+        "title": "All Years",
+        "description": "Evaluate across AIME 2024, 2025, and 2026 together.",
+        "item_count": 90
+      },
+      {
+        "value": "2024",
+        "title": "AIME 2024",
+        "item_count": 30,
+        "match_tags_any": ["year:2024"]
+      },
+      {
+        "value": "2025",
+        "title": "AIME 2025",
+        "item_count": 30,
+        "match_tags_any": ["year:2025"]
+      },
+      {
+        "value": "2026",
+        "title": "AIME 2026",
+        "item_count": 30,
+        "match_tags_any": ["year:2026"]
+      }
+    ]
+  },
+  "allow_browsing": false,
+  "answer_metric": "exact_match_rate",
+  "family": "math",
+  "task_mode": "answer",
+  "interaction_mode": "single_turn",
+  "task_signature": [
+    "editable-file-optimization",
+    "single-turn",
+    "dataset-task",
+    "math-question-solving"
+  ],
+  "editable_file": "editable.py",
+  "verifier": "verifier.py",
+  "entry_symbol": "solve",
+  "generation_budget": 4,
+  "candidate_budget": 3,
+  "branching_factor": 4,
+  "item_workers": 20,
+  "epsilon": 0.02,
+  "baseline_summary": "A placeholder dataset-level solver template that returns 0 when it cannot solve the active aggregate AIME question.",
+  "objective_spec": {
+    "display_name": "Exact match rate",
+    "direction": "max",
+    "unit": "ratio",
+    "summary_template": "Higher exact-match rate is better across independently evolved aggregate AIME question runs.",
+    "formula": "exact_match_rate = solved_questions / total_questions"
+  },
+  "prompt_context": "Edit editable.py only. The entry symbol solve(question: dict) must return the final numeric answer string for the current AIME question. Do not use browsing or external network access.",
+  "function_name": "solve"
+}

@@ -12,7 +12,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "I"
+        "round": "I",
+        "runtime_split_tags": [
+          "round:I"
+        ]
       }
     },
     {
@@ -27,7 +30,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "I"
+        "round": "I",
+        "runtime_split_tags": [
+          "round:I"
+        ]
       }
     },
     {
@@ -42,7 +48,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "I"
+        "round": "I",
+        "runtime_split_tags": [
+          "round:I"
+        ]
       }
     },
     {
@@ -57,7 +66,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "I"
+        "round": "I",
+        "runtime_split_tags": [
+          "round:I"
+        ]
       }
     },
     {
@@ -72,7 +84,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "I"
+        "round": "I",
+        "runtime_split_tags": [
+          "round:I"
+        ]
       }
     },
     {
@@ -87,7 +102,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "I"
+        "round": "I",
+        "runtime_split_tags": [
+          "round:I"
+        ]
       }
     },
     {
@@ -102,7 +120,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "I"
+        "round": "I",
+        "runtime_split_tags": [
+          "round:I"
+        ]
       }
     },
     {
@@ -117,7 +138,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "I"
+        "round": "I",
+        "runtime_split_tags": [
+          "round:I"
+        ]
       }
     },
     {
@@ -132,7 +156,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "I"
+        "round": "I",
+        "runtime_split_tags": [
+          "round:I"
+        ]
       }
     },
     {
@@ -147,7 +174,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "I"
+        "round": "I",
+        "runtime_split_tags": [
+          "round:I"
+        ]
       }
     },
     {
@@ -162,7 +192,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "I"
+        "round": "I",
+        "runtime_split_tags": [
+          "round:I"
+        ]
       }
     },
     {
@@ -177,7 +210,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "I"
+        "round": "I",
+        "runtime_split_tags": [
+          "round:I"
+        ]
       }
     },
     {
@@ -192,7 +228,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "I"
+        "round": "I",
+        "runtime_split_tags": [
+          "round:I"
+        ]
       }
     },
     {
@@ -207,7 +246,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "I"
+        "round": "I",
+        "runtime_split_tags": [
+          "round:I"
+        ]
       }
     },
     {
@@ -222,7 +264,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "I"
+        "round": "I",
+        "runtime_split_tags": [
+          "round:I"
+        ]
       }
     },
     {
@@ -237,7 +282,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "II"
+        "round": "II",
+        "runtime_split_tags": [
+          "round:II"
+        ]
       }
     },
     {
@@ -252,7 +300,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "II"
+        "round": "II",
+        "runtime_split_tags": [
+          "round:II"
+        ]
       }
     },
     {
@@ -267,7 +318,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "II"
+        "round": "II",
+        "runtime_split_tags": [
+          "round:II"
+        ]
       }
     },
     {
@@ -282,7 +336,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "II"
+        "round": "II",
+        "runtime_split_tags": [
+          "round:II"
+        ]
       }
     },
     {
@@ -297,7 +354,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "II"
+        "round": "II",
+        "runtime_split_tags": [
+          "round:II"
+        ]
       }
     },
     {
@@ -312,7 +372,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "II"
+        "round": "II",
+        "runtime_split_tags": [
+          "round:II"
+        ]
       }
     },
     {
@@ -327,7 +390,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "II"
+        "round": "II",
+        "runtime_split_tags": [
+          "round:II"
+        ]
       }
     },
     {
@@ -342,7 +408,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "II"
+        "round": "II",
+        "runtime_split_tags": [
+          "round:II"
+        ]
       }
     },
     {
@@ -357,7 +426,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "II"
+        "round": "II",
+        "runtime_split_tags": [
+          "round:II"
+        ]
       }
     },
     {
@@ -372,7 +444,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "II"
+        "round": "II",
+        "runtime_split_tags": [
+          "round:II"
+        ]
       }
     },
     {
@@ -387,7 +462,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "II"
+        "round": "II",
+        "runtime_split_tags": [
+          "round:II"
+        ]
       }
     },
     {
@@ -402,7 +480,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "II"
+        "round": "II",
+        "runtime_split_tags": [
+          "round:II"
+        ]
       }
     },
     {
@@ -417,7 +498,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "II"
+        "round": "II",
+        "runtime_split_tags": [
+          "round:II"
+        ]
       }
     },
     {
@@ -432,7 +516,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "II"
+        "round": "II",
+        "runtime_split_tags": [
+          "round:II"
+        ]
       }
     },
     {
@@ -447,7 +534,10 @@
         "subject": "competition-math",
         "answer_format": "numeric",
         "year": 2025,
-        "round": "II"
+        "round": "II",
+        "runtime_split_tags": [
+          "round:II"
+        ]
       }
     }
   ]

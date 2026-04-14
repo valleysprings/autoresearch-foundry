@@ -53,7 +53,7 @@ Tie-break metrics should stay secondary. They are not the benchmark headline.
 Current examples:
 
 - most tasks use the `objective_only` profile
-- `planbench` uses `plan_length`
+- `planbench-t1` and `planbench-t2` use `plan_length`
   shorter valid plans only matter after solved ratio is tied
 - optimization-style profiles may include weak preferences like `stability`, `complexity`, or `line_count`
 
@@ -69,7 +69,7 @@ Typical repo examples:
 
 - math benchmarks
 - science QA
-- reasoning tasks such as `planbench` and `arc-challenge`
+- reasoning tasks such as `planbench-t1`, `planbench-t2`, `planbench-t3`, and `arc-challenge`
 - long-context QA
 
 Important repo detail:

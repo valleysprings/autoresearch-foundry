@@ -59,6 +59,7 @@ def main() -> None:
                     "task": str(row.get("task") or "").strip(),
                     "correct_choice_index": correct_choice_index,
                     "answer_aliases": [correct],
+                    "runtime_split_tags": [f"topic:{topic}"],
                 },
             }
         )

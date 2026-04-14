@@ -43,6 +43,11 @@ def _canonical_problem_name(name: str) -> str:
     return CO_BENCH_PROBLEM_ALIASES.get(text, text)
 
 
+def _problem_slug(name: str) -> str:
+    text = _canonical_problem_name(name).strip().lower()
+    return "-".join(part for part in text.replace(":", " ").replace("/", " ").split() if part)
+
+
 def _normalized_problem_names(names: list[str] | tuple[str, ...]) -> list[str]:
     normalized: list[str] = []
     seen: set[str] = set()
@@ -175,6 +180,7 @@ def build_co_bench_manifest(
                     "source_index": index - 1,
                     "source_split": CO_BENCH_SPLIT,
                     "config_path": str(config_path.relative_to(task_dir)),
+                    "runtime_split_tags": [f"problem:{_problem_slug(problem_name)}"],
                 },
             }
         )

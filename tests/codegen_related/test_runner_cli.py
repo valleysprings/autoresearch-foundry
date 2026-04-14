@@ -12,8 +12,8 @@ from app.entries import runner
 
 
 SAMPLE_TASK = {
-    "id": "livecodebench-v6",
-    "title": "LiveCodeBench v6",
+    "id": "livecodebench",
+    "title": "LiveCodeBench",
     "description": "Synthetic coding benchmark summary for CLI tests.",
     "family": "coding",
     "function_name": "solve",
@@ -40,15 +40,23 @@ SAMPLE_TASK = {
     "item_workers": 6,
     "benchmark_tier": "comparable",
     "track": "coding_verified",
-    "dataset_id": "livecodebench_v6",
-    "dataset_size": 175,
+    "dataset_id": "livecodebench_all",
+    "dataset_size": 1055,
     "local_dataset_only": True,
-    "split": "v6:test",
+    "split": "v1+v2+v3+v4+v5+v6:test",
     "task_mode": "artifact",
     "interaction_mode": "single_turn",
     "included_in_main_comparison": True,
     "supports_runtime_config": False,
     "suite_run_config": None,
+    "runtime_split_selector": {
+        "label": "Split",
+        "default_value": "all",
+        "options": [
+            {"value": "all", "title": "All Releases", "item_count": 1055},
+            {"value": "v6", "title": "v6", "item_count": 175, "match_tags_any": ["release:v6"]},
+        ],
+    },
     "supports_max_items": True,
     "default_max_items": 1055,
     "supports_max_episodes": False,
@@ -68,12 +76,12 @@ class RunnerCliTest(unittest.TestCase):
             output = self._run_cli(["tasks"])
         payload = json.loads(output)
         self.assertIn("tasks", payload)
-        self.assertEqual(payload["tasks"][0]["id"], "livecodebench-v6")
+        self.assertEqual(payload["tasks"][0]["id"], "livecodebench")
         self.assertEqual(payload["tasks"][0]["task_mode"], "artifact")
 
     def test_tasks_pretty_mode_renders_single_task_detail(self) -> None:
         with patch.object(runner, "list_codegen_task_summaries", return_value=[dict(SAMPLE_TASK)]):
-            output = self._run_cli(["tasks", "--task-id", "livecodebench-v6", "--pretty"])
+            output = self._run_cli(["tasks", "--task-id", "livecodebench", "--pretty"])
         self.assertIn("task_mode_summary", output)
         self.assertIn("Artifact task", output)
         self.assertIn("objective_formula", output)
@@ -98,33 +106,33 @@ class RunnerCliTest(unittest.TestCase):
             },
             "runs": [
                 {
-                    "task": {"id": "livecodebench-v6"},
+                    "task": {"id": "livecodebench"},
                     "winner": {"metrics": {"objective": 0.75, "primary_score": 0.75}},
                     "delta_primary_score": 0.12,
                 }
             ],
         }
         with patch.object(runner, "load_cached_discrete_payload", return_value=payload) as load_cached:
-            output = self._run_cli(["latest-run", "--task-id", "livecodebench-v6", "--pretty"])
-        load_cached.assert_called_once_with(task_id="livecodebench-v6")
+            output = self._run_cli(["latest-run", "--task-id", "livecodebench", "--pretty"])
+        load_cached.assert_called_once_with(task_id="livecodebench")
         self.assertIn("generated_at", output)
         self.assertIn("deepseek-chat", output)
-        self.assertIn("livecodebench-v6", output)
+        self.assertIn("livecodebench", output)
         self.assertIn("delta_primary_score=0.12", output)
 
     def test_run_task_returns_payload_json(self) -> None:
         runtime = object()
         with tempfile.TemporaryDirectory() as tmp_dir:
-            artifact_path = Path(tmp_dir) / "codegen-livecodebench-v6.json"
+            artifact_path = Path(tmp_dir) / "codegen-livecodebench.json"
             artifact_path.write_text(json.dumps({"summary": {"generated_at": "now"}, "runs": []}))
             with (
                 patch.object(runner, "_runtime_for_cli", return_value=runtime) as runtime_for_cli,
                 patch.object(runner, "write_discrete_artifacts", return_value=artifact_path) as write_discrete_artifacts,
             ):
-                output = self._run_cli(["run-task", "--task-id", "livecodebench-v6", "--max-items", "3", "--llm-concurrency", "7"])
+                output = self._run_cli(["run-task", "--task-id", "livecodebench", "--max-items", "3", "--llm-concurrency", "7"])
         runtime_for_cli.assert_called_once_with(None, 7, None)
         write_discrete_artifacts.assert_called_once_with(
-            task_id="livecodebench-v6",
+            task_id="livecodebench",
             proposal_runtime=runtime,
             generation_budget=None,
             candidate_budget=None,
@@ -141,11 +149,11 @@ class RunnerCliTest(unittest.TestCase):
     def test_plan_dataset_smoke_applies_cap_and_small_dataset_rules(self) -> None:
         tasks = [
             {
-                "id": "livecodebench-v6",
-                "title": "LiveCodeBench v6",
+                "id": "livecodebench",
+                "title": "LiveCodeBench",
                 "track": "coding_verified",
                 "local_dataset_only": True,
-                "dataset_size": 175,
+                "dataset_size": 1055,
                 "prepared_item_count": 80,
                 "included_in_main_comparison": True,
                 "requires_eval_model": False,
@@ -182,10 +190,10 @@ class RunnerCliTest(unittest.TestCase):
             output = self._run_cli(["plan-dataset-smoke"])
         payload = json.loads(output)
         by_id = {row["task_id"]: row for row in payload["rows"]}
-        self.assertEqual(by_id["livecodebench-v6"]["max_items"], 80)
-        self.assertEqual(by_id["livecodebench-v6"]["action"], "run")
-        self.assertEqual(by_id["livecodebench-v6"]["dataset_size"], 175)
-        self.assertEqual(by_id["livecodebench-v6"]["prepared_count"], 80)
+        self.assertEqual(by_id["livecodebench"]["max_items"], 80)
+        self.assertEqual(by_id["livecodebench"]["action"], "run")
+        self.assertEqual(by_id["livecodebench"]["dataset_size"], 1055)
+        self.assertEqual(by_id["livecodebench"]["prepared_count"], 80)
         self.assertEqual(by_id["aime-2026"]["max_items"], 30)
         self.assertEqual(by_id["aime-2026"]["action"], "run")
         self.assertEqual(by_id["rmtbench"]["max_items"], 0)

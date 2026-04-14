@@ -1,0 +1,186 @@
+{
+  "id": "acpbench",
+  "title": "ACPBench",
+  "description": "Return the final answer for each ACPBench boolean or multiple-choice action-change-planning reasoning item.",
+  "benchmark_tier": "comparable",
+  "track": "reasoning_verified",
+  "dataset_id": "acpbench_bool_mcq",
+  "dataset_size": 1800,
+  "local_dataset_only": true,
+  "lazy_item_manifest": true,
+  "item_manifest": "data/questions.json",
+  "split": "test:bool+mcq",
+  "allow_browsing": false,
+  "answer_metric": "accuracy",
+  "family": "reasoning",
+  "task_mode": "answer",
+  "interaction_mode": "single_turn",
+  "task_signature": [
+    "editable-file-optimization",
+    "single-turn",
+    "dataset-task",
+    "reasoning",
+    "planning-reasoning",
+    "acpbench"
+  ],
+  "editable_file": "editable.py",
+  "verifier": "verifier.py",
+  "entry_symbol": "solve",
+  "runtime_split_selector": {
+    "label": "Split",
+    "default_value": "all",
+    "options": [
+      {
+        "value": "all",
+        "title": "All Bool + MCQ",
+        "description": "Evaluate across the full ACPBench boolean and multiple-choice surface.",
+        "item_count": 1800
+      },
+      {
+        "value": "bool",
+        "title": "Boolean",
+        "description": "Evaluate only boolean yes/no ACPBench items.",
+        "item_count": 900,
+        "match_tags_any": [
+          "format:bool"
+        ]
+      },
+      {
+        "value": "mcq",
+        "title": "Multiple Choice",
+        "description": "Evaluate only multiple-choice ACPBench items.",
+        "item_count": 900,
+        "match_tags_any": [
+          "format:mcq"
+        ]
+      },
+      {
+        "value": "acp_app_bool",
+        "title": "Action Applicability (Bool)",
+        "item_count": 130,
+        "match_tags_any": [
+          "config:acp_app_bool"
+        ]
+      },
+      {
+        "value": "acp_app_mcq",
+        "title": "Action Applicability (MCQ)",
+        "item_count": 130,
+        "match_tags_any": [
+          "config:acp_app_mcq"
+        ]
+      },
+      {
+        "value": "acp_areach_bool",
+        "title": "Action Reachability (Bool)",
+        "item_count": 120,
+        "match_tags_any": [
+          "config:acp_areach_bool"
+        ]
+      },
+      {
+        "value": "acp_areach_mcq",
+        "title": "Action Reachability (MCQ)",
+        "item_count": 120,
+        "match_tags_any": [
+          "config:acp_areach_mcq"
+        ]
+      },
+      {
+        "value": "acp_just_bool",
+        "title": "Action Justification (Bool)",
+        "item_count": 130,
+        "match_tags_any": [
+          "config:acp_just_bool"
+        ]
+      },
+      {
+        "value": "acp_just_mcq",
+        "title": "Action Justification (MCQ)",
+        "item_count": 130,
+        "match_tags_any": [
+          "config:acp_just_mcq"
+        ]
+      },
+      {
+        "value": "acp_land_bool",
+        "title": "Landmarks (Bool)",
+        "item_count": 130,
+        "match_tags_any": [
+          "config:acp_land_bool"
+        ]
+      },
+      {
+        "value": "acp_land_mcq",
+        "title": "Landmarks (MCQ)",
+        "item_count": 130,
+        "match_tags_any": [
+          "config:acp_land_mcq"
+        ]
+      },
+      {
+        "value": "acp_prog_bool",
+        "title": "Progression (Bool)",
+        "item_count": 130,
+        "match_tags_any": [
+          "config:acp_prog_bool"
+        ]
+      },
+      {
+        "value": "acp_prog_mcq",
+        "title": "Progression (MCQ)",
+        "item_count": 130,
+        "match_tags_any": [
+          "config:acp_prog_mcq"
+        ]
+      },
+      {
+        "value": "acp_reach_bool",
+        "title": "Atom Reachability (Bool)",
+        "item_count": 130,
+        "match_tags_any": [
+          "config:acp_reach_bool"
+        ]
+      },
+      {
+        "value": "acp_reach_mcq",
+        "title": "Atom Reachability (MCQ)",
+        "item_count": 130,
+        "match_tags_any": [
+          "config:acp_reach_mcq"
+        ]
+      },
+      {
+        "value": "acp_val_bool",
+        "title": "Validation (Bool)",
+        "item_count": 130,
+        "match_tags_any": [
+          "config:acp_val_bool"
+        ]
+      },
+      {
+        "value": "acp_val_mcq",
+        "title": "Validation (MCQ)",
+        "item_count": 130,
+        "match_tags_any": [
+          "config:acp_val_mcq"
+        ]
+      }
+    ]
+  },
+  "generation_budget": 4,
+  "candidate_budget": 3,
+  "branching_factor": 4,
+  "item_workers": 4,
+  "epsilon": 0.02,
+  "baseline_summary": "A placeholder ACPBench solver that answers A for multiple-choice questions and yes for boolean questions.",
+  "objective_spec": {
+    "display_name": "Accuracy",
+    "direction": "max",
+    "unit": "ratio",
+    "summary_template": "Higher accuracy is better across independently evolved ACPBench bool/mcq question runs.",
+    "formula": "accuracy = solved_questions / total_questions"
+  },
+  "prompt_context": "Edit editable.py only. The entry symbol solve(question: dict) must return only the final answer for the current ACPBench reasoning item. For boolean items, answer yes or no. For multiple-choice items, answer either the option label or the option text with no explanation.",
+  "function_name": "solve"
+}

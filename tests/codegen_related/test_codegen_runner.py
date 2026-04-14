@@ -37,6 +37,11 @@ def _fixture_task(task_id: str) -> dict[str, object]:
     return dict(next(item for item in load_fixture_codegen_tasks() if item["id"] == task_id))
 
 
+def _write_json(path: Path, payload: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload))
+
+
 def raw_content_response(
     content: str,
     *,
@@ -254,24 +259,214 @@ class CodegenRunnerTest(unittest.TestCase):
             "total_generations": 0,
         }
 
+    def _runtime_split_test_task(self, root: Path, *, include_selector: bool = True) -> dict[str, object]:
+        manifest_path = root / "questions.json"
+        _write_json(
+            manifest_path,
+            {
+                "items": [
+                    {
+                        "item_id": "item-v1-1",
+                        "name": "item-v1-1",
+                        "prompt": "Question v1",
+                        "expected_answer": "ok",
+                        "metadata": {"runtime_split_tags": ["release:v1"]},
+                    },
+                    {
+                        "item_id": "item-v2-1",
+                        "name": "item-v2-1",
+                        "prompt": "Question v2 first",
+                        "expected_answer": "ok",
+                        "metadata": {"runtime_split_tags": ["release:v2"]},
+                    },
+                    {
+                        "item_id": "item-v2-2",
+                        "name": "item-v2-2",
+                        "prompt": "Question v2 second",
+                        "expected_answer": "ok",
+                        "metadata": {"runtime_split_tags": ["release:v2"]},
+                    },
+                ]
+            },
+        )
+        task: dict[str, object] = {
+            "id": "synthetic-runtime-split",
+            "title": "Synthetic Runtime Split",
+            "description": "Synthetic dataset task for runtime split tests.",
+            "family": "synthetic",
+            "function_name": "solve",
+            "entry_symbol": "solve",
+            "editable_file": "editable.py",
+            "answer_metric": "accuracy",
+            "objective_label": "Accuracy",
+            "objective_direction": "max",
+            "objective_spec": {
+                "display_name": "Accuracy",
+                "direction": "max",
+                "unit": "ratio",
+                "summary_template": "Higher is better.",
+                "formula": "accuracy = solved / total",
+            },
+            "selection_spec": {
+                "profile": "objective_only",
+                "display_name": "Objective only",
+                "summary_template": "Higher is better.",
+                "primary_metric": "objective_score",
+                "primary_label": "Accuracy",
+                "primary_direction": "max",
+                "primary_formula": "primary_score = objective_score",
+                "gate_summary": "gate: verifier_status == 'pass'",
+                "tie_break_formula": "tie_break_score = 0.0",
+                "delta_template": "delta_primary_score = winner - baseline",
+                "archive_summary": "archive_features = none",
+            },
+            "generation_budget": 1,
+            "candidate_budget": 1,
+            "branching_factor": 1,
+            "item_workers": 1,
+            "benchmark_tier": "comparable",
+            "track": "coding_verified",
+            "dataset_id": "synthetic_runtime_split_v1",
+            "dataset_size": 3,
+            "local_dataset_only": True,
+            "item_manifest_path": str(manifest_path),
+            "included_in_main_comparison": True,
+            "task_mode": "answer",
+            "interaction_mode": "single_turn",
+            "task_shape": None,
+            "scoring_mode": None,
+            "split": "synthetic:test",
+            "research_line": None,
+            "personalization_category": None,
+            "personalization_focus": None,
+            "safety_category": None,
+            "safety_focus": None,
+            "supports_eval_model": False,
+            "requires_eval_model": False,
+            "default_eval_model": None,
+            "run_baseline_verifier": True,
+        }
+        if include_selector:
+            task["runtime_split_selector"] = {
+                "label": "Split",
+                "default_value": "all",
+                "options": [
+                    {"value": "all", "title": "All", "item_count": 3},
+                    {"value": "v2", "title": "v2", "item_count": 2, "match_tags_any": ["release:v2"]},
+                ],
+            }
+        return task
+
+    def _stub_item_run(self, task: dict[str, object], item: dict[str, object]) -> dict[str, object]:
+        return {
+            "dataset_task_id": task["id"],
+            "item_id": item["item_id"],
+            "item_name": item.get("name") or item["item_id"],
+            "item_source_index": item.get("metadata", {}).get("source_index", 0),
+            "item_brief": item.get("prompt"),
+            "question": {"item_id": item["item_id"], "prompt": item["prompt"], "expected_answer": item["expected_answer"]},
+            "baseline": {
+                "agent": "baseline",
+                "label": "baseline",
+                "strategy": "baseline",
+                "rationale": "baseline",
+                "candidate_summary": "baseline",
+                "proposal_model": None,
+                "source_code": "",
+                "metrics": {
+                    "objective": 0.0,
+                    "objective_score": 0.0,
+                    "primary_score": 0.0,
+                    "verifier_status": "fail",
+                    "status": "fail",
+                    "passed_tests": 0,
+                    "total_tests": 1,
+                    "gate_passed": False,
+                },
+            },
+            "winner": {
+                "agent": "winner",
+                "label": "winner",
+                "strategy": "winner",
+                "rationale": "winner",
+                "candidate_summary": "winner",
+                "proposal_model": "deepseek-chat",
+                "source_code": "",
+                "metrics": {
+                    "objective": 1.0,
+                    "objective_score": 1.0,
+                    "primary_score": 1.0,
+                    "verifier_status": "pass",
+                    "status": "pass",
+                    "passed_tests": 1,
+                    "total_tests": 1,
+                    "gate_passed": True,
+                },
+            },
+            "delta_primary_score": 1.0,
+            "run_delta_primary_score": 1.0,
+            "run_delta_objective": 1.0,
+            "generations": [],
+            "objective_curve": [],
+            "llm_traces": [],
+            "memory_before_count": 0,
+            "memory_after_count": 0,
+            "positive_experiences_added": 0,
+            "negative_experiences_added": 0,
+            "added_experiences": [],
+        }
+
     def test_missing_runtime_config_fails_before_run(self) -> None:
         with patch_runner_fixture_catalog(), tempfile.TemporaryDirectory() as tmp_dir, patch.dict(os.environ, {}, clear=True):
             with self.assertRaises(ConfigError):
                 generate_discrete_payload(task_id="contains-duplicates", runs_root=Path(tmp_dir), env_root=Path(tmp_dir))
+
+    def test_dataset_runtime_split_suite_config_is_forwarded(self) -> None:
+        runtime = make_runtime([])
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            task = self._runtime_split_test_task(tmp)
+            with (
+                patch("app.entries.runner.load_codegen_tasks", return_value=[task]),
+                patch("app.entries.runner.run_dataset_task", return_value=self._stub_dataset_run_result(task)) as run_dataset,
+            ):
+                payload = generate_discrete_payload(
+                    task_id=str(task["id"]),
+                    proposal_runtime=runtime,
+                    runs_root=tmp,
+                    suite_config={"split": "v2"},
+                )
+        self.assertEqual(payload["runs"][0]["task"]["id"], "synthetic-runtime-split")
+        self.assertEqual(run_dataset.call_args.kwargs["suite_config"], {"split": "v2"})
+
+    def test_dataset_suite_config_requires_runtime_split_selector(self) -> None:
+        runtime = make_runtime([])
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            task = self._runtime_split_test_task(tmp, include_selector=False)
+            with patch("app.entries.runner.load_codegen_tasks", return_value=[task]):
+                with self.assertRaises(ConfigError) as raised:
+                    generate_discrete_payload(
+                        task_id=str(task["id"]),
+                        proposal_runtime=runtime,
+                        runs_root=tmp,
+                        suite_config={"split": "v2"},
+                    )
+        self.assertIn("runtime_split_selector", str(raised.exception))
 
     def test_math_tasks_fail_fast_when_math_verify_is_missing(self) -> None:
         runtime = make_runtime([])
         with tempfile.TemporaryDirectory() as tmp_dir, patch("app.entries.runner.importlib.util.find_spec", return_value=None):
             with self.assertRaises(ConfigError) as raised:
                 generate_discrete_payload(
-                    task_id="aime-2026",
+                    task_id="aime",
                     proposal_runtime=runtime,
                     runs_root=Path(tmp_dir),
                     branching_factor=1,
                     max_items=1,
                 )
         self.assertIn("math-verify", str(raised.exception))
-        self.assertIn("aime-2026", str(raised.exception))
+        self.assertIn("aime", str(raised.exception))
 
     def test_invalid_llm_output_fails_immediately(self) -> None:
         runtime = make_runtime([chat_response({"name": "bad"})])
@@ -1188,6 +1383,63 @@ class CodegenRunnerTest(unittest.TestCase):
         self.assertTrue(payload["runs"])
         self.assertTrue(all(run["included_in_main_comparison"] for run in payload["runs"]))
 
+    def test_run_dataset_task_filters_runtime_split_before_max_items(self) -> None:
+        runtime = make_runtime([])
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            task = self._runtime_split_test_task(tmp)
+            with patch(
+                "app.codegen.dataset_runner._run_item",
+                side_effect=lambda **kwargs: self._stub_item_run(kwargs["task"], kwargs["item"]),
+            ):
+                result = run_dataset_task(
+                    task,
+                    proposal_runtime=runtime,
+                    workspace_root=tmp / "workspace",
+                    memory_root=tmp / "memory",
+                    session_id="split-before-max-items",
+                    max_items=1,
+                    suite_config={"split": "v2"},
+                )
+        self.assertEqual([item_run["item_id"] for item_run in result["item_runs"]], ["item-v2-1"])
+        self.assertEqual(result["task"]["selected_runtime_split"], "v2")
+
+    def test_run_dataset_task_filters_runtime_split_before_item_id_resolution(self) -> None:
+        runtime = make_runtime([])
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            task = self._runtime_split_test_task(tmp)
+            with patch(
+                "app.codegen.dataset_runner._run_item",
+                side_effect=lambda **kwargs: self._stub_item_run(kwargs["task"], kwargs["item"]),
+            ):
+                result = run_dataset_task(
+                    task,
+                    proposal_runtime=runtime,
+                    workspace_root=tmp / "workspace",
+                    memory_root=tmp / "memory",
+                    session_id="split-before-item-ids",
+                    selected_item_ids=["1"],
+                    suite_config={"split": "v2"},
+                )
+        self.assertEqual([item_run["item_id"] for item_run in result["item_runs"]], ["item-v2-1"])
+
+    def test_run_dataset_task_rejects_unknown_runtime_split(self) -> None:
+        runtime = make_runtime([])
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp = Path(tmp_dir)
+            task = self._runtime_split_test_task(tmp)
+            with self.assertRaises(ValueError) as raised:
+                run_dataset_task(
+                    task,
+                    proposal_runtime=runtime,
+                    workspace_root=tmp / "workspace",
+                    memory_root=tmp / "memory",
+                    session_id="unknown-runtime-split",
+                    suite_config={"split": "missing"},
+                )
+        self.assertIn("does not support split 'missing'", str(raised.exception))
+
     def test_dataset_task_fanout_runs_each_question_independently(self) -> None:
         runtime = make_runtime(
             [
@@ -1597,62 +1849,79 @@ class CodegenRunnerTest(unittest.TestCase):
                 chat_response(REFLECTION_PAYLOAD),
             ]
         )
-        task = next(item for item in load_codegen_tasks() if item["id"] == "planbench")
-        task = dict(task)
-        task["generation_budget"] = 1
-        task["candidate_budget"] = 1
-        task["branching_factor"] = 1
-        task["item_workers"] = 1
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tmp = Path(tmp_dir)
-            items = [
-                {
-                    "item_id": "planbench-00002",
-                    "raw_item_id": "planbench-00002",
-                    "id": "planbench-00002",
-                    "question_id": "planbench-00002",
-                    "name": "obfuscated_deceptive_logistics / oneshot / 2",
-                    "prompt": "Synthetic planning prompt 2.",
-                    "raw_prompt": "Synthetic planning prompt 2.",
-                    "context": None,
-                    "raw_context": None,
-                    "choices": [],
-                    "raw_choices": [],
-                    "expected_answer": "move a b",
-                    "raw_expected_answer": "move a b",
-                    "metadata": {"dataset": "planbench", "answer_format": "plan", "domain": "obfuscated_deceptive_logistics"},
-                },
-                {
-                    "item_id": "planbench-00003",
-                    "raw_item_id": "planbench-00003",
-                    "id": "planbench-00003",
-                    "question_id": "planbench-00003",
-                    "name": "obfuscated_deceptive_logistics / oneshot / 3",
-                    "prompt": "Synthetic planning prompt 3.",
-                    "raw_prompt": "Synthetic planning prompt 3.",
-                    "context": None,
-                    "raw_context": None,
-                    "choices": [],
-                    "raw_choices": [],
-                    "expected_answer": "move b c",
-                    "raw_expected_answer": "move b c",
-                    "metadata": {"dataset": "planbench", "answer_format": "plan", "domain": "obfuscated_deceptive_logistics"},
-                },
-            ]
-            manifest = tmp / "questions.json"
-            manifest.write_text(json.dumps(items, indent=2))
-            task["item_manifest_path"] = str(manifest)
-            task["dataset_size"] = len(items)
-            result = run_dataset_task(
-                task,
-                proposal_runtime=runtime,
-                workspace_root=tmp / "workspace",
-                memory_root=tmp / "item-memory",
-                session_id="dataset-first-question-indexing",
-                selected_item_ids=["1"],
-            )
-            self.assertEqual(result["dataset_summary"]["total_items"], 1)
-            self.assertEqual(result["item_runs"][0]["item_id"], "planbench-00002")
+        for task_id, first_item_id in (
+            ("planbench-t1", "planbench-t1-00002"),
+            ("planbench-t2", "planbench-t2-00002"),
+            ("planbench-t3", "planbench-t3-00002"),
+        ):
+            task = next(item for item in load_codegen_tasks() if item["id"] == task_id)
+            task = dict(task)
+            task["generation_budget"] = 1
+            task["candidate_budget"] = 1
+            task["branching_factor"] = 1
+            task["item_workers"] = 1
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tmp = Path(tmp_dir)
+                items = [
+                    {
+                        "item_id": first_item_id,
+                        "raw_item_id": first_item_id,
+                        "id": first_item_id,
+                        "question_id": first_item_id,
+                        "name": f"{task_id} / 2",
+                        "prompt": f"Synthetic {task_id} prompt 2.",
+                        "raw_prompt": f"Synthetic {task_id} prompt 2.",
+                        "context": None,
+                        "raw_context": None,
+                        "choices": ["yes", "no"] if task_id == "planbench-t3" else [],
+                        "raw_choices": ["yes", "no"] if task_id == "planbench-t3" else [],
+                        "expected_answer": "yes" if task_id == "planbench-t3" else "move a b",
+                        "raw_expected_answer": "yes" if task_id == "planbench-t3" else "move a b",
+                        "metadata": {
+                            "dataset": "planbench",
+                            "answer_format": "choice" if task_id == "planbench-t3" else "plan",
+                            "domain": "obfuscated_deceptive_logistics",
+                            "correct_choice_index": 0 if task_id == "planbench-t3" else None,
+                            "answer_aliases": ["yes", "valid"] if task_id == "planbench-t3" else [],
+                        },
+                    },
+                    {
+                        "item_id": first_item_id.replace("00002", "00003"),
+                        "raw_item_id": first_item_id.replace("00002", "00003"),
+                        "id": first_item_id.replace("00002", "00003"),
+                        "question_id": first_item_id.replace("00002", "00003"),
+                        "name": f"{task_id} / 3",
+                        "prompt": f"Synthetic {task_id} prompt 3.",
+                        "raw_prompt": f"Synthetic {task_id} prompt 3.",
+                        "context": None,
+                        "raw_context": None,
+                        "choices": ["yes", "no"] if task_id == "planbench-t3" else [],
+                        "raw_choices": ["yes", "no"] if task_id == "planbench-t3" else [],
+                        "expected_answer": "no" if task_id == "planbench-t3" else "move b c",
+                        "raw_expected_answer": "no" if task_id == "planbench-t3" else "move b c",
+                        "metadata": {
+                            "dataset": "planbench",
+                            "answer_format": "choice" if task_id == "planbench-t3" else "plan",
+                            "domain": "obfuscated_deceptive_logistics",
+                            "correct_choice_index": 1 if task_id == "planbench-t3" else None,
+                            "answer_aliases": ["no", "invalid"] if task_id == "planbench-t3" else [],
+                        },
+                    },
+                ]
+                manifest = tmp / "questions.json"
+                manifest.write_text(json.dumps(items, indent=2))
+                task["item_manifest_path"] = str(manifest)
+                task["dataset_size"] = len(items)
+                result = run_dataset_task(
+                    task,
+                    proposal_runtime=runtime,
+                    workspace_root=tmp / "workspace",
+                    memory_root=tmp / "item-memory",
+                    session_id=f"{task_id}-first-question-indexing",
+                    selected_item_ids=["1"],
+                )
+                self.assertEqual(result["dataset_summary"]["total_items"], 1)
+                self.assertEqual(result["item_runs"][0]["item_id"], first_item_id)
 
     def test_dataset_item_runs_preserve_manifest_order(self) -> None:
         runtime = make_runtime(

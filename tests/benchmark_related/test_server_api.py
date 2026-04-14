@@ -102,22 +102,22 @@ class ServerApiTest(unittest.TestCase):
             (runs_root / "latest_run.json").write_text(
                 json.dumps({"summary": {"generated_at": "global"}, "runs": [{"task": {"id": "olymmath"}}], "task_catalog": []})
             )
-            (runs_root / "codegen-livecodebench-v6.json").write_text(
-                json.dumps({"summary": {"generated_at": "task"}, "runs": [{"task": {"id": "livecodebench-v6"}}], "task_catalog": []})
+            (runs_root / "codegen-livecodebench.json").write_text(
+                json.dumps({"summary": {"generated_at": "task"}, "runs": [{"task": {"id": "livecodebench"}}], "task_catalog": []})
             )
-            payload = server.load_cached_discrete_payload(task_id="livecodebench-v6", runs_root=runs_root)
+            payload = server.load_cached_discrete_payload(task_id="livecodebench", runs_root=runs_root)
             self.assertEqual(payload["summary"]["generated_at"], "task")
-            self.assertEqual(payload["runs"][0]["task"]["id"], "livecodebench-v6")
+            self.assertEqual(payload["runs"][0]["task"]["id"], "livecodebench")
 
     def test_polling_access_logs_are_suppressed_by_default(self) -> None:
-        self.assertTrue(server._should_suppress_request_logging("/api/latest-run?task_id=planbench"))
+        self.assertTrue(server._should_suppress_request_logging("/api/latest-run?task_id=planbench-t1"))
         self.assertTrue(server._should_suppress_request_logging("/api/job?job_id=abc123"))
         self.assertTrue(server._should_suppress_request_logging("/api/health"))
         self.assertFalse(server._should_suppress_request_logging("/api/tasks"))
 
     def test_polling_access_logs_can_be_reenabled_via_env_var(self) -> None:
         with patch.dict("os.environ", {"AUTORESEARCH_LOG_POLLING": "1"}):
-            self.assertFalse(server._should_suppress_request_logging("/api/latest-run?task_id=planbench"))
+            self.assertFalse(server._should_suppress_request_logging("/api/latest-run?task_id=planbench-t1"))
             self.assertFalse(server._should_suppress_request_logging("/api/job?job_id=abc123"))
 
     def test_async_job_surfaces_terminal_failure(self) -> None:
@@ -199,7 +199,7 @@ class ServerApiTest(unittest.TestCase):
             status, payload = _fetch_json(f"http://127.0.0.1:{httpd.server_port}/api/tasks")
             self.assertEqual(status, 200)
             expected_summaries = list_codegen_task_summaries()
-            self.assertEqual(payload.get("dataset_warnings"), [])
+            self.assertEqual(payload.get("dataset_warnings"), server.list_missing_local_dataset_warnings())
             self.assertEqual({task["id"] for task in payload["tasks"]}, set(enabled_registry_task_ids()))
             self.assertEqual([task["id"] for task in payload["tasks"]], [task["id"] for task in expected_summaries])
 
@@ -400,6 +400,40 @@ class ServerApiTest(unittest.TestCase):
                     self.assertEqual(completed["status"], "completed")
                     self.assertEqual(completed["suite_config"], {"n_tasks": 2, "agent_name": "custom-agent"})
                     self.assertEqual(write_artifacts.call_args.kwargs["suite_config"], {"n_tasks": 2, "agent_name": "custom-agent"})
+                finally:
+                    httpd.shutdown()
+                    httpd.server_close()
+                    thread.join(timeout=5)
+
+    def test_runtime_split_suite_config_is_forwarded_to_job_runner(self) -> None:
+        payload = {"summary": {"generated_at": "now"}, "runs": [], "task_catalog": []}
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            artifact_path = Path(tmp_dir) / "payload.json"
+            artifact_path.write_text(json.dumps(payload))
+            with (
+                patch.object(server.ProposalRuntime, "from_env", return_value=make_runtime([])),
+                patch.object(server, "write_discrete_artifacts", return_value=artifact_path) as write_artifacts,
+            ):
+                httpd, thread = self._serve()
+                try:
+                    status, start_payload = _fetch_json(
+                        f"http://127.0.0.1:{httpd.server_port}/api/run-task?task_id=livecodebench",
+                        method="POST",
+                        body=json.dumps({"suite_config": {"split": "v6"}}).encode("utf-8"),
+                        headers={"Content-Type": "application/json"},
+                    )
+                    self.assertEqual(status, 202)
+                    job_id = start_payload["job_id"]
+                    deadline = time.time() + 5
+                    completed = {}
+                    while time.time() < deadline:
+                        _, completed = _fetch_json(f"http://127.0.0.1:{httpd.server_port}/api/job?job_id={job_id}")
+                        if completed["status"] != "running":
+                            break
+                        time.sleep(0.05)
+                    self.assertEqual(completed["status"], "completed")
+                    self.assertEqual(completed["suite_config"], {"split": "v6"})
+                    self.assertEqual(write_artifacts.call_args.kwargs["suite_config"], {"split": "v6"})
                 finally:
                     httpd.shutdown()
                     httpd.server_close()

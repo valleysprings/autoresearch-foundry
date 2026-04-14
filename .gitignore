@@ -219,6 +219,12 @@ external/
 runs/
 docs/
 data/
+!benchmark/reasoning_verified/planbench-t1/data/
+!benchmark/reasoning_verified/planbench-t1/data/questions.json
+!benchmark/reasoning_verified/planbench-t2/data/
+!benchmark/reasoning_verified/planbench-t2/data/questions.json
+!benchmark/reasoning_verified/planbench-t3/data/
+!benchmark/reasoning_verified/planbench-t3/data/questions.json
 # Track benchmark code and configs by default; keep local artifacts out of git.
 /benchmark/**/vendor/
 /benchmark/**/vendor/**

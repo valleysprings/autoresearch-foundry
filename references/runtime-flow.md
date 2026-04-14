@@ -40,7 +40,7 @@ When the user clicks run in the UI:
 
 ### Branch A: dataset task
 
-Used for `olymmath`, `math-500`, `aime`, `amc`, `planbench`, `sciq`, `qasc`, `scienceqa`, and other dataset-backed tasks.
+Used for `olymmath`, `math-500`, `aime`, `amc`, `planbench-t1`, `planbench-t2`, `planbench-t3`, `sciq`, `qasc`, `scienceqa`, and other dataset-backed tasks.
 
 1. `app/codegen/dataset_runner.py::run_dataset_task(...)`
 2. `app/codegen/dataset_support.py::load_question_manifest(...)`

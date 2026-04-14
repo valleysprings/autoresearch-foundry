@@ -135,7 +135,7 @@ class CodegenVerifierTest(unittest.TestCase):
         self.addCleanup(temp_dir.cleanup)
         return workspace, source_path, source_code
 
-    def _stub_planbench_assets(self, item: dict[str, object], *, expected_plan: str) -> None:
+    def _stub_planbench_assets(self, item: dict[str, object], *, valid_plans: list[str]) -> None:
         raw_context = item.get("raw_context")
         if not isinstance(raw_context, dict):
             raise ValueError("PlanBench test item must provide raw_context.")
@@ -163,12 +163,13 @@ class CodegenVerifierTest(unittest.TestCase):
         config_path.write_text(json.dumps(config_payload))
         validator_path.write_text(
             "#!/usr/bin/env python3\n"
+            "import json\n"
             "import os\n"
             "import sys\n"
             "from pathlib import Path\n"
             "plan = Path(sys.argv[3]).read_text().strip()\n"
-            "expected = os.environ.get('PLANBENCH_STUB_EXPECTED_PLAN', '').strip()\n"
-            "if plan == expected:\n"
+            "valid_plans = json.loads(os.environ.get('PLANBENCH_STUB_VALID_PLANS_JSON', '[]'))\n"
+            "if plan in valid_plans:\n"
             "    print('Plan valid')\n"
             "    raise SystemExit(0)\n"
             "print('Plan invalid')\n"
@@ -176,13 +177,16 @@ class CodegenVerifierTest(unittest.TestCase):
         )
         validator_path.chmod(0o755)
 
-        normalized_expected_plan = "\n".join(f"({step})" for step in canonical_plan_steps(expected_plan))
+        normalized_valid_plans = [
+            "\n".join(f"({step})" for step in canonical_plan_steps(plan_text))
+            for plan_text in valid_plans
+        ]
         env_patch = patch.dict(
             os.environ,
             {
                 "PLANBENCH_OFFICIAL_ROOT": str(root),
                 "PLANBENCH_VAL_BINARY": str(validator_path),
-                "PLANBENCH_STUB_EXPECTED_PLAN": normalized_expected_plan,
+                "PLANBENCH_STUB_VALID_PLANS_JSON": json.dumps(normalized_valid_plans),
             },
             clear=False,
         )
@@ -349,8 +353,8 @@ class CodegenVerifierTest(unittest.TestCase):
             for task in eager_dataset_tasks:
                 items = load_question_manifest(task)
                 micro_task = build_micro_task(task, items[0])
-                if task["id"] == "planbench":
-                    self._stub_planbench_assets(items[0], expected_plan=str(items[0]["expected_answer"]))
+                if task["id"] in {"planbench-t1", "planbench-t2"}:
+                    self._stub_planbench_assets(items[0], valid_plans=[str(items[0]["expected_answer"])])
                 source = Path(task["editable_path"]).read_text()
                 candidate_path, candidate_code = materialize_candidate(
                     task=micro_task,
@@ -370,7 +374,7 @@ class CodegenVerifierTest(unittest.TestCase):
                 self.assertEqual(metrics["test_results"][0]["name"], items[0]["name"])
 
     def test_livecodebench_lazy_manifest_can_prepare_on_demand(self) -> None:
-        task = self._loaded_task_or_skip("livecodebench-v6")
+        task = self._loaded_task_or_skip("livecodebench")
         with tempfile.TemporaryDirectory() as tmp_dir:
             tmp = Path(tmp_dir)
             data_dir = tmp / "data"
@@ -399,13 +403,15 @@ class CodegenVerifierTest(unittest.TestCase):
                 "item_manifest_path": str(data_dir / "questions.json"),
                 "editable_path": task["editable_path"],
                 "verifier_path": task["verifier_path"],
+                "runtime_split_selector": None,
+                "dataset_size": 1,
             }
             items = load_question_manifest(lazy_task, min_items=1)
             self.assertEqual(len(items), 1)
             self.assertEqual(items[0]["item_id"], "lazy-livecodebench-sample")
 
     def test_livecodebench_stdin_candidate_passes_cached_problem(self) -> None:
-        task = self._loaded_task_or_skip("livecodebench-v6")
+        task = self._loaded_task_or_skip("livecodebench")
         item = {
             "id": "livecodebench-stdin-sample",
             "item_id": "livecodebench-stdin-sample",
@@ -453,7 +459,7 @@ class CodegenVerifierTest(unittest.TestCase):
         self.assertEqual(metrics["test_results"][0]["actual"], "5")
 
     def test_livecodebench_functional_candidate_passes_cached_problem(self) -> None:
-        task = self._loaded_task_or_skip("livecodebench-v6")
+        task = self._loaded_task_or_skip("livecodebench")
         item = {
             "id": "livecodebench-functional-sample",
             "item_id": "livecodebench-functional-sample",
@@ -497,6 +503,80 @@ class CodegenVerifierTest(unittest.TestCase):
         self.assertEqual(metrics["status"], "pass")
         self.assertEqual(metrics["total_tests"], 2)
         self.assertEqual(metrics["test_results"][0]["actual"], "3")
+
+    def test_acpbench_boolean_candidate_normalizes_yes_no_answers(self) -> None:
+        task = self._loaded_task_or_skip("acpbench")
+        item = {
+            "id": "acpbench-bool-sample",
+            "item_id": "acpbench-bool-sample",
+            "question_id": "acpbench-bool-sample",
+            "raw_item_id": "acpbench-bool-sample",
+            "name": "acpbench-bool-sample",
+            "prompt": "Can the action be applied?",
+            "raw_prompt": "Can the action be applied?",
+            "context": "Answer yes or no.",
+            "raw_context": "Answer yes or no.",
+            "choices": [],
+            "raw_choices": [],
+            "expected_answer": "yes",
+            "raw_expected_answer": "yes",
+            "metadata": {
+                "answer_format": "bool",
+                "answer_aliases": ["yes"],
+            },
+        }
+        micro_task = build_micro_task(task, item)
+        _, source_path, source_code = self._materialize(
+            micro_task,
+            "def solve(question: dict) -> str:\n    return 'Yes, the action is applicable.'\n",
+        )
+        metrics = evaluate_materialized_candidate(
+            task=micro_task,
+            source_path=source_path,
+            source_code=source_code,
+            baseline_metrics=None,
+            memory_applied=False,
+        )
+        self.assertEqual(metrics["status"], "pass")
+        self.assertEqual(metrics["test_results"][0]["actual"], "yes")
+
+    def test_acpbench_mcq_candidate_accepts_choice_labels(self) -> None:
+        task = self._loaded_task_or_skip("acpbench")
+        item = {
+            "id": "acpbench-mcq-sample",
+            "item_id": "acpbench-mcq-sample",
+            "question_id": "acpbench-mcq-sample",
+            "raw_item_id": "acpbench-mcq-sample",
+            "name": "acpbench-mcq-sample",
+            "prompt": "Which fact is true?",
+            "raw_prompt": "Which fact is true?",
+            "context": "Choose the best option.",
+            "raw_context": "Choose the best option.",
+            "choices": ["Option A", "Option B", "Option C"],
+            "raw_choices": ["Option A", "Option B", "Option C"],
+            "expected_answer": "Option B",
+            "raw_expected_answer": "Option B",
+            "metadata": {
+                "answer_format": "mcq",
+                "correct_choice_index": 1,
+                "answer_aliases": ["B", "Option B"],
+            },
+        }
+        micro_task = build_micro_task(task, item)
+        _, source_path, source_code = self._materialize(
+            micro_task,
+            "def solve(question: dict) -> str:\n    return 'B'\n",
+        )
+        metrics = evaluate_materialized_candidate(
+            task=micro_task,
+            source_path=source_path,
+            source_code=source_code,
+            baseline_metrics=None,
+            memory_applied=False,
+        )
+        self.assertEqual(metrics["status"], "pass")
+        self.assertEqual(metrics["test_results"][0]["actual"], "b")
+        self.assertEqual(metrics["test_results"][0]["actual_display"], "B -> Option B")
 
     def test_livecodebench_failure_details_attach_to_first_failed_case(self) -> None:
         problem = {
@@ -636,7 +716,7 @@ class CodegenVerifierTest(unittest.TestCase):
         self.assertEqual(metrics["test_results"][0]["actual"], item["expected_answer"])
 
     def test_aime_2026_numeric_answer_is_normalized_before_match(self) -> None:
-        task = next(task for task in load_codegen_tasks() if task["id"] == "aime-2026")
+        task = next(task for task in load_codegen_tasks() if task["id"] == "aime")
         item = next(item for item in load_question_manifest(task) if item["item_id"] == "aime-2026-01")
         micro_task = build_micro_task(task, item)
         _, source_path, source_code = self._materialize(
@@ -654,7 +734,7 @@ class CodegenVerifierTest(unittest.TestCase):
         self.assertEqual(metrics["test_results"][0]["actual"], "277")
 
     def test_aime_numeric_answer_is_normalized_before_match(self) -> None:
-        task = next(task for task in load_codegen_tasks() if task["id"] == "aime-2024")
+        task = next(task for task in load_codegen_tasks() if task["id"] == "aime")
         item = next(item for item in load_question_manifest(task) if item["item_id"] == "aime-2024-02")
         micro_task = build_micro_task(task, item)
         _, source_path, source_code = self._materialize(
@@ -766,13 +846,13 @@ class CodegenVerifierTest(unittest.TestCase):
         self.assertIn("44*sqrt(30)+241", metrics["test_results"][0]["actual"])
 
     def test_planbench_manifest_item_ids_are_unique(self) -> None:
-        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench")
+        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench-t1")
         items = load_question_manifest(task)
         item_ids = [item["item_id"] for item in items]
         self.assertEqual(len(item_ids), len(set(item_ids)))
 
     def test_planbench_public_question_payload_preserves_raw_prompt_and_context(self) -> None:
-        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench")
+        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench-t1")
         item = load_question_manifest(task)[0]
         micro_task = build_micro_task(task, item)
         payload = public_question_payload(item)
@@ -782,10 +862,10 @@ class CodegenVerifierTest(unittest.TestCase):
         self.assertIn("[PLAN]", micro_task["prompt_context"])
 
     def test_planbench_obfuscated_official_object_format_is_accepted(self) -> None:
-        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench")
+        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench-t1")
         item = next(item for item in load_question_manifest(task) if item["metadata"].get("domain") == "obfuscated_deceptive_logistics")
         micro_task = build_micro_task(task, item)
-        self._stub_planbench_assets(item, expected_plan=str(item["expected_answer"]))
+        self._stub_planbench_assets(item, valid_plans=[str(item["expected_answer"])])
         raw_plan = "\n".join(
             re.sub(r"\bo(\d+)\b", r"object_\1", step)
             for step in canonical_plan_steps(item["expected_answer"])
@@ -806,10 +886,10 @@ class CodegenVerifierTest(unittest.TestCase):
         self.assertIn("Plan valid", metrics["test_results"][0]["validator_output"])
 
     def test_planbench_obfuscated_single_line_object_format_is_rejected(self) -> None:
-        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench")
+        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench-t1")
         item = next(item for item in load_question_manifest(task) if item["metadata"].get("domain") == "obfuscated_deceptive_logistics")
         micro_task = build_micro_task(task, item)
-        self._stub_planbench_assets(item, expected_plan=str(item["expected_answer"]))
+        self._stub_planbench_assets(item, valid_plans=[str(item["expected_answer"])])
         raw_plan = " ".join(
             re.sub(r"\bo(\d+)\b", r"object_\1", step)
             for step in canonical_plan_steps(item["expected_answer"])
@@ -829,10 +909,10 @@ class CodegenVerifierTest(unittest.TestCase):
         self.assertEqual(metrics["test_results"][0]["reason"], "plan extraction failed")
 
     def test_planbench_logistics_natural_language_plan_is_accepted(self) -> None:
-        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench")
+        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench-t1")
         item = next(item for item in load_question_manifest(task) if item["metadata"].get("domain") == "logistics")
         micro_task = build_micro_task(task, item)
-        self._stub_planbench_assets(item, expected_plan=str(item["expected_answer"]))
+        self._stub_planbench_assets(item, valid_plans=[str(item["expected_answer"])])
         natural_plan = "\n".join(logistics_line(step) for step in canonical_plan_steps(item["expected_answer"]))
         _, source_path, source_code = self._materialize(
             micro_task,
@@ -850,10 +930,10 @@ class CodegenVerifierTest(unittest.TestCase):
         self.assertIn("Plan valid", metrics["test_results"][0]["validator_output"])
 
     def test_planbench_parenthesized_pddl_plan_is_rejected(self) -> None:
-        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench")
+        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench-t1")
         item = next(item for item in load_question_manifest(task) if item["metadata"].get("domain") == "obfuscated_deceptive_logistics")
         micro_task = build_micro_task(task, item)
-        self._stub_planbench_assets(item, expected_plan=str(item["expected_answer"]))
+        self._stub_planbench_assets(item, valid_plans=[str(item["expected_answer"])])
         plan_steps = [f"({step})" for step in canonical_plan_steps(item["expected_answer"])]
         _, source_path, source_code = self._materialize(
             micro_task,
@@ -870,7 +950,7 @@ class CodegenVerifierTest(unittest.TestCase):
         self.assertEqual(metrics["test_results"][0]["reason"], "plan extraction failed")
 
     def test_planbench_runtime_validation_does_not_reference_external_paths(self) -> None:
-        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench")
+        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench-t1")
         item = next(item for item in load_question_manifest(task) if item["metadata"].get("domain") == "logistics")
         micro_task = build_micro_task(task, item)
         env_patch = patch.dict(
@@ -879,7 +959,7 @@ class CodegenVerifierTest(unittest.TestCase):
                 "PLANBENCH_OFFICIAL_ROOT": "",
                 "PLANBENCH_VAL_BINARY": "",
                 "VAL": "",
-                "PLANBENCH_STUB_EXPECTED_PLAN": "",
+                "PLANBENCH_STUB_VALID_PLANS_JSON": "[]",
             },
             clear=False,
         )
@@ -900,6 +980,123 @@ class CodegenVerifierTest(unittest.TestCase):
         diagnostic_text = str(metrics.get("error") or metrics["test_results"][0].get("validator_output") or metrics["test_results"][0].get("reason") or "")
         self.assertTrue(diagnostic_text)
         self.assertNotIn("external/", diagnostic_text)
+
+    def test_planbench_t2_semantically_valid_optimal_plan_is_accepted(self) -> None:
+        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench-t2")
+        item = next(item for item in load_question_manifest(task) if item["metadata"].get("domain") == "obfuscated_deceptive_logistics")
+        micro_task = build_micro_task(task, item)
+        self._stub_planbench_assets(item, valid_plans=[str(item["expected_answer"])])
+        raw_plan = "\n".join(
+            re.sub(r"\bo(\d+)\b", r"object_\1", step)
+            for step in canonical_plan_steps(item["expected_answer"])
+        )
+        _, source_path, source_code = self._materialize(
+            micro_task,
+            f"def solve(question: dict) -> str:\n    return {raw_plan!r}\n",
+        )
+        metrics = evaluate_materialized_candidate(
+            task=micro_task,
+            source_path=source_path,
+            source_code=source_code,
+            baseline_metrics=None,
+            memory_applied=False,
+        )
+        self.assertEqual(metrics["status"], "pass")
+        self.assertEqual(metrics["test_results"][0]["candidate_plan_steps"], item["metadata"]["optimal_plan_steps"])
+
+    def test_planbench_t2_semantically_valid_non_optimal_plan_is_rejected(self) -> None:
+        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench-t2")
+        item = next(item for item in load_question_manifest(task) if item["metadata"].get("domain") == "obfuscated_deceptive_logistics")
+        micro_task = build_micro_task(task, item)
+        base_steps = canonical_plan_steps(item["expected_answer"])
+        longer_plan = "\n".join([f"({base_steps[0]})", *(f"({step})" for step in base_steps)])
+        raw_plan = "\n".join(
+            re.sub(r"\bo(\d+)\b", r"object_\1", step)
+            for step in [base_steps[0], *base_steps]
+        )
+        self._stub_planbench_assets(item, valid_plans=[str(item["expected_answer"]), longer_plan])
+        _, source_path, source_code = self._materialize(
+            micro_task,
+            f"def solve(question: dict) -> str:\n    return {raw_plan!r}\n",
+        )
+        metrics = evaluate_materialized_candidate(
+            task=micro_task,
+            source_path=source_path,
+            source_code=source_code,
+            baseline_metrics=None,
+            memory_applied=False,
+        )
+        self.assertEqual(metrics["status"], "fail")
+        self.assertIn("non-optimal", metrics["test_results"][0]["reason"])
+
+    def test_planbench_t2_invalid_plan_is_rejected(self) -> None:
+        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench-t2")
+        item = next(item for item in load_question_manifest(task) if item["metadata"].get("domain") == "obfuscated_deceptive_logistics")
+        micro_task = build_micro_task(task, item)
+        self._stub_planbench_assets(item, valid_plans=[str(item["expected_answer"])])
+        _, source_path, source_code = self._materialize(
+            micro_task,
+            "def solve(question: dict) -> str:\n    return 'clip object_0 object_1'\n",
+        )
+        metrics = evaluate_materialized_candidate(
+            task=micro_task,
+            source_path=source_path,
+            source_code=source_code,
+            baseline_metrics=None,
+            memory_applied=False,
+        )
+        self.assertEqual(metrics["status"], "fail")
+
+    def test_planbench_t3_accepts_yes_no_and_alias_responses(self) -> None:
+        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench-t3")
+        items = load_question_manifest(task)
+        valid_item = next(item for item in items if item["expected_answer"] == "yes")
+        invalid_item = next(item for item in items if item["expected_answer"] == "no")
+        valid_micro_task = build_micro_task(task, valid_item)
+        invalid_micro_task = build_micro_task(task, invalid_item)
+
+        _, source_path, source_code = self._materialize(
+            valid_micro_task,
+            "def solve(question: dict) -> str:\n    return 'the above plan is valid'\n",
+        )
+        metrics = evaluate_materialized_candidate(
+            task=valid_micro_task,
+            source_path=source_path,
+            source_code=source_code,
+            baseline_metrics=None,
+            memory_applied=False,
+        )
+        self.assertEqual(metrics["status"], "pass")
+
+        _, source_path, source_code = self._materialize(
+            invalid_micro_task,
+            "def solve(question: dict) -> str:\n    return 'invalid'\n",
+        )
+        metrics = evaluate_materialized_candidate(
+            task=invalid_micro_task,
+            source_path=source_path,
+            source_code=source_code,
+            baseline_metrics=None,
+            memory_applied=False,
+        )
+        self.assertEqual(metrics["status"], "pass")
+
+    def test_planbench_t3_rejects_inverted_verdict(self) -> None:
+        task = next(task for task in load_codegen_tasks() if task["id"] == "planbench-t3")
+        item = next(item for item in load_question_manifest(task) if item["expected_answer"] == "yes")
+        micro_task = build_micro_task(task, item)
+        _, source_path, source_code = self._materialize(
+            micro_task,
+            "def solve(question: dict) -> str:\n    return 'no'\n",
+        )
+        metrics = evaluate_materialized_candidate(
+            task=micro_task,
+            source_path=source_path,
+            source_code=source_code,
+            baseline_metrics=None,
+            memory_applied=False,
+        )
+        self.assertEqual(metrics["status"], "fail")
 
 
 if __name__ == "__main__":

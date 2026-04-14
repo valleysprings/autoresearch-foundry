@@ -557,6 +557,7 @@ def build_task3_items(*, benchmark: str, limit: int | None = None) -> list[dict[
                         "scoring_mode": "rubric_score",
                         "distractors": distractors,
                         "stratum": str(input_row.get("stratum") or "").strip(),
+                        "runtime_split_tags": [f"distractors:{distractors}"],
                     },
                 )
             )
@@ -617,6 +618,7 @@ def build_task4_items(*, benchmark: str, limit: int | None = None) -> list[dict[
                         "scoring_mode": "rubric_score",
                         "ability": ability,
                         "stratum": str(input_row.get("stratum") or "").strip(),
+                        "runtime_split_tags": [f"ability:{ability}"],
                     },
                 )
             )

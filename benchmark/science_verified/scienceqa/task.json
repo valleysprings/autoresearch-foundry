@@ -1,6 +1,6 @@
 {
   "id": "scienceqa",
-  "title": "ScienceQA Text (Bio/Chem/Phys)",
+  "title": "ScienceQA Text Bio/Chem/Phys",
   "description": "Return the final answer for each text-only ScienceQA validation question from biology, chemistry, and physics.",
   "benchmark_tier": "comparable",
   "track": "science_verified",
@@ -9,6 +9,36 @@
   "local_dataset_only": true,
   "item_manifest": "data/questions.json",
   "split": "validation:natural-science:text-only:biology-chemistry-physics",
+  "runtime_split_selector": {
+    "label": "Split",
+    "default_value": "all",
+    "options": [
+      {
+        "value": "all",
+        "title": "All Topics",
+        "description": "Evaluate across biology, chemistry, and physics together.",
+        "item_count": 768
+      },
+      {
+        "value": "biology",
+        "title": "Biology",
+        "item_count": 406,
+        "match_tags_any": ["topic:biology"]
+      },
+      {
+        "value": "chemistry",
+        "title": "Chemistry",
+        "item_count": 136,
+        "match_tags_any": ["topic:chemistry"]
+      },
+      {
+        "value": "physics",
+        "title": "Physics",
+        "item_count": 226,
+        "match_tags_any": ["topic:physics"]
+      }
+    ]
+  },
   "allow_browsing": false,
   "answer_metric": "accuracy",
   "family": "science",

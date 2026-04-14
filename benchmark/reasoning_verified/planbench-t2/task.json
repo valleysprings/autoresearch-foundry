@@ -1,0 +1,95 @@
+{
+  "id": "planbench-t2",
+  "title": "PlanBench Task 2",
+  "description": "Generate an optimal valid action plan for each PlanBench Task 2 optimal-planning prompt using upstream-compatible parsing and VAL-based semantic validation.",
+  "benchmark_tier": "comparable",
+  "track": "reasoning_verified",
+  "dataset_id": "planbench_task_2_plan_optimality",
+  "dataset_size": 1692,
+  "local_dataset_only": true,
+  "item_manifest": "data/questions.json",
+  "split": "task_2_plan_optimality:train",
+  "runtime_split_selector": {
+    "label": "Split",
+    "default_value": "all",
+    "options": [
+      {
+        "value": "all",
+        "title": "All Domains",
+        "description": "Evaluate across the full PlanBench Task 2 released domain mix.",
+        "item_count": 1692
+      },
+      {
+        "value": "blocksworld",
+        "title": "blocksworld",
+        "item_count": 500,
+        "match_tags_any": ["domain:blocksworld"]
+      },
+      {
+        "value": "blocksworld_3",
+        "title": "blocksworld_3",
+        "item_count": 100,
+        "match_tags_any": ["domain:blocksworld_3"]
+      },
+      {
+        "value": "logistics",
+        "title": "logistics",
+        "item_count": 285,
+        "match_tags_any": ["domain:logistics"]
+      },
+      {
+        "value": "mystery_blocksworld",
+        "title": "mystery_blocksworld",
+        "item_count": 500,
+        "match_tags_any": ["domain:mystery_blocksworld"]
+      },
+      {
+        "value": "mystery_blocksworld_3",
+        "title": "mystery_blocksworld_3",
+        "item_count": 100,
+        "match_tags_any": ["domain:mystery_blocksworld_3"]
+      },
+      {
+        "value": "obfuscated_deceptive_logistics",
+        "title": "obfuscated_deceptive_logistics",
+        "item_count": 207,
+        "match_tags_any": ["domain:obfuscated_deceptive_logistics"]
+      }
+    ]
+  },
+  "allow_browsing": false,
+  "answer_metric": "optimal_plan_rate",
+  "family": "planning",
+  "task_mode": "answer",
+  "interaction_mode": "single_turn",
+  "task_signature": [
+    "editable-file-optimization",
+    "single-turn",
+    "dataset-task",
+    "answer-adapter",
+    "semantic-validator",
+    "planning",
+    "optimal-planning"
+  ],
+  "editable_file": "editable.py",
+  "verifier": "verifier.py",
+  "entry_symbol": "solve",
+  "function_name": "solve",
+  "generation_budget": 4,
+  "candidate_budget": 3,
+  "branching_factor": 4,
+  "item_workers": 20,
+  "epsilon": 0.02,
+  "baseline_summary": "A placeholder dataset-level solver template that returns no plan for the active PlanBench Task 2 prompt.",
+  "objective_spec": {
+    "display_name": "Optimal plan rate",
+    "direction": "max",
+    "unit": "ratio",
+    "summary_template": "Higher optimal-plan rate is better across independently evolved PlanBench Task 2 prompts.",
+    "formula": "optimal_plan_rate = semantically_valid_and_optimal_plans / total_prompts"
+  },
+  "selection_spec": {
+    "profile": "objective_only"
+  },
+  "prompt_context": "Edit editable.py only. The entry symbol solve(question: dict) must return an optimal final plan for the current PlanBench Task 2 prompt. You may return either a list[str] with one official-style action line per step or a newline-separated string of official-style action lines. Return natural-language or official object-token action text accepted by PlanBench parsing; do not return parenthesized PDDL. Preserve the declared helper symbols when useful. Do not use browsing or external network access."
+}

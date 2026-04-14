@@ -9,6 +9,54 @@
   "local_dataset_only": true,
   "item_manifest": "data/questions.json",
   "split": "train",
+  "runtime_split_selector": {
+    "label": "Split",
+    "default_value": "all",
+    "options": [
+      {
+        "value": "all",
+        "title": "All Domains",
+        "description": "Evaluate across the full released LongBench v2 domain mix.",
+        "item_count": 503
+      },
+      {
+        "value": "single-document-qa",
+        "title": "Single-Document QA",
+        "item_count": 175,
+        "match_tags_any": ["domain:single-document-qa"]
+      },
+      {
+        "value": "multi-document-qa",
+        "title": "Multi-Document QA",
+        "item_count": 125,
+        "match_tags_any": ["domain:multi-document-qa"]
+      },
+      {
+        "value": "long-in-context-learning",
+        "title": "Long In-context Learning",
+        "item_count": 81,
+        "match_tags_any": ["domain:long-in-context-learning"]
+      },
+      {
+        "value": "code-repository-understanding",
+        "title": "Code Repository Understanding",
+        "item_count": 50,
+        "match_tags_any": ["domain:code-repository-understanding"]
+      },
+      {
+        "value": "long-dialogue-history-understanding",
+        "title": "Long-dialogue History Understanding",
+        "item_count": 39,
+        "match_tags_any": ["domain:long-dialogue-history-understanding"]
+      },
+      {
+        "value": "long-structured-data-understanding",
+        "title": "Long Structured Data Understanding",
+        "item_count": 33,
+        "match_tags_any": ["domain:long-structured-data-understanding"]
+      }
+    ]
+  },
   "allow_browsing": false,
   "answer_metric": "accuracy",
   "family": "qa",

@@ -23,6 +23,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "not having horns"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -49,6 +52,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Austen learned how to build a fire at summer camp."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -76,6 +82,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Seeds can come in many shapes and colors."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -103,6 +112,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a ship that moved 95kilometers south in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -129,6 +141,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "short fur"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -155,6 +170,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a bag holding 5 pounds of food"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -181,6 +199,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Rosa's father has brown eyes. He passed this trait down to Rosa."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -207,6 +228,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "chemical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -233,6 +257,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Alec learned how to knit in an after school program."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -261,6 +288,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -287,6 +317,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Peregrine falcons are the fastest animals in the world! They use their wings to fly quickly and hunt prey. Peregrine falcons also have a beak and feathers. They hatch from eggs with speckled or spotted shells."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -313,6 +346,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "short fur"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -339,6 +375,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Lee learned biology by reading, observing, and experimenting."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -367,6 +406,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "brain"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -395,6 +437,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Yangtze alligator"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -422,6 +467,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a bowl of oatmeal at a temperature of 22\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -449,6 +497,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "burlap sack"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -477,6 +528,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "great blue heron"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -503,6 +557,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "aa"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -529,6 +586,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "AA"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -557,6 +617,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -583,6 +646,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "The forces are unbalanced, so there is a net force on Kylie."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -610,6 +676,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "a speedboat that moved 360kilometers west in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -636,6 +705,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -664,6 +736,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are caused by heating."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -690,6 +765,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -716,6 +794,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "ceramic mug"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -742,6 +823,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "leaf-curling spider"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -768,6 +852,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Blue-footed boobies live on tropical islands in the Pacific Ocean. They have two wings, feathers, and a beak. Blue-footed boobies lay eggs with pale blue shells. They keep the eggs warm with their large blue feet."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -795,6 +882,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Pablo's scar was caused by an accident. He cut his leg when he fell off his skateboard."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -822,6 +912,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "decreased"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -848,6 +941,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "It helps remove carbon dioxide waste from the body."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -874,6 +970,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -900,6 +999,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Gray tree frogs hatch from eggs without shells. They live underwater when they are tadpoles. They move onto land when they become adults. The moist skin of adult gray tree frogs can be green or gray. The color of their skin helps them hide on rocks or plants."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -926,6 +1028,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "black fur"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -954,6 +1059,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "giant wood wasp"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -980,6 +1088,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the basketball with more thermal energy"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -1006,6 +1117,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Joy's parents have red hair. They passed down this trait to Joy."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1032,6 +1146,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a spotted coat"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1058,6 +1175,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "an unspotted tail"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1084,6 +1204,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -1112,6 +1235,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -1140,6 +1266,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -1166,6 +1295,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "AA"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1192,6 +1324,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a bird that moved 25kilometers in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -1220,6 +1355,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -1246,6 +1384,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a pot of spaghetti sauce at a temperature of 50\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -1272,6 +1413,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "cotton head band"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -1298,6 +1442,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "clay tile"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -1326,6 +1473,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "western toad"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1352,6 +1502,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1378,6 +1531,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -1404,6 +1560,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a black coat"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1430,6 +1589,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "pig"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1458,6 +1620,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -1486,6 +1651,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "wet paint"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -1514,6 +1682,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -1540,6 +1711,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -1566,6 +1740,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Samuel's parents were born with straight hair. They passed down this trait to Samuel."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1592,6 +1769,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -1619,6 +1799,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "increased"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -1645,6 +1828,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1671,6 +1857,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Matthew learned history by reading."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1697,6 +1886,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a beluga whale that moved 20kilometers in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -1725,6 +1917,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "cane toad"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1751,6 +1946,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Brody's parents have blond hair. They passed down this trait to Brody."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1778,6 +1976,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "a cherry pie at a temperature of 87\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -1804,6 +2005,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Ff"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1830,6 +2034,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "FF"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1856,6 +2063,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Bella's scar was caused by an accident. She cut her leg when she was climbing a tree."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1882,6 +2092,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Edna learned history by reading."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1909,6 +2122,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "rock"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -1935,6 +2151,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Beth's parents have red hair. They passed down this trait to Beth."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1961,6 +2180,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "EE"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -1987,6 +2209,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the colder soccer ball"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -2013,6 +2238,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Hayley learned biology by reading, observing, and experimenting."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2041,6 +2269,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -2068,6 +2299,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Olivia's biological mother often wears her straight hair in a ponytail."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2094,6 +2328,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "the pencil with less thermal energy"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -2120,6 +2357,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a compound"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -2146,6 +2386,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a compound"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -2172,6 +2415,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Tony's scar was caused by an accident. He cut his arm when he fell off his bicycle."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2199,6 +2445,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "skeleton"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2227,6 +2476,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "lion"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2255,6 +2507,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -2281,6 +2536,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a 750-gram rock at a temperature of 95\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -2307,6 +2565,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the hotter drop of honey"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -2335,6 +2596,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "blue-footed booby"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2361,6 +2625,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2387,6 +2654,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "The forces are balanced, so there is no net force on Hakim."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -2413,6 +2683,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a school bus carrying 600 pounds"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -2439,6 +2712,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2465,6 +2741,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a hairy fleece"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2491,6 +2770,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Thistles are a type of flowering plant covered in prickly spines. Thistle plant cells contain chloroplasts, and their flowers contain a nectar that attracts birds and butterflies."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2517,6 +2799,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "The golf ball has a constant velocity."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -2543,6 +2828,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "redback spider"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2570,6 +2858,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Ruben's friend taught him how to fly a kite."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2598,6 +2889,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -2624,6 +2918,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "reactant"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -2650,6 +2947,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a 6-kilogram block of steel at a temperature of 65\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -2676,6 +2976,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2703,6 +3006,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "a car that moved 240kilometers east in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -2730,6 +3036,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "vacuoles"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2757,6 +3066,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Shawn's friend taught him how to fly a kite."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2784,6 +3096,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a duck that moved 1,055kilometers south in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -2810,6 +3125,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "The barrel cactus is a producer in its ecosystem, so the cactus makes its own food inside its cells. The barrel cactus lives in deserts and uses energy from sunlight to make food."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2836,6 +3154,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the empty mug with more thermal energy"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -2862,6 +3183,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "barn owl"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2888,6 +3212,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the cup of black tea with more thermal energy"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -2914,6 +3241,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Red-headed poison frogs have moist, smooth skin. Female red-headed poison frogs lay their eggs on plants. The eggs have no shells and are protected by their father. When the eggs hatch, the father frog carries the tadpoles to water."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2941,6 +3271,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "metal hair clip"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -2967,6 +3300,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a red coat"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -2993,6 +3329,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Charlie's parents have pale skin. They passed down this trait to Charlie."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -3019,6 +3358,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -3047,6 +3389,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -3073,6 +3418,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "mm"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -3099,6 +3447,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Hippopotamuses eat plants."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -3126,6 +3477,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "decreased"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -3154,6 +3508,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "water in a glass"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -3180,6 +3537,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -3207,6 +3567,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "a ship that moved 280miles east in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -3233,6 +3596,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -3261,6 +3627,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "gray wolf"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -3287,6 +3656,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a black coat"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -3313,6 +3685,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "wood board"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -3339,6 +3714,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Nicole's parents were born with wavy hair. They passed down this trait to Nicole."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -3365,6 +3743,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "glass cup"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -3391,6 +3772,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "EE"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -3417,6 +3801,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "the rock with less mass"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -3443,6 +3830,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a motorboat that moved 355kilometers in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -3469,6 +3859,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -3495,6 +3888,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "chemical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -3521,6 +3917,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a mountain biker who moved 255kilometers in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -3549,6 +3948,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "sea cucumber"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -3575,6 +3977,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "not having horns"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -3603,6 +4008,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -3629,6 +4037,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -3655,6 +4066,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "mud"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -3681,6 +4095,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the hotter drop of dish soap"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -3707,6 +4124,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "EE"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -3733,6 +4153,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "The forces are unbalanced, so there is a net force on the cactus."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -3759,6 +4182,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "colder"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -3785,6 +4211,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a bird that moved 25miles in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -3813,6 +4242,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -3839,6 +4271,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a black coat"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -3866,6 +4301,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "linen handkerchief"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -3892,6 +4330,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "an elementary substance"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -3918,6 +4359,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "having agouti fur"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -3944,6 +4388,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Barn owls walk and fly."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -3971,6 +4418,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a ship that moved 210miles south in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -3997,6 +4447,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "bright orange cheeks"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4024,6 +4477,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "baseball"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -4050,6 +4506,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "reactant"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -4076,6 +4535,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Melissa's parents have dark skin. They passed down this trait to Melissa."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4104,6 +4566,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Both are caused by heating."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -4131,6 +4596,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "a sailboat that moved 35kilometers north in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -4157,6 +4625,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a 250-gram glass of orange juice at a temperature of 70\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -4184,6 +4655,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a speedboat that moved 395kilometers west in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -4210,6 +4684,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a 150-gram cup of black tea at a temperature of 70\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -4237,6 +4714,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the way the living thing acts"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4263,6 +4743,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "dark brown seeds"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4289,6 +4772,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4315,6 +4801,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Ted learned how to knit in an after school program."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4341,6 +4830,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "red eyes"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4368,6 +4860,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both of Natalie's biological parents have naturally black hair."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4394,6 +4889,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Emmy's scar was caused by an accident. She cut her leg when she was climbing a tree."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4422,6 +4920,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -4449,6 +4950,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "an endoskeleton or exoskeleton"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4475,6 +4979,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -4501,6 +5008,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the hotter helium balloon"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -4527,6 +5037,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "red eyes"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4554,6 +5067,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a 225-gram glass of apple juice at a temperature of 20\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -4580,6 +5096,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Britney learned to identify insects by reading many books about insects."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4606,6 +5125,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "red flowers"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4632,6 +5154,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "porcupine"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4658,6 +5183,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "chemical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -4686,6 +5214,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -4712,6 +5243,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Edwin's parents were born with straight hair. They passed down this trait to Edwin."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4739,6 +5273,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "photosynthesis"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4767,6 +5304,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -4795,6 +5335,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "piranha"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4821,6 +5364,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "smooth fruit"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4848,6 +5394,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a marble at a temperature of 76\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -4875,6 +5424,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a marble at a temperature of 4\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -4903,6 +5455,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "maple tree"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4929,6 +5484,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -4956,6 +5514,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "bark"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -4982,6 +5543,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -5008,6 +5572,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Keenan's parents have pale skin. They passed down this trait to Keenan."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5034,6 +5601,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a black coat"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5061,6 +5631,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a 250-gram glass of apple juice at a temperature of 10\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -5087,6 +5660,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a 250-gram glass of grape juice at a temperature of 10\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -5113,6 +5689,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "not having myotonia congenita"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5140,6 +5719,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "neon (Ne)"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -5166,6 +5748,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5193,6 +5778,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a cookie at a temperature of 29\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -5219,6 +5807,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "chemical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -5247,6 +5838,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "bumble bee"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5275,6 +5869,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Both are caused by heating."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -5303,6 +5900,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Madagascar day gecko"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5329,6 +5929,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a compound"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -5355,6 +5958,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "chemical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -5383,6 +5989,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Hermann's tortoise"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5409,6 +6018,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a 250-gram mug of cocoa at a temperature of 90\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -5436,6 +6048,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a bowl of oatmeal at a temperature of 87\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -5463,6 +6078,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Susan's biological mother often wears her straight hair in a ponytail."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5489,6 +6107,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "fuzzy fruit"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5515,6 +6136,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a spotted tail"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5541,6 +6165,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5567,6 +6194,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "human"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5593,6 +6223,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "The forces are balanced, so there is no net force on Latrell."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -5619,6 +6252,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a box holding 42 pounds"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -5645,6 +6281,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Beth learned to speak two languages in school."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5673,6 +6312,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "thread"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -5699,6 +6341,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "not having agouti fur"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5725,6 +6370,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "green fruit"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5752,6 +6400,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Isaac's biological mother often wears her naturally brown hair in a bun."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5778,6 +6429,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Trichina worms have soft, thin bodies. They have a cylindrical shape and do not have limbs. Trichina worms are not made up of segments. They can infect and feed off of humans, pigs, and other mammals."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5804,6 +6458,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Jessica learned how to knit in an after school program."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5830,6 +6487,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Earth is pulling on the Sun."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -5856,6 +6516,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Bearberries are plants found in the Arctic. Bearberry plants use energy from sunlight to make food."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5884,6 +6547,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "vacuole"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5912,6 +6578,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "macaw"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5939,6 +6608,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Jayden's biological parents have wavy hair."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5965,6 +6637,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Vicky's father has brown eyes. He passed this trait down to Vicky."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -5991,6 +6666,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Sharon learned how to knit in an after school program."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6017,6 +6695,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Gabby learned how to build a fire at summer camp."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6044,6 +6725,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Kiara's scar was caused by an accident. She cut her arm when she fell off her bicycle."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6070,6 +6754,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6098,6 +6785,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "caramel sauce"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -6124,6 +6814,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Kenny's parents were born with straight hair. They passed down this trait to Kenny."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6152,6 +6845,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "pair of scissors"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -6178,6 +6874,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Evan learned history by reading."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6205,6 +6904,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Nathan's biological parents have wavy hair."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6232,6 +6934,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "decreased"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -6258,6 +6963,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -6284,6 +6992,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a gray whale that moved 50miles in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -6311,6 +7022,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Jake's biological parents have freckles on their noses just as Jake does."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6338,6 +7052,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a 650-gram rock at a temperature of 22\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -6365,6 +7082,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "an 8-kilogram gold bar at a temperature of 136\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -6391,6 +7111,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a blue jay that moved 180kilometers in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -6417,6 +7140,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Liz's parents have dark skin. They passed down this trait to Liz."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6444,6 +7170,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "argon (Ar)"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -6470,6 +7199,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the metal paper clip with less thermal energy"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -6496,6 +7228,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Jane's father has brown eyes. He passed this trait down to Jane."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6522,6 +7257,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a friend who weighs 32 pounds"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -6550,6 +7288,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -6578,6 +7319,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -6604,6 +7348,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6630,6 +7377,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "solid coloring"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6656,6 +7406,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6682,6 +7435,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "solid coloring"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6708,6 +7464,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "black eyes"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6735,6 +7494,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "a bicycle that moved 135kilometers north in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -6761,6 +7523,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6787,6 +7552,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a black coat"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6815,6 +7583,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -6841,6 +7612,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -6867,6 +7641,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "the meatball with more thermal energy"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -6893,6 +7670,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "aa"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6919,6 +7699,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "skunk"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6946,6 +7729,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "to supply energy for a cell's immediate use"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -6974,6 +7760,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "snowy owl"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7002,6 +7791,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -7028,6 +7820,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "wavy fur"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7054,6 +7849,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Nolan learned how to knit in an after school program."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7080,6 +7878,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a mail truck carrying 450 pounds of mail"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -7107,6 +7908,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a motorboat that moved 670kilometers west in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -7133,6 +7937,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "crayons"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -7159,6 +7966,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a hairy fleece"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7185,6 +7995,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "icicle"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -7212,6 +8025,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a goose that moved 650miles south in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -7239,6 +8055,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Lisa's scar was caused by an accident. She cut her arm when she fell off her bicycle."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7266,6 +8085,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Mason's biological father wears contacts in his hazel eyes."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7294,6 +8116,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -7322,6 +8147,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "air inside a raft"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -7348,6 +8176,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Lauren's father has brown eyes. He passed this trait down to Lauren."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7375,6 +8206,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Britney learned how to play the cello in music class."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7403,6 +8237,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -7431,6 +8268,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -7459,6 +8299,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "dish soap"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -7487,6 +8330,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "lettuce"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7514,6 +8360,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a motorboat that moved 280kilometers south in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -7540,6 +8389,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "aa"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7566,6 +8418,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "The suitcase is pulling on Spencer."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -7594,6 +8449,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "skin"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7621,6 +8479,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "decreased"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -7648,6 +8509,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "decreased"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -7674,6 +8538,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Gabriel's parents were born with straight hair. They passed down this trait to Gabriel."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7702,6 +8569,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -7728,6 +8598,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Amy learned to speak two languages in school."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7755,6 +8628,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Jayce's biological parents have wavy hair."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7782,6 +8658,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Grace has green eyes like her biological mother."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7808,6 +8687,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a bowhead whale that moved 25miles in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -7834,6 +8716,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "aa"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7861,6 +8746,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Megan has green eyes like her biological mother."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7888,6 +8776,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "This ecosystem has:\nlong, cold winters and short, cool summers\nmany evergreen trees\nsoil that is poor in nutrients"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7916,6 +8807,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "horned frog"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7943,6 +8837,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "glue"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -7969,6 +8866,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -7995,6 +8895,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Ll"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8021,6 +8924,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "boa"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8049,6 +8955,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "ladybug"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8075,6 +8984,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the hotter pot of spaghetti sauce"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -8101,6 +9013,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Ben learned history by reading."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8127,6 +9042,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Maura's parents have dark skin. They passed down this trait to Maura."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8153,6 +9071,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "The driftwood has a constant velocity."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -8179,6 +9100,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Brad was not born knowing how to identify different fish. He had to learn this skill."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8205,6 +9129,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Emmet's mother has blue eyes. She passed this trait down to Emmet."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8231,6 +9158,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Yucca plants have long, sharp leaves. These leaves have a waxy covering. Yucca plants use carbon dioxide and water to make their food."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8259,6 +9189,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Albatrosses walk, fly, and swim."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8286,6 +9219,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a 3-kilogram block of steel at a temperature of 66\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -8312,6 +9248,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8340,6 +9279,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -8366,6 +9308,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -8394,6 +9339,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "coral"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8421,6 +9369,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "gold bracelet"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -8447,6 +9398,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Castor bean ticks have a hard exoskeleton, eight legs, and no antennae. They feed on blood from mammals, including deer and people."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8473,6 +9427,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Will's mother has blue eyes. She passed this trait down to Will."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8499,6 +9456,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a 300-gram mug of cocoa at a temperature of 30\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -8527,6 +9487,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "heart"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8553,6 +9516,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Akira's parents have dark skin. They passed down this trait to Akira."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8581,6 +9547,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "giant moray"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8607,6 +9576,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Penguins walk and swim."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8633,6 +9605,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8660,6 +9635,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Anne has green eyes like her biological mother."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8688,6 +9666,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Aloe vera has spiny leaves."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8716,6 +9697,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -8742,6 +9726,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Maya's father has brown eyes. He passed this trait down to Maya."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8768,6 +9755,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Dillon learned how to build a fire at summer camp."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8795,6 +9785,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are caused by heating."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -8821,6 +9814,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "fuzzy leaves"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8847,6 +9843,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a pot of spaghetti sauce at a temperature of 145\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -8873,6 +9872,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "having thorns"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8899,6 +9901,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "The International Space Station is pulling on Earth."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -8927,6 +9932,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "barn owl"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -8953,6 +9961,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "the fish tank with less thermal energy"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -8979,6 +9990,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -9005,6 +10019,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "gum"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -9031,6 +10048,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "styrofoam packing peanuts"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -9057,6 +10077,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -9083,6 +10106,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "bb"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -9111,6 +10137,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -9137,6 +10166,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "the hotter tennis ball"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -9163,6 +10195,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Caribbean spiny lobsters have two pairs of antennae. Their antennae can be longer than the rest of their body! Caribbean spiny lobsters also have an exoskeleton."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -9189,6 +10224,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -9215,6 +10253,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a 7-kilogram block of iron at a temperature of 190\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -9243,6 +10284,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -9269,6 +10313,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "the watermelon with more thermal energy"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -9296,6 +10343,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "brain"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -9323,6 +10373,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Rudy's biological father has curly hair."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -9350,6 +10403,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a duck that moved 975kilometers south in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -9376,6 +10432,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the gold bar with more thermal energy"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -9402,6 +10461,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -9430,6 +10492,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -9456,6 +10521,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a compound"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -9483,6 +10551,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Nolan's friend taught him how to fly a kite."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -9509,6 +10580,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "an elementary substance"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -9536,6 +10610,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "The cell membrane controls which substances enter and leave an animal cell."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -9562,6 +10639,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "the bowl of oatmeal with more thermal energy"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -9590,6 +10670,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "albatross"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -9616,6 +10699,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "The runner is accelerating."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -9642,6 +10728,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -9668,6 +10757,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "julia butterfly"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -9694,6 +10786,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Ann learned biology by reading, observing, and experimenting."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -9720,6 +10815,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a bat that moved 35kilometers in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -9746,6 +10844,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a spotted tail"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -9772,6 +10873,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "fly"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -9798,6 +10902,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Emma's scar was caused by an accident. She cut her leg when she was climbing a tree."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -9824,6 +10931,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "cherry tree"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -9850,6 +10960,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "vacuole"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -9878,6 +10991,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -9904,6 +11020,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -9930,6 +11049,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the cherry pie with more thermal energy"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -9958,6 +11080,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -9984,6 +11109,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Aa"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -10011,6 +11139,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are caused by heating."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -10037,6 +11168,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a bowl of oatmeal at a temperature of 80\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -10063,6 +11197,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "bb"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -10089,6 +11226,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -10115,6 +11255,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "The forces are unbalanced, so there is a net force on Cassie."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -10141,6 +11284,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Isabella's parents were born with wavy hair. They passed down this trait to Isabella."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -10167,6 +11313,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Terrell learned how to build a fire at summer camp."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -10193,6 +11342,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "pine tree"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -10219,6 +11371,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a bowl of oatmeal at a temperature of 75\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -10245,6 +11400,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Lila's scar was caused by an accident. She cut her leg when she was climbing a tree."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -10273,6 +11431,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -10299,6 +11460,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "wool hat"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -10325,6 +11489,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Brittany's scar was caused by an accident. She cut her leg when she was climbing a tree."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -10351,6 +11518,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "white spots"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -10379,6 +11549,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -10405,6 +11578,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "an elementary substance"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -10431,6 +11607,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "the hotter brownie"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -10457,6 +11636,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "chemical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -10484,6 +11666,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "drum"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -10510,6 +11695,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a humpback whale that moved 30kilometers in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -10538,6 +11726,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "bull ant"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -10566,6 +11757,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -10592,6 +11786,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a sailboat that moved 30kilometers in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -10619,6 +11816,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "cones"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -10645,6 +11845,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -10671,6 +11874,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Elijah learned to speak two languages in school."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -10699,6 +11905,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -10725,6 +11934,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a bowl of oatmeal at a temperature of 40\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -10751,6 +11963,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a compound"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -10778,6 +11993,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a motorboat that moved 440miles south in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -10804,6 +12022,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -10830,6 +12051,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "The hockey puck is accelerating."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -10858,6 +12082,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "painted stork"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -10884,6 +12111,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "BB"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -10910,6 +12140,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a black coat"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -10936,6 +12169,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a gray body"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -10964,6 +12200,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "black orb weaver spider"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -10990,6 +12229,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Malia's parents have red hair. They passed down this trait to Malia."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11016,6 +12258,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "blue body feathers"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11044,6 +12289,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "chloroplasts"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11070,6 +12318,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "an 8-kilogram block of iron at a temperature of 95\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -11096,6 +12347,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "the colder block of steel"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -11122,6 +12376,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Franco's mother has blue eyes. She passed this trait down to Franco."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11148,6 +12405,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Pam learned how to knit in an after school program."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11174,6 +12434,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "chemical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -11200,6 +12463,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a 200-gram glass of orange juice at a temperature of 70\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -11227,6 +12493,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a meatball at a temperature of 17\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -11253,6 +12522,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a compound"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -11279,6 +12551,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the glass of grape juice with less thermal energy"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -11305,6 +12580,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Bruce's parents have blond hair. They passed down this trait to Bruce."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11331,6 +12609,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the watermelon with less thermal energy"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -11358,6 +12639,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Fred's scar was caused by an accident. He cut his leg when he fell off his skateboard."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11384,6 +12668,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a 200-gram glass of water at a temperature of 40\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -11410,6 +12697,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "false"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11436,6 +12726,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Kenji learned to speak two languages in school."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11463,6 +12756,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "tape"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -11489,6 +12785,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11515,6 +12814,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the colder watermelon"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -11541,6 +12843,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a bag holding 9 pounds of food"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -11568,6 +12873,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "A pilot taught Jayla how to fly a plane."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11594,6 +12902,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "gorilla"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11620,6 +12931,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "AA"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11648,6 +12962,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "domestic dog"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11674,6 +12991,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -11700,6 +13020,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Ruben learned how to knit in an after school program."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11726,6 +13049,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the hotter meatball"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -11752,6 +13078,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a 9-kilogram block of steel at a temperature of 300\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -11780,6 +13109,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "gray tree frog"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11806,6 +13138,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11832,6 +13167,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a duck that moved 755kilometers in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -11858,6 +13196,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "plastic bag"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -11885,6 +13226,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Mitochondria are outside the nucleus of a plant cell."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11913,6 +13257,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "scarf"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -11939,6 +13286,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a mountain biker who moved 135kilometers in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -11965,6 +13315,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Red salamanders do not have lungs! They can breathe through their moist, smooth skin. Adult red salamanders live near rivers or ponds. They lay eggs with no shells under rocks or logs. The baby red salamanders live underwater."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -11991,6 +13344,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "reactant"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -12017,6 +13373,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a hairless body"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12043,6 +13402,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Thresher sharks hatch from eggs with no shells. They have a long tail and fins. They can use their tail to hit and stun their prey. Thresher sharks live in salt water."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12070,6 +13432,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "a 225-gram glass of apple juice at a temperature of 66\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -12096,6 +13461,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Hannah learned biology by reading, observing, and experimenting."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12122,6 +13490,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "the cup of black tea with less thermal energy"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -12148,6 +13519,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "not having horns"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12174,6 +13548,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Monica's scar was caused by an accident. She cut her leg when she was climbing a tree."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12200,6 +13577,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -12226,6 +13606,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Rr"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12252,6 +13635,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "white wool"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12278,6 +13664,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Max's mother has blue eyes. She passed this trait down to Max."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12304,6 +13693,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Snowy owls have sharp, curved beaks and live in cold places. They have feathers on their feet to protect them from the cold. Mother owls keep their eggs warm by standing on their shells."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12330,6 +13722,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Gorillas eat leaves, fruits, and insects."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12356,6 +13751,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "ii"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12382,6 +13780,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "chemical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -12410,6 +13811,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "robot"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -12437,6 +13841,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "the way the organism looks"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12464,6 +13871,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a 350-gram mug of cocoa at a temperature of 160\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -12490,6 +13900,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Aa"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12516,6 +13929,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Joseph learned how to knit in an after school program."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12542,6 +13958,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "The suitcase is pulling on Scott."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -12569,6 +13988,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "chromosomes"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12595,6 +14017,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12621,6 +14046,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Scarlett learned history by reading."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12649,6 +14077,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "leafy seadragon"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12675,6 +14106,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "glass and gold balls"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -12701,6 +14135,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -12727,6 +14164,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "green frog"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12754,6 +14194,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Robert's biological father has curly hair."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12781,6 +14224,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a motorboat that moved 55miles west in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -12809,6 +14255,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -12835,6 +14284,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Sea otters have very thick fur. Their fur helps keep them warm in cold water. Female sea otters give birth to live offspring in the water."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12863,6 +14315,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -12889,6 +14344,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the hotter cotton ball"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -12915,6 +14373,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Bb"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -12941,6 +14402,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a cart holding 82 pounds"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -12967,6 +14431,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "an elementary substance"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -12993,6 +14460,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Clara learned how to build a fire at summer camp."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13020,6 +14490,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a seed"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13046,6 +14519,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Isabella's father has brown eyes. He passed this trait down to Isabella."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13072,6 +14548,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "false"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13098,6 +14577,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "wolf spider"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13124,6 +14606,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a 100-gram mug of cider at a temperature of 35\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -13151,6 +14636,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Ruben's biological father has curly hair."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13178,6 +14666,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a plate of spaghetti at a temperature of 97\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -13204,6 +14695,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Ff"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13231,6 +14725,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are caused by heating."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -13259,6 +14756,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "alpine newt"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13286,6 +14786,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "metal horseshoe"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -13312,6 +14815,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "pale orange cheeks"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13338,6 +14844,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a cart holding 76 pounds"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -13364,6 +14873,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a bird that moved 35miles in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -13392,6 +14904,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -13419,6 +14934,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "a 350-gram bath towel at a temperature of 18\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -13445,6 +14963,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Eli's mother has blue eyes. She passed this trait down to Eli."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13471,6 +14992,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "FF"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13497,6 +15021,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "long fur"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13523,6 +15050,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Billy's scar was caused by an accident. He cut his arm when he fell off his bicycle."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13549,6 +15079,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "sweet fruit"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13575,6 +15108,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a cart holding 54 pounds"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -13601,6 +15137,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Azalea plants have brightly colored flowers and green leaves. The leaves are green because they contain a substance called chlorophyll, which captures energy from sunlight."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13629,6 +15168,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -13655,6 +15197,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "chemical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -13681,6 +15226,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a cart holding 84 pounds"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -13707,6 +15255,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "chalk"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -13734,6 +15285,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "a motorboat that moved 120kilometers south in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -13760,6 +15314,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Shawna learned to identify insects by reading many books about insects."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13786,6 +15343,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "The motorcycle is accelerating."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -13812,6 +15372,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "not having thorns"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13838,6 +15401,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "chemical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -13864,6 +15430,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13890,6 +15459,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "red eyes"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13916,6 +15488,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Gabe's parents have blond hair. They passed down this trait to Gabe."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -13944,6 +15519,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -13972,6 +15550,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -13998,6 +15579,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -14025,6 +15609,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Turner's friend showed him how to ride a bicycle."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -14053,6 +15640,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -14080,6 +15670,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Aaron's scar was caused by an accident. He cut his leg when he fell off his skateboard."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -14106,6 +15699,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a fish that moved 40miles in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -14132,6 +15728,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the hotter plate of spaghetti"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -14158,6 +15757,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Sebastian learned how to knit in an after school program."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -14186,6 +15788,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -14214,6 +15819,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "crab"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -14240,6 +15848,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "ostrich"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -14266,6 +15877,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a cherry pie at a temperature of 75\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -14292,6 +15906,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "the hotter pencil"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -14318,6 +15935,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a black coat"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -14346,6 +15966,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -14374,6 +15997,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "skeleton"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -14400,6 +16026,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -14426,6 +16055,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a bird that moved 5miles in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -14452,6 +16084,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "an elementary substance"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -14478,6 +16113,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Painted nettles combine water and carbon dioxide to make sugars inside their cells. The painted nettles can use these sugars for energy."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -14505,6 +16143,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "a duck that moved 660miles north in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -14532,6 +16173,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a 150-gram glass of orange juice at a temperature of 55\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -14560,6 +16204,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -14588,6 +16235,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -14614,6 +16264,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a compound"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -14640,6 +16293,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "chemical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -14666,6 +16322,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a compound"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -14694,6 +16353,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "three-toed sloth"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -14720,6 +16382,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a hairy body"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -14746,6 +16411,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "styrofoam packing peanuts"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -14772,6 +16440,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "silk necktie"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -14798,6 +16469,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "ll"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -14824,6 +16498,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -14850,6 +16527,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Quincy's parents were born with straight hair. They passed down this trait to Quincy."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -14876,6 +16556,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a 100-gram mug of cider at a temperature of 75\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -14904,6 +16587,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "sponge"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -14930,6 +16616,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "straight whiskers"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -14958,6 +16647,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -14985,6 +16677,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both of Rosa's biological parents have naturally black hair."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -15011,6 +16706,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "The forces are unbalanced, so there is a net force on Kinsley."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -15037,6 +16735,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "chemical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -15063,6 +16764,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "ll"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -15090,6 +16794,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "In an animal cell, the endoplasmic reticulum helps ribosomes build proteins."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -15117,6 +16824,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "glass jar"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -15145,6 +16855,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -15171,6 +16884,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "syrup"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -15198,6 +16914,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both of Pamela's biological parents have naturally black hair."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -15224,6 +16943,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the block of iron with less mass"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -15250,6 +16972,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Roger's mother has blue eyes. She passed this trait down to Roger."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -15276,6 +17001,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a compound"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -15303,6 +17031,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a car that moved 510kilometers north in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -15329,6 +17060,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -15357,6 +17091,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -15383,6 +17120,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "true"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -15409,6 +17149,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a mountain biker who moved 120kilometers in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -15437,6 +17180,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -15464,6 +17210,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a cherry pie at a temperature of 24\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -15490,6 +17239,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Clayton's parents have blond hair. They passed down this trait to Clayton."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -15516,6 +17268,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a compound"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -15542,6 +17297,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "chemical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -15568,6 +17326,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "chemical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -15594,6 +17355,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a speed walker who moved 40kilometers in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -15622,6 +17386,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "cassowary"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -15649,6 +17416,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "The cytoplasm fills and maintains the space inside a plant cell."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -15675,6 +17445,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a hairless body"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -15701,6 +17474,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the colder bowl of oatmeal"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -15729,6 +17505,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Asian elephant"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -15757,6 +17536,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -15783,6 +17565,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "not having sickle-cell disease"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -15809,6 +17594,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Mm"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -15835,6 +17623,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "sweet fruit"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -15861,6 +17652,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -15887,6 +17681,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Anchovies hatch from small eggs with no shells. Their eggs are carried through the ocean by moving water. Anchovies live in groups called schools. Each anchovy has fins, a silvery body, and a skeleton made of bone."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -15914,6 +17711,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "metal trombone"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -15940,6 +17740,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Christina's parents have red hair. They passed down this trait to Christina."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -15967,6 +17770,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "increased"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -15993,6 +17799,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -16021,6 +17830,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "empty glass"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -16047,6 +17859,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a compound"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -16073,6 +17888,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a tray of lasagna at a temperature of 10\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -16100,6 +17918,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "brain"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -16126,6 +17947,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "the cookie with less thermal energy"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -16152,6 +17976,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -16179,6 +18006,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Joel's biological father wears contacts in his hazel eyes."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -16205,6 +18035,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "curled ears"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -16233,6 +18066,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -16259,6 +18095,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Ben's parents were born with straight hair. They passed down this trait to Ben."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -16285,6 +18124,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -16311,6 +18153,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a 120-gram bottle of water at a temperature of 20\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -16337,6 +18182,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Rose bushes can grow colorful flowers."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -16363,6 +18211,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -16389,6 +18240,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "an elementary substance"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -16417,6 +18271,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "air inside a bubble"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -16443,6 +18300,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a friend who weighs 23 pounds"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -16471,6 +18331,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -16499,6 +18362,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "helmeted iguana"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -16526,6 +18392,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Henry's biological father wears contacts in his hazel eyes."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -16554,6 +18423,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "catfish"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -16580,6 +18452,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "the plate of spaghetti with less thermal energy"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -16607,6 +18482,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "cotton shirt"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -16635,6 +18513,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "blue jay"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -16661,6 +18542,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -16689,6 +18573,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -16715,6 +18602,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -16741,6 +18631,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "The wheelchair is pushing on Isaac."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -16767,6 +18660,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Pear trees have green leaves."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -16795,6 +18691,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -16822,6 +18721,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a brownie at a temperature of 23\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -16850,6 +18752,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "hissing cockroach"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -16878,6 +18783,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "air inside a balloon"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -16904,6 +18812,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "The gas pedal is pushing on Stacy's foot."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -16932,6 +18843,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -16959,6 +18873,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "a goose that moved 950kilometers west in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -16986,6 +18903,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "wood chair"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -17013,6 +18933,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Sharon's scar was caused by an accident. She cut her arm when she fell off her bicycle."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17039,6 +18962,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Ff"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17065,6 +18991,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the colder helium balloon"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -17091,6 +19020,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "White-spotted octopuses have tentacles, which are also called arms. White-spotted octopuses can use their tentacles to reach between corals and grab fish. These octopuses have a soft red body with white spots."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17117,6 +19049,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the bowling ball with less mass"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -17143,6 +19078,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17169,6 +19107,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17195,6 +19136,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Kirk's parents have blond hair. They passed down this trait to Kirk."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17221,6 +19165,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Vicky learned biology by doing experiments."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17247,6 +19194,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "having a graying coat"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17273,6 +19223,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "orange fur"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17299,6 +19252,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "The forces are unbalanced, so there is a net force on Linda."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -17325,6 +19281,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a dwarf body"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17353,6 +19312,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "sea turtle"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17379,6 +19341,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "soft fur"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17406,6 +19371,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a 1-kilogram block of copper at a temperature of 57\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -17432,6 +19400,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "The forces are balanced, so there is no net force on Edward."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -17460,6 +19431,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Elephants eat plants."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17488,6 +19462,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "western gorilla"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17515,6 +19492,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "xenon (Xe)"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -17543,6 +19523,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "skin"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17569,6 +19552,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "ff"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17595,6 +19581,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Cameron's scar was caused by an accident. He cut his arm when he fell off his bicycle."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17622,6 +19611,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "rubber gloves"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -17650,6 +19642,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are caused by heating."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -17676,6 +19671,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17704,6 +19702,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -17732,6 +19733,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "common loon"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17758,6 +19762,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "ceramic plate"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -17784,6 +19791,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "minnow"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17811,6 +19821,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a pencil at a temperature of 71\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -17837,6 +19850,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "This ecosystem has:\ndaily flooding and draining of seawater\nwater that is rich in nutrients\nmany different types of organisms"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17864,6 +19880,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a sailboat that moved 45kilometers south in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -17890,6 +19909,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a compound"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -17918,6 +19940,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "coral snake"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -17944,6 +19969,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "the hotter glass of milk"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -17970,6 +19998,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the bath towel with less thermal energy"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -17996,6 +20027,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "BB"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18022,6 +20056,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Maggie's parents have dark skin. They passed down this trait to Maggie."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18050,6 +20087,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -18076,6 +20116,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "glass window"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -18102,6 +20145,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18128,6 +20174,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -18154,6 +20203,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "true"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18180,6 +20232,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a white ground spot"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18206,6 +20261,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18233,6 +20291,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "a cookie at a temperature of 13\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -18259,6 +20320,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "red fruit"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18285,6 +20349,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Evan's scar was caused by an accident. He cut his arm when he fell off his bicycle."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18311,6 +20378,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Ava learned to identify insects by reading many books about insects."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18338,6 +20408,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Both are caused by heating."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -18364,6 +20437,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "an elementary substance"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -18392,6 +20468,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "sea otter"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18419,6 +20498,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Eli's friend taught him how to fly a kite."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18446,6 +20528,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Isabella has green eyes like her biological mother."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18472,6 +20557,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Lamar's parents were born with straight hair. They passed down this trait to Lamar."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18498,6 +20586,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a gray whale that moved 25miles in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -18524,6 +20615,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Ll"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18550,6 +20644,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18576,6 +20673,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a golden body"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18602,6 +20702,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18629,6 +20732,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a car that moved 505kilometers east in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -18655,6 +20761,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "dumbo ears"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18681,6 +20790,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the glass of orange juice with more thermal energy"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -18707,6 +20819,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "chemical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -18735,6 +20850,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -18761,6 +20879,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "The forces are balanced, so there is no net force on Desmond."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -18787,6 +20908,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Paul was not born knowing how to identify different fish. He had to learn this skill."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18815,6 +20939,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -18841,6 +20968,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "The forces are unbalanced, so there is a net force on Francesca."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -18867,6 +20997,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18893,6 +21026,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a dwarf body"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -18919,6 +21055,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a 350-gram cup of black tea at a temperature of 110\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -18946,6 +21085,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "a banana at a temperature of 92\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -18972,6 +21114,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "black fur"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19000,6 +21145,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -19027,6 +21175,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a 3-kilogram brick at a temperature of 0\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -19053,6 +21204,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a compound"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -19081,6 +21235,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -19107,6 +21264,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -19133,6 +21293,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "an unspotted tail"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19159,6 +21322,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "orange fur"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19187,6 +21353,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "bacteria"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19213,6 +21382,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "not having horns"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19239,6 +21411,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "weaver ant"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19265,6 +21440,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "physical change"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -19293,6 +21471,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "air inside a basketball"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -19321,6 +21502,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Surinam horned frog"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19347,6 +21531,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Aa"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19373,6 +21560,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "glass flask"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -19399,6 +21589,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "false"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19425,6 +21618,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Brown pelicans live along the west coast of North America. They dive underwater to catch fish in their beaks. Brown pelicans keep their eggs warm by standing on the shells with their large, webbed feet."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19452,6 +21648,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "perfume"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -19480,6 +21679,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Both are chemical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -19506,6 +21708,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "The forces are unbalanced, so there is a net force on Edna."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -19533,6 +21738,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "soap bar"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -19561,6 +21769,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "bison"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19587,6 +21798,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "The helicopter has a constant velocity."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -19614,6 +21828,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "Tucker's sister taught him how to do tricks with a jump rope."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19640,6 +21857,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "the colder soap bubble"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -19666,6 +21886,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a 125-gram glass of grape juice at a temperature of 75\u00b0F"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -19692,6 +21915,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19718,6 +21944,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "product"
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -19744,6 +21973,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Laos giant forest scorpions have eight legs and a dark-colored exoskeleton. They live in humid forests in southeastern Asia. Laos giant forest scorpions have no antennae."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19770,6 +22002,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Devon learned how to build a fire at summer camp."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19796,6 +22031,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "The forces are balanced, so there is no net force on Emmet."
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -19824,6 +22062,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "Both are only physical changes."
+        ],
+        "runtime_split_tags": [
+          "topic:chemistry"
         ]
       }
     },
@@ -19850,6 +22091,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "an unspotted tail"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19876,6 +22120,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "acquired"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19904,6 +22151,9 @@
         "correct_choice_index": 3,
         "answer_aliases": [
           "stuffed tiger"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -19930,6 +22180,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "penguin"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19958,6 +22211,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "yak"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -19986,6 +22242,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "cytoplasm"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -20012,6 +22271,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "trail mix"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -20038,6 +22300,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Coconut trees have large, thin leaves."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -20065,6 +22330,9 @@
         "correct_choice_index": 2,
         "answer_aliases": [
           "a 100-gram glass of water at a temperature of 6\u00b0C"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -20092,6 +22360,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "wax crayons"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -20118,6 +22389,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "ff"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -20144,6 +22418,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "ff"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -20170,6 +22447,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "straight fur"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -20196,6 +22476,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "inherited"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -20222,6 +22505,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a bat that moved 165kilometers in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -20248,6 +22534,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Marsh marigolds can grow yellow flowers."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -20274,6 +22563,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "a hairless body"
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -20300,6 +22592,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a goose that moved 640miles in 10hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -20326,6 +22621,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Tim learned to speak two languages in school."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     },
@@ -20352,6 +22650,9 @@
         "correct_choice_index": 0,
         "answer_aliases": [
           "a fish that moved 20kilometers in 5hours"
+        ],
+        "runtime_split_tags": [
+          "topic:physics"
         ]
       }
     },
@@ -20379,6 +22680,9 @@
         "correct_choice_index": 1,
         "answer_aliases": [
           "Rick's biological father has curly hair."
+        ],
+        "runtime_split_tags": [
+          "topic:biology"
         ]
       }
     }

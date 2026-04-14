@@ -68,7 +68,7 @@ The benchmark source of truth lives under [benchmark/](benchmark/), with active 
 Enabled registry entries now form the current maintained runnable benchmark task set:
 
 - math: `olymmath`, `math-500`, `aime-2024`, `aime-2025`, `aime-2026`
-- reasoning: `planbench`, `arc-challenge`, `bbh`, `mmlu-pro`
+- reasoning: `planbench-t1`, `planbench-t2`, `planbench-t3`, `arc-challenge`, `bbh`, `mmlu-pro`
 - long-context: `longbench-v2`
 - science QA: `sciq`, `qasc`, `scienceqa`, `openbookqa`, `gpqa-diamond`
 - coding: `livecodebench-v1` to `livecodebench-v6`
@@ -81,7 +81,7 @@ Active benchmark membership is defined by `benchmark/registry.json`. Tasks that 
 
 Current setup notes:
 
-- `planbench` keeps task-local verifier code under `benchmark/reasoning_verified/planbench/utils/` and task-local validator assets under `benchmark/reasoning_verified/planbench/official/`
+- PlanBench shared verifier support lives in `app/bench/planbench_support.py`, with shared validator assets under `benchmark/reasoning_verified/planbench-shared/official/`
 - all enabled tasks above are the current maintained benchmark set
 
 ## Dataset Preparation

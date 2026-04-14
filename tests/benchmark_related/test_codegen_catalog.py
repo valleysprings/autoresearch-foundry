@@ -34,7 +34,7 @@ class CodegenCatalogTest(unittest.TestCase):
         self.assertTrue(all("runtime_backend" not in task for task in tasks))
         self.assertTrue(all("optimization_scope" not in task for task in tasks))
         self.assertTrue(all(task["included_in_main_comparison"] for task in main_tasks))
-        self.assertEqual([task["id"] for task in main_tasks[:5]], ["olymmath", "math-500", "aime-2024", "aime-2025", "aime-2026"])
+        self.assertEqual([task["id"] for task in main_tasks[:5]], ["olymmath", "math-500", "aime", "planbench-t1", "planbench-t2"])
 
     def test_main_comparison_filter_returns_all_active_benchmark_tasks(self) -> None:
         all_tasks = load_codegen_tasks()
@@ -54,11 +54,11 @@ class CodegenCatalogTest(unittest.TestCase):
         summaries = list_codegen_task_summaries()
         olymmath = next(task for task in summaries if task["id"] == "olymmath")
         math_500 = next(task for task in summaries if task["id"] == "math-500")
-        aime_2024 = next(task for task in summaries if task["id"] == "aime-2024")
-        aime_2025 = next(task for task in summaries if task["id"] == "aime-2025")
-        aime_2026 = next(task for task in summaries if task["id"] == "aime-2026")
+        aime = next(task for task in summaries if task["id"] == "aime")
         summaries_by_id = {task["id"]: task for task in summaries}
-        planbench = summaries_by_id.get("planbench")
+        planbench_t1 = summaries_by_id.get("planbench-t1")
+        planbench_t2 = summaries_by_id.get("planbench-t2")
+        planbench_t3 = summaries_by_id.get("planbench-t3")
         arc_challenge = summaries_by_id.get("arc-challenge")
         bbh = summaries_by_id.get("bbh")
         mmlu_pro = summaries_by_id.get("mmlu-pro")
@@ -83,17 +83,10 @@ class CodegenCatalogTest(unittest.TestCase):
         openbookqa = summaries_by_id.get("openbookqa")
         gpqa_diamond = summaries_by_id.get("gpqa-diamond")
         alfworld = summaries_by_id.get("alfworld")
-        livecodebench_by_version = {
-            task_id: summaries_by_id.get(task_id)
-            for task_id in (
-                "livecodebench-v1",
-                "livecodebench-v2",
-                "livecodebench-v3",
-                "livecodebench-v4",
-                "livecodebench-v5",
-                "livecodebench-v6",
-            )
-        }
+        acpbench = summaries_by_id.get("acpbench")
+        livecodebench = summaries_by_id.get("livecodebench")
+        alpsbench_retrieval = summaries_by_id.get("alpsbench-retrieval")
+        alpsbench_utilization = summaries_by_id.get("alpsbench-utilization")
         co_bench = summaries_by_id.get("co-bench")
         summary_ids = {task["id"] for task in summaries}
         self.assertEqual({task["id"] for task in summaries}, set(enabled_registry_task_ids()))
@@ -104,21 +97,73 @@ class CodegenCatalogTest(unittest.TestCase):
         self.assertEqual(olymmath["split"], "en-hard:test")
         self.assertEqual(math_500["track"], "math_verified")
         self.assertEqual(math_500["split"], "test")
-        self.assertEqual(aime_2024["dataset_size"], 30)
-        self.assertEqual(aime_2024["split"], "train:2024-full")
-        self.assertEqual(aime_2025["dataset_size"], 30)
-        self.assertEqual(aime_2025["split"], "AIME2025-I:test + AIME2025-II:test")
-        self.assertEqual(aime_2026["dataset_size"], 30)
-        self.assertEqual(aime_2026["split"], "test")
-        self.assertIsNotNone(planbench)
-        self.assertTrue(planbench["local_dataset_only"])
-        self.assertEqual(planbench["dataset_size"], 2270)
-        self.assertEqual(planbench["track"], "reasoning_verified")
-        self.assertTrue(planbench["included_in_main_comparison"])
-        self.assertEqual(planbench["split"], "task_1_plan_generation:train")
-        self.assertEqual(planbench["task_mode"], "answer")
-        self.assertEqual(planbench["interaction_mode"], "single_turn")
-        self.assertEqual(planbench["selection_spec"]["profile"], "objective_only")
+        self.assertEqual(aime["dataset_size"], 90)
+        self.assertEqual(aime["split"], "2024:train + 2025:(I+II):test + 2026:test")
+        self.assertEqual(
+            [option["value"] for option in aime["runtime_split_selector"]["options"]],
+            ["all", "2024", "2025", "2026"],
+        )
+        self.assertEqual(
+            [option["item_count"] for option in aime["runtime_split_selector"]["options"]],
+            [90, 30, 30, 30],
+        )
+        self.assertNotIn("aime-2024", summaries_by_id)
+        self.assertNotIn("aime-2025", summaries_by_id)
+        self.assertNotIn("aime-2026", summaries_by_id)
+        self.assertIsNotNone(planbench_t1)
+        self.assertIsNotNone(planbench_t2)
+        self.assertIsNotNone(planbench_t3)
+        self.assertNotIn("planbench", summaries_by_id)
+        self.assertTrue(planbench_t1["local_dataset_only"])
+        self.assertEqual(planbench_t1["dataset_size"], 2270)
+        self.assertEqual(planbench_t1["track"], "reasoning_verified")
+        self.assertTrue(planbench_t1["included_in_main_comparison"])
+        self.assertEqual(planbench_t1["split"], "task_1_plan_generation:train")
+        self.assertEqual(planbench_t1["task_mode"], "answer")
+        self.assertEqual(planbench_t1["interaction_mode"], "single_turn")
+        self.assertEqual(planbench_t1["selection_spec"]["profile"], "objective_only")
+        self.assertEqual(
+            [option["value"] for option in planbench_t1["runtime_split_selector"]["options"]],
+            [
+                "all",
+                "blocksworld",
+                "blocksworld_3",
+                "depots",
+                "logistics",
+                "mystery_blocksworld",
+                "mystery_blocksworld_3",
+                "obfuscated_deceptive_logistics",
+            ],
+        )
+        self.assertEqual(planbench_t2["dataset_size"], 1692)
+        self.assertEqual(planbench_t2["split"], "task_2_plan_optimality:train")
+        self.assertEqual(planbench_t2["answer_metric"], "optimal_plan_rate")
+        self.assertEqual(
+            [option["value"] for option in planbench_t2["runtime_split_selector"]["options"]],
+            [
+                "all",
+                "blocksworld",
+                "blocksworld_3",
+                "logistics",
+                "mystery_blocksworld",
+                "mystery_blocksworld_3",
+                "obfuscated_deceptive_logistics",
+            ],
+        )
+        self.assertEqual(planbench_t3["dataset_size"], 1584)
+        self.assertEqual(planbench_t3["split"], "task_3_plan_verification:train")
+        self.assertEqual(planbench_t3["answer_metric"], "verification_accuracy")
+        self.assertEqual(
+            [option["value"] for option in planbench_t3["runtime_split_selector"]["options"]],
+            [
+                "all",
+                "blocksworld",
+                "blocksworld_3",
+                "logistics",
+                "mystery_blocksworld",
+                "mystery_blocksworld_3",
+            ],
+        )
         self.assertEqual(arc_challenge["dataset_size"], 299)
         self.assertEqual(arc_challenge["track"], "reasoning_verified")
         self.assertEqual(arc_challenge["split"], "validation:ARC-Challenge")
@@ -126,15 +171,41 @@ class CodegenCatalogTest(unittest.TestCase):
         self.assertEqual(bbh["track"], "reasoning_verified")
         self.assertEqual(bbh["split"], "train:all_configs")
         self.assertTrue(bbh["included_in_main_comparison"])
+        self.assertEqual(bbh["runtime_split_selector"]["default_value"], "all")
+        self.assertEqual(bbh["runtime_split_selector"]["options"][0]["item_count"], 6511)
+        self.assertIn("boolean_expressions", {option["value"] for option in bbh["runtime_split_selector"]["options"]})
+        self.assertIn("tracking_shuffled_objects_seven_objects", {option["value"] for option in bbh["runtime_split_selector"]["options"]})
         self.assertEqual(mmlu_pro["dataset_size"], 12032)
         self.assertEqual(mmlu_pro["track"], "reasoning_verified")
         self.assertEqual(mmlu_pro["split"], "default:test")
         self.assertEqual(mmlu_pro["interaction_mode"], "single_turn")
         self.assertTrue(mmlu_pro["included_in_main_comparison"])
+        self.assertEqual(mmlu_pro["runtime_split_selector"]["default_value"], "all")
+        self.assertEqual(mmlu_pro["runtime_split_selector"]["options"][0]["item_count"], 12032)
+        self.assertEqual(
+            [option["value"] for option in mmlu_pro["runtime_split_selector"]["options"][:5]],
+            ["all", "biology", "business", "chemistry", "computer-science"],
+        )
         self.assertEqual(longbench["dataset_size"], 503)
         self.assertEqual(longbench["track"], "longcontext_verified")
         self.assertEqual(longbench["split"], "train")
         self.assertTrue(longbench["included_in_main_comparison"])
+        self.assertEqual(
+            [option["value"] for option in longbench["runtime_split_selector"]["options"]],
+            [
+                "all",
+                "single-document-qa",
+                "multi-document-qa",
+                "long-in-context-learning",
+                "code-repository-understanding",
+                "long-dialogue-history-understanding",
+                "long-structured-data-understanding",
+            ],
+        )
+        self.assertEqual(
+            [option["item_count"] for option in longbench["runtime_split_selector"]["options"]],
+            [503, 175, 125, 81, 50, 39, 33],
+        )
         self.assertEqual(incharacter["track"], "personalization_verified")
         self.assertEqual(incharacter["dataset_size"], 448)
         self.assertEqual(incharacter["interaction_mode"], "single_turn")
@@ -256,7 +327,16 @@ class CodegenCatalogTest(unittest.TestCase):
         self.assertEqual(qasc["dataset_size"], 926)
         self.assertEqual(qasc["split"], "validation")
         self.assertEqual(scienceqa["dataset_size"], 768)
+        self.assertEqual(scienceqa["title"], "ScienceQA Text Bio/Chem/Phys")
         self.assertEqual(scienceqa["split"], "validation:natural-science:text-only:biology-chemistry-physics")
+        self.assertEqual(
+            [option["value"] for option in scienceqa["runtime_split_selector"]["options"]],
+            ["all", "biology", "chemistry", "physics"],
+        )
+        self.assertEqual(
+            [option["item_count"] for option in scienceqa["runtime_split_selector"]["options"]],
+            [768, 406, 136, 226],
+        )
         self.assertEqual(openbookqa["dataset_size"], 500)
         self.assertEqual(openbookqa["track"], "science_verified")
         self.assertEqual(openbookqa["split"], "validation:additional")
@@ -278,26 +358,77 @@ class CodegenCatalogTest(unittest.TestCase):
         self.assertEqual(alfworld["default_max_episodes"], 140)
         self.assertFalse(alfworld["supports_max_items"])
         self.assertIsNone(alfworld["default_max_items"])
-        for task_id, dataset_size, split in (
-            ("livecodebench-v1", 400, "v1:test"),
-            ("livecodebench-v2", 111, "v2:test"),
-            ("livecodebench-v3", 101, "v3:test"),
-            ("livecodebench-v4", 101, "v4:test"),
-            ("livecodebench-v5", 167, "v5:test"),
-            ("livecodebench-v6", 175, "v6:test"),
-        ):
-            livecodebench = livecodebench_by_version.get(task_id)
-            if livecodebench is None:
-                continue
-            self.assertEqual(livecodebench["dataset_size"], dataset_size)
-            self.assertEqual(livecodebench["track"], "coding_verified")
-            self.assertEqual(livecodebench["split"], split)
-            self.assertTrue(livecodebench["included_in_main_comparison"])
-            self.assertEqual(livecodebench["task_mode"], "artifact")
-            self.assertEqual(livecodebench["interaction_mode"], "single_turn")
-            self.assertFalse(livecodebench["supports_runtime_config"])
-            self.assertTrue(livecodebench["supports_max_items"])
-            self.assertEqual(livecodebench["default_max_items"], dataset_size)
+        self.assertIsNotNone(acpbench)
+        self.assertEqual(acpbench["dataset_size"], 1800)
+        self.assertEqual(acpbench["track"], "reasoning_verified")
+        self.assertEqual(acpbench["split"], "test:bool+mcq")
+        self.assertTrue(acpbench["included_in_main_comparison"])
+        self.assertEqual(acpbench["task_mode"], "answer")
+        self.assertEqual(acpbench["interaction_mode"], "single_turn")
+        self.assertFalse(acpbench["supports_runtime_config"])
+        self.assertTrue(acpbench["supports_max_items"])
+        self.assertEqual(acpbench["default_max_items"], 1800)
+        self.assertEqual(acpbench["runtime_split_selector"]["default_value"], "all")
+        self.assertEqual(acpbench["runtime_split_selector"]["options"][0]["item_count"], 1800)
+        self.assertEqual(
+            {option["value"] for option in acpbench["runtime_split_selector"]["options"]},
+            {
+                "all",
+                "bool",
+                "mcq",
+                "acp_app_bool",
+                "acp_app_mcq",
+                "acp_areach_bool",
+                "acp_areach_mcq",
+                "acp_just_bool",
+                "acp_just_mcq",
+                "acp_land_bool",
+                "acp_land_mcq",
+                "acp_prog_bool",
+                "acp_prog_mcq",
+                "acp_reach_bool",
+                "acp_reach_mcq",
+                "acp_val_bool",
+                "acp_val_mcq",
+            },
+        )
+        self.assertIsNotNone(livecodebench)
+        self.assertEqual(livecodebench["dataset_size"], 1055)
+        self.assertEqual(livecodebench["track"], "coding_verified")
+        self.assertEqual(livecodebench["split"], "v1+v2+v3+v4+v5+v6:test")
+        self.assertTrue(livecodebench["included_in_main_comparison"])
+        self.assertEqual(livecodebench["task_mode"], "artifact")
+        self.assertEqual(livecodebench["interaction_mode"], "single_turn")
+        self.assertFalse(livecodebench["supports_runtime_config"])
+        self.assertTrue(livecodebench["supports_max_items"])
+        self.assertEqual(livecodebench["default_max_items"], 1055)
+        self.assertEqual(livecodebench["runtime_split_selector"]["default_value"], "all")
+        self.assertEqual(
+            [option["value"] for option in livecodebench["runtime_split_selector"]["options"]],
+            ["all", "v1", "v2", "v3", "v4", "v5", "v6"],
+        )
+        self.assertEqual(
+            [option["item_count"] for option in livecodebench["runtime_split_selector"]["options"]],
+            [1055, 400, 111, 101, 101, 167, 175],
+        )
+        self.assertIsNotNone(alpsbench_retrieval)
+        self.assertEqual(
+            [option["value"] for option in alpsbench_retrieval["runtime_split_selector"]["options"]],
+            ["all", "d100", "d300", "d500", "d700", "d1000"],
+        )
+        self.assertEqual(
+            [option["item_count"] for option in alpsbench_retrieval["runtime_split_selector"]["options"]],
+            [2380, 476, 476, 476, 476, 476],
+        )
+        self.assertIsNotNone(alpsbench_utilization)
+        self.assertEqual(
+            [option["value"] for option in alpsbench_utilization["runtime_split_selector"]["options"]],
+            ["all", "ability1", "ability2", "ability3", "ability4", "ability5"],
+        )
+        self.assertEqual(
+            [option["item_count"] for option in alpsbench_utilization["runtime_split_selector"]["options"]],
+            [577, 115, 116, 115, 115, 116],
+        )
         self.assertIsNotNone(co_bench)
         self.assertEqual(co_bench["track"], "or_verified")
         self.assertTrue(co_bench["included_in_main_comparison"])
@@ -309,30 +440,31 @@ class CodegenCatalogTest(unittest.TestCase):
         self.assertTrue(co_bench["supports_max_items"])
         self.assertEqual(co_bench["default_max_items"], 36)
         self.assertFalse(co_bench["run_baseline_verifier"])
+        self.assertEqual(co_bench["runtime_split_selector"]["default_value"], "all")
+        self.assertEqual(co_bench["runtime_split_selector"]["options"][0]["item_count"], 36)
+        self.assertIn("travelling-salesman-problem", {option["value"] for option in co_bench["runtime_split_selector"]["options"]})
         if hallulens_precise is not None:
             self.assertFalse(hallulens_precise["run_baseline_verifier"])
 
-    def test_livecodebench_versions_use_non_overlapping_shards(self) -> None:
+    def test_livecodebench_aggregate_uses_release_split_selector(self) -> None:
         tasks = {task["id"]: task for task in load_codegen_tasks()}
-        expected = {
-            "livecodebench-v1": ("livecodebench_v1", 400, "v1:test"),
-            "livecodebench-v2": ("livecodebench_v2", 111, "v2:test"),
-            "livecodebench-v3": ("livecodebench_v3", 101, "v3:test"),
-            "livecodebench-v4": ("livecodebench_v4", 101, "v4:test"),
-            "livecodebench-v5": ("livecodebench_v5", 167, "v5:test"),
-            "livecodebench-v6": ("livecodebench_v6", 175, "v6:test"),
-        }
-
-        total = 0
-        for task_id, (dataset_id, dataset_size, split) in expected.items():
-            task = tasks[task_id]
-            self.assertEqual(task["dataset_id"], dataset_id)
-            self.assertEqual(task["dataset_size"], dataset_size)
-            self.assertEqual(task["split"], split)
-            self.assertTrue(task["lazy_item_manifest"])
-            total += dataset_size
-
-        self.assertEqual(total, 1055)
+        task = tasks["livecodebench"]
+        self.assertEqual(task["dataset_id"], "livecodebench_all")
+        self.assertEqual(task["dataset_size"], 1055)
+        self.assertEqual(task["split"], "v1+v2+v3+v4+v5+v6:test")
+        self.assertTrue(task["lazy_item_manifest"])
+        selector = task["runtime_split_selector"]
+        self.assertEqual(selector["label"], "Split")
+        self.assertEqual(selector["default_value"], "all")
+        self.assertEqual(
+            [option["value"] for option in selector["options"]],
+            ["all", "v1", "v2", "v3", "v4", "v5", "v6"],
+        )
+        self.assertEqual(
+            [option["item_count"] for option in selector["options"]],
+            [1055, 400, 111, 101, 101, 167, 175],
+        )
+        self.assertEqual(sum(option["item_count"] for option in selector["options"][1:]), 1055)
         self.assertEqual(RELEASE_FILES["v1"], ["test.jsonl"])
         self.assertEqual(RELEASE_FILES["v2"], ["test2.jsonl"])
         self.assertEqual(RELEASE_FILES["v3"], ["test3.jsonl"])
@@ -396,7 +528,7 @@ class CodegenCatalogTest(unittest.TestCase):
     def test_lazy_manifest_keeps_declared_dataset_size(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
-            task_dir = root / "coding_verified" / "lazy-livecodebench-v6"
+            task_dir = root / "coding_verified" / "lazy-livecodebench"
             data_dir = task_dir / "data"
             data_dir.mkdir(parents=True, exist_ok=True)
             registry_path = root / "registry.json"
@@ -404,7 +536,7 @@ class CodegenCatalogTest(unittest.TestCase):
                 json.dumps(
                     {
                         "tasks": [
-                            {"id": "livecodebench-v6", "path": "coding_verified/lazy-livecodebench-v6", "enabled": True},
+                            {"id": "livecodebench", "path": "coding_verified/lazy-livecodebench", "enabled": True},
                         ]
                     }
                 )
@@ -414,17 +546,25 @@ class CodegenCatalogTest(unittest.TestCase):
             (task_dir / "task.json").write_text(
                 json.dumps(
                     {
-                        "id": "livecodebench-v6",
-                        "title": "Lazy LiveCodeBench v6",
+                        "id": "livecodebench",
+                        "title": "Lazy LiveCodeBench",
                         "description": "Synthetic lazy dataset task.",
                         "benchmark_tier": "comparable",
                         "track": "coding_verified",
-                        "dataset_id": "livecodebench_v6",
-                        "dataset_size": 175,
+                        "dataset_id": "livecodebench_all",
+                        "dataset_size": 1055,
                         "local_dataset_only": True,
                         "lazy_item_manifest": True,
                         "item_manifest": "data/questions.json",
-                        "split": "v6:test",
+                        "split": "v1+v2+v3+v4+v5+v6:test",
+                        "runtime_split_selector": {
+                            "label": "Split",
+                            "default_value": "all",
+                            "options": [
+                                {"value": "all", "title": "All Releases", "item_count": 1055},
+                                {"value": "v6", "title": "v6", "item_count": 175, "match_tags_any": ["release:v6"]},
+                            ],
+                        },
                         "allow_browsing": False,
                         "answer_metric": "test_pass_rate",
                         "family": "coding",
@@ -452,12 +592,12 @@ class CodegenCatalogTest(unittest.TestCase):
             (data_dir / "questions.json").write_text(
                 json.dumps(
                     {
-                        "dataset_id": "livecodebench_v6",
-                        "dataset_size": 175,
+                        "dataset_id": "livecodebench_all",
+                        "dataset_size": 1055,
                         "prepared_count": 2,
                         "items": [
-                            {"item_id": "item-1", "prompt": "a", "expected_answer": "ok"},
-                            {"item_id": "item-2", "prompt": "b", "expected_answer": "ok"},
+                            {"item_id": "item-1", "prompt": "a", "expected_answer": "ok", "metadata": {"runtime_split_tags": ["release:v6"]}},
+                            {"item_id": "item-2", "prompt": "b", "expected_answer": "ok", "metadata": {"runtime_split_tags": ["release:v6"]}},
                         ],
                     }
                 )
@@ -467,8 +607,8 @@ class CodegenCatalogTest(unittest.TestCase):
                 patch.object(catalog, "BENCHMARK_ROOT", root),
                 patch.object(catalog, "REGISTRY_PATH", registry_path),
             ):
-                task = next(item for item in load_codegen_tasks() if item["id"] == "livecodebench-v6")
-                self.assertEqual(task["dataset_size"], 175)
+                task = next(item for item in load_codegen_tasks() if item["id"] == "livecodebench")
+                self.assertEqual(task["dataset_size"], 1055)
                 self.assertEqual(task["prepared_item_count"], 2)
 
 

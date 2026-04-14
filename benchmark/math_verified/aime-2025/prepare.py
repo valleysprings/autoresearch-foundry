@@ -54,6 +54,7 @@ def main() -> None:
                     "answer_format": "numeric",
                     "year": 2025,
                     "round": str(row.get("round") or ""),
+                    "runtime_split_tags": [f"round:{str(row.get('round') or '').strip()}"] if str(row.get("round") or "").strip() else [],
                 },
             }
         )
