@@ -10,7 +10,6 @@ type StartJobOptions = {
   itemWorkers?: number | null;
   maxItems?: number | null;
   maxEpisodes?: number | null;
-  itemIds?: string[] | null;
   suiteConfig?: Record<string, unknown> | null;
   recordSkill?: boolean;
   selectedSkillId?: string | null;
@@ -60,7 +59,7 @@ export async function startJob(
   if (taskId) {
     params.set("task_id", taskId);
   }
-  const { branchingFactor, generationBudget, candidateBudget, evalModel, llmConcurrency, itemWorkers, maxItems, maxEpisodes, itemIds } = options;
+  const { branchingFactor, generationBudget, candidateBudget, evalModel, llmConcurrency, itemWorkers, maxItems, maxEpisodes } = options;
   const suiteConfig = options.suiteConfig;
   const recordSkill = options.recordSkill;
   const selectedSkillId = options.selectedSkillId;
@@ -87,9 +86,6 @@ export async function startJob(
   }
   if (typeof maxEpisodes === "number" && Number.isFinite(maxEpisodes)) {
     params.set("max_episodes", String(Math.max(1, Math.floor(maxEpisodes))));
-  }
-  if (Array.isArray(itemIds) && itemIds.length) {
-    params.set("item_ids", itemIds.join(","));
   }
   const suffix = params.toString() ? `?${params.toString()}` : "";
   const url = taskId ? `/api/run-task${suffix}` : `/api/run-sequence${suffix}`;

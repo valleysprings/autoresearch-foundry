@@ -154,6 +154,7 @@ class UiSmokeTest(unittest.TestCase):
         self.assertNotIn("Candidates / Branch", source)
         self.assertNotIn("Candidates Count per Branch", source)
         self.assertNotIn("items opened", source)
+        self.assertNotIn("Item IDs (Optional)", source)
         self.assertNotIn('<span className="badge">{runtimeInfo.mode}</span>', source)
         self.assertNotIn('<span className="badge">runtime {runtimeInfo.active_model}</span>', source)
         self.assertNotIn("Auto Research Console", source)

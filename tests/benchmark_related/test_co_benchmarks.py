@@ -60,14 +60,22 @@ class CoBenchmarksTest(unittest.TestCase):
             tsp_dir.mkdir(parents=True, exist_ok=True)
             (aircraft_dir / "config.py").write_text(
                 "DESCRIPTION = 'Aircraft landing description.'\n\n"
+                "def load_data(path):\n"
+                "    del path\n"
+                "    return [{'id': 1}]\n\n"
                 "def solve(**kwargs):\n"
                 "    return {'schedule': {}}\n"
             )
+            (aircraft_dir / "case.txt").write_text("case")
             (tsp_dir / "config.py").write_text(
                 "DESCRIPTION = 'Travelling salesman description.'\n\n"
+                "def load_data(path):\n"
+                "    del path\n"
+                "    return [{'id': 1}, {'id': 2}]\n\n"
                 "def solve(**kwargs):\n"
                 "    return {'tour': []}\n"
             )
+            (tsp_dir / "case.txt").write_text("case")
 
             self.assertEqual(
                 co_bench_problem_names(task_dir),
@@ -84,6 +92,8 @@ class CoBenchmarksTest(unittest.TestCase):
             item = manifest["items"][0]
             self.assertEqual(item["name"], "Travelling salesman problem")
             self.assertEqual(item["metadata"]["problem_name"], "Travelling salesman problem")
+            self.assertEqual(item["metadata"]["case_count"], 1)
+            self.assertEqual(item["metadata"]["instance_count"], 2)
             self.assertEqual(item["metadata"]["runtime_split_tags"], ["problem:travelling-salesman-problem"])
             self.assertIn("Travelling salesman description.", item["context"])
             self.assertIn("def solve(**kwargs):", item["context"])

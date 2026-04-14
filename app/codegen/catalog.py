@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 from pathlib import Path
 from typing import Any
@@ -186,6 +187,143 @@ def _count_manifest_items(path: Path) -> int:
     return len(rows)
 
 
+def _load_manifest_rows(path: Path) -> list[dict[str, Any]]:
+    payload = json.loads(path.read_text())
+    rows = payload.get("items") if isinstance(payload, dict) and "items" in payload else payload
+    if not isinstance(rows, list):
+        raise ValueError(f"Question manifest must contain a list of items: {path}")
+    return [dict(row) for row in rows if isinstance(row, dict)]
+
+
+def _runtime_split_matches_item(option: dict[str, Any], item: dict[str, Any]) -> bool:
+    match_tags = [str(tag).strip() for tag in list(option.get("match_tags_any") or []) if str(tag).strip()]
+    if not match_tags:
+        return True
+    metadata = dict(item.get("metadata") or {})
+    item_tags = {
+        str(tag).strip()
+        for tag in list(metadata.get("runtime_split_tags") or [])
+        if str(tag).strip()
+    }
+    return not item_tags.isdisjoint(match_tags)
+
+
+def _count_unit_label(value: int, label: str) -> str:
+    text = str(label or "items").strip() or "items"
+    if value == 1 and text.endswith("s"):
+        return text[:-1]
+    return text
+
+
+def _co_bench_case_files(problem_dir: Path) -> list[Path]:
+    return sorted(path for path in problem_dir.iterdir() if path.is_file() and path.suffix != ".py" and not path.name.startswith("."))
+
+
+def _load_callable_from_path(path: Path, attribute_name: str):
+    module_name = f"catalog_runtime_{path.stem}_{abs(hash(path))}"
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    if spec is None or spec.loader is None:
+        return None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    candidate = getattr(module, attribute_name, None)
+    return candidate if callable(candidate) else None
+
+
+def _co_bench_problem_counts(
+    task: dict[str, Any],
+    row: dict[str, Any],
+    cache: dict[str, tuple[int, int]],
+) -> tuple[int, int]:
+    if str(task.get("id") or "").strip() != "co-bench":
+        return 0, 0
+    task_dir_raw = str(task.get("task_dir") or "").strip()
+    if not task_dir_raw:
+        return 0, 0
+    task_dir = Path(task_dir_raw)
+    metadata = dict(row.get("metadata") or {})
+    config_path_raw = str(metadata.get("config_path") or "").strip()
+    if config_path_raw:
+        problem_dir = (task_dir / config_path_raw).parent
+    else:
+        problem_name = str(metadata.get("problem_name") or row.get("name") or row.get("item_id") or "").strip()
+        if not problem_name:
+            return 0, 0
+        problem_dir = task_dir / "data" / problem_name
+    cache_key = str(problem_dir.resolve())
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+    config_path = problem_dir / "config.py"
+    if not config_path.exists() or not problem_dir.exists():
+        cache[cache_key] = (0, 0)
+        return cache[cache_key]
+    case_files = _co_bench_case_files(problem_dir)
+    load_data = _load_callable_from_path(config_path, "load_data")
+    if load_data is None:
+        cache[cache_key] = (len(case_files), 0)
+        return cache[cache_key]
+    instance_count = 0
+    try:
+        for case_file in case_files:
+            instance_count += len(list(load_data(str(case_file))))
+    except Exception:
+        cache[cache_key] = (len(case_files), 0)
+        return cache[cache_key]
+    cache[cache_key] = (len(case_files), instance_count)
+    return cache[cache_key]
+
+
+def _augment_runtime_split_selector(task: dict[str, Any], selector: dict[str, Any] | None) -> dict[str, Any] | None:
+    if selector is None:
+        return None
+    manifest_path_raw = task.get("item_manifest_path")
+    if not isinstance(manifest_path_raw, str) or not manifest_path_raw.strip():
+        return selector
+    manifest_path = Path(manifest_path_raw)
+    if not manifest_path.exists():
+        return selector
+
+    rows = _load_manifest_rows(manifest_path)
+    unit_label = str(task.get("eval_limit_unit_label") or ("problems" if task.get("track") == "coding_verified" else "items")).strip() or "items"
+    co_bench_count_cache: dict[str, tuple[int, int]] = {}
+    options: list[dict[str, Any]] = []
+    for raw_option in list(selector.get("options") or []):
+        if not isinstance(raw_option, dict):
+            continue
+        option = dict(raw_option)
+        matching_rows = [row for row in rows if _runtime_split_matches_item(option, row)]
+        if not matching_rows:
+            options.append(option)
+            continue
+        total_instances = 0
+        total_cases = 0
+        for row in matching_rows:
+            metadata = dict(row.get("metadata") or {})
+            raw_instances = metadata.get("instance_count")
+            raw_cases = metadata.get("case_count")
+            if isinstance(raw_instances, int) and raw_instances > 0:
+                total_instances += raw_instances
+            if isinstance(raw_cases, int) and raw_cases > 0:
+                total_cases += raw_cases
+            needs_instance_fallback = not isinstance(raw_instances, int) or raw_instances <= 0
+            needs_case_fallback = not isinstance(raw_cases, int) or raw_cases <= 0
+            if (needs_instance_fallback or needs_case_fallback) and str(task.get("id") or "").strip() == "co-bench":
+                fallback_cases, fallback_instances = _co_bench_problem_counts(task, row, co_bench_count_cache)
+                if needs_case_fallback:
+                    total_cases += fallback_cases
+                if needs_instance_fallback:
+                    total_instances += fallback_instances
+        if total_instances > 0:
+            scope = f"{len(matching_rows)} {_count_unit_label(len(matching_rows), unit_label)}"
+            case_suffix = f" across {total_cases} case files" if total_cases > 0 else ""
+            computed = f"This split evaluates {scope}. The official verifier then runs {total_instances} benchmark instances{case_suffix}."
+            base_description = str(option.get("description") or "").strip()
+            option["description"] = f"{base_description} {computed}".strip() if base_description else computed
+        options.append(option)
+    return {**selector, "options": options}
+
+
 def _infer_safety_category(task: dict[str, Any]) -> str | None:
     if str(task.get("track") or "").strip() != "safety_verified":
         return None
@@ -334,6 +472,14 @@ def _normalize_task(task: dict[str, Any]) -> dict[str, Any]:
     normalized["local_dataset_only"] = bool(normalized.get("local_dataset_only"))
     split = normalized.get("split")
     normalized["split"] = str(split).strip() if isinstance(split, str) and split.strip() else None
+    eval_limit_unit_label = normalized.get("eval_limit_unit_label")
+    normalized["eval_limit_unit_label"] = (
+        str(eval_limit_unit_label).strip() if isinstance(eval_limit_unit_label, str) and str(eval_limit_unit_label).strip() else None
+    )
+    runtime_split_help = normalized.get("runtime_split_help")
+    normalized["runtime_split_help"] = (
+        str(runtime_split_help).strip() if isinstance(runtime_split_help, str) and str(runtime_split_help).strip() else None
+    )
     item_manifest = normalized.get("item_manifest")
     normalized["item_manifest"] = str(item_manifest).strip() if isinstance(item_manifest, str) and item_manifest.strip() else None
     normalized["lazy_item_manifest"] = bool(normalized.get("lazy_item_manifest"))
@@ -467,6 +613,8 @@ def task_summary(task: dict[str, Any]) -> dict[str, Any]:
         "dataset_size": task["dataset_size"],
         "local_dataset_only": task["local_dataset_only"],
         "split": task["split"],
+        "eval_limit_unit_label": task.get("eval_limit_unit_label"),
+        "runtime_split_help": task.get("runtime_split_help"),
         "task_mode": task["task_mode"],
         "interaction_mode": task["interaction_mode"],
         "task_shape": task["task_shape"],
@@ -483,7 +631,7 @@ def task_summary(task: dict[str, Any]) -> dict[str, Any]:
         "run_baseline_verifier": task["run_baseline_verifier"],
         "supports_runtime_config": suite_run_config is not None,
         "suite_run_config": suite_run_config,
-        "runtime_split_selector": task.get("runtime_split_selector"),
+        "runtime_split_selector": _augment_runtime_split_selector(task, task.get("runtime_split_selector")),
         "supports_max_items": _task_supports_max_items(task),
         "default_max_items": _task_default_max_items(task, suite_run_config),
         "supports_max_episodes": _task_supports_max_episodes(task),

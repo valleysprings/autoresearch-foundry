@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import contextlib
 import importlib
+import importlib.util
 import subprocess
 import sys
 import time
@@ -148,6 +149,39 @@ def _problem_description_from_config(config_path: Path) -> str:
     return f"{description}\n\n# Implement in Solve Function\n\n{solve_template}"
 
 
+def _problem_case_files(problem_dir: Path) -> list[Path]:
+    return sorted(
+        path
+        for path in problem_dir.iterdir()
+        if path.is_file() and path.suffix != ".py" and path.name != "__pycache__" and not path.name.startswith(".")
+    )
+
+
+def _load_problem_data_loader(config_path: Path):
+    module_name = f"co_bench_config_{config_path.parent.name.lower().replace(' ', '_').replace('-', '_')}"
+    spec = importlib.util.spec_from_file_location(module_name, config_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Unable to load CO-Bench config module from {config_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    load_data = getattr(module, "load_data", None)
+    return load_data if callable(load_data) else None
+
+
+def _problem_case_instance_counts(problem_dir: Path) -> tuple[int, int]:
+    config_path = problem_dir / "config.py"
+    if not config_path.exists():
+        raise FileNotFoundError(f"CO-Bench task config was not found: {config_path}")
+    load_data = _load_problem_data_loader(config_path)
+    case_files = _problem_case_files(problem_dir)
+    if load_data is None:
+        return len(case_files), 0
+    instance_count = 0
+    for case_file in case_files:
+        instance_count += len(list(load_data(str(case_file))))
+    return len(case_files), instance_count
+
+
 def build_co_bench_manifest(
     *,
     task_dir: Path,
@@ -164,10 +198,12 @@ def build_co_bench_manifest(
 
     items: list[dict[str, Any]] = []
     for index, problem_name in enumerate(selected_problem_names, start=1):
-        config_path = data_dir / problem_name / "config.py"
+        problem_dir = data_dir / problem_name
+        config_path = problem_dir / "config.py"
         if not config_path.exists():
             raise FileNotFoundError(f"CO-Bench task config was not found: {config_path}")
         problem_description = _problem_description_from_config(config_path)
+        case_count, instance_count = _problem_case_instance_counts(problem_dir)
         items.append(
             {
                 "item_id": problem_name,
@@ -180,6 +216,8 @@ def build_co_bench_manifest(
                     "source_index": index - 1,
                     "source_split": CO_BENCH_SPLIT,
                     "config_path": str(config_path.relative_to(task_dir)),
+                    "case_count": case_count,
+                    "instance_count": instance_count,
                     "runtime_split_tags": [f"problem:{_problem_slug(problem_name)}"],
                 },
             }

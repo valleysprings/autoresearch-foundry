@@ -10,6 +10,8 @@
   "lazy_item_manifest": true,
   "item_manifest": "data/questions.json",
   "split": "official:test",
+  "eval_limit_unit_label": "problems",
+  "runtime_split_help": "Each split selects one CO-Bench problem. The official evaluator then runs every instance under that problem, so the instance fan-out happens inside the verifier rather than as separate manifest items.",
   "runtime_split_selector": {
     "label": "Split",
     "default_value": "all",

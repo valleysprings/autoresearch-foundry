@@ -443,6 +443,10 @@ class CodegenCatalogTest(unittest.TestCase):
         self.assertEqual(co_bench["runtime_split_selector"]["default_value"], "all")
         self.assertEqual(co_bench["runtime_split_selector"]["options"][0]["item_count"], 36)
         self.assertIn("travelling-salesman-problem", {option["value"] for option in co_bench["runtime_split_selector"]["options"]})
+        aircraft_landing = next(
+            option for option in co_bench["runtime_split_selector"]["options"] if option["value"] == "aircraft-landing"
+        )
+        self.assertIn("benchmark instances", aircraft_landing["description"])
         if hallulens_precise is not None:
             self.assertFalse(hallulens_precise["run_baseline_verifier"])
 

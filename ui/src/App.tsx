@@ -731,15 +731,6 @@ function summarizeRetryStates(retryStates: Map<string, RetryState>): string | nu
   return `retry ${current.attempt}/${current.maxAttempts}`;
 }
 
-function parseItemIdsInput(input: string): string[] | null {
-  const selected = input
-    .replace(/\n/g, ",")
-    .split(",")
-    .map((token) => token.trim())
-    .filter(Boolean);
-  return selected.length ? selected : null;
-}
-
 function inferSuiteDefaultMaxItems(config: Record<string, unknown> | null | undefined): number | null {
   if (!config) {
     return null;
@@ -3245,7 +3236,6 @@ export function App() {
   const [maxEpisodesInput, setMaxEpisodesInput] = useState("");
   const [maxTurnsInput, setMaxTurnsInput] = useState("");
   const [selectedRuntimeSplit, setSelectedRuntimeSplit] = useState("");
-  const [selectedItemIdsInput, setSelectedItemIdsInput] = useState("");
   const [selectedSkillId, setSelectedSkillId] = useState("");
   const [recordSkillEnabled, setRecordSkillEnabled] = useState(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
@@ -3562,7 +3552,6 @@ export function App() {
     setMaxEpisodesInput("");
     setMaxTurnsInput("");
     setSelectedRuntimeSplit(selectedTask.runtime_split_selector?.default_value || "");
-    setSelectedItemIdsInput("");
     setSelectedSkillId("");
     setRecordSkillEnabled(false);
     if (selectedTask.supports_eval_model) {
@@ -3764,10 +3753,9 @@ export function App() {
       ? Math.max(1, Math.floor(numeric(llmConcurrencyInput)))
       : null;
     const llmConcurrency = resolvedLlmConcurrency(requestedLlmConcurrency, runtimeLlmConcurrencyDefault, itemWorkers);
-    const selectedItemIds = isDatasetTask ? parseItemIdsInput(selectedItemIdsInput) : null;
     const chosenSkillId = isDatasetTask && selectedSkillId.trim() ? selectedSkillId.trim() : null;
     const recordSkill = isDatasetTask ? recordSkillEnabled : false;
-    const maxItems = selectedItemIds ? null : supportsMaxItems && maxItemsInput.trim() ? Math.max(1, Math.floor(numeric(maxItemsInput))) : null;
+    const maxItems = supportsMaxItems && maxItemsInput.trim() ? Math.max(1, Math.floor(numeric(maxItemsInput))) : null;
     const maxEpisodes = supportsMaxEpisodes && maxEpisodesInput.trim() ? Math.max(1, Math.floor(numeric(maxEpisodesInput))) : null;
     const maxTurns = supportsMaxEpisodes && maxTurnsInput.trim() ? Math.max(1, Math.floor(numeric(maxTurnsInput))) : null;
     const suiteConfigEntries: Record<string, unknown> = {};
@@ -3797,7 +3785,6 @@ export function App() {
       item_workers: itemWorkers,
       max_items: maxItems,
       max_episodes: maxEpisodes,
-      item_ids: selectedItemIds,
       events: [
         {
           phase: "queued",
@@ -3805,7 +3792,7 @@ export function App() {
             `${evalModel ? `[eval ${evalModel}] ` : ""}` +
             `(gen=${generationBudget}, proposal-calls/branch=${candidateBudget}, branches=${branchingFactor}, llm-concurrency=${llmConcurrency}` +
             `${itemWorkers ? `, parallel-eval=${itemWorkers}` : ""}` +
-            `${selectedItemIds ? `, items=${selectedItemIds.join(",")}` : maxEpisodes ? `, episode count=${maxEpisodes}` : maxItems ? `, item cap=${maxItems}` : ""}` +
+            `${maxEpisodes ? `, episode count=${maxEpisodes}` : maxItems ? `, item cap=${maxItems}` : ""}` +
             `${maxTurns ? `, max-turns/episode=${maxTurns}` : ""}).`,
         },
       ],
@@ -3821,7 +3808,6 @@ export function App() {
           itemWorkers,
           maxItems,
           maxEpisodes,
-          itemIds: selectedItemIds,
           suiteConfig,
           recordSkill,
           selectedSkillId: chosenSkillId,
@@ -3887,7 +3873,6 @@ export function App() {
           runtimeLlmConcurrencyDefault,
         item_workers: supportsParallelWorkers ? Math.max(1, Math.floor(numeric(itemWorkersInput || defaultParallelWorkers(selectedTask)))) : null,
         max_episodes: supportsMaxEpisodes && maxEpisodesInput.trim() ? Math.max(1, Math.floor(numeric(maxEpisodesInput))) : null,
-        item_ids: isDatasetTask ? parseItemIdsInput(selectedItemIdsInput) : null,
         events: [],
       });
     }
@@ -3933,8 +3918,9 @@ export function App() {
     : "";
   const selectedTaskRuntimeSplitOption = selectedTaskRuntimeSplitOptions.find((option) => option.value === effectiveRuntimeSplit) ?? null;
   const selectedTaskVisibleDatasetSize = selectedTaskRuntimeSplitOption?.item_count ?? selectedTask?.dataset_size ?? null;
-  const parsedSelectedItemIds = selectedTaskIsDataset ? parseItemIdsInput(selectedItemIdsInput) : null;
-  const parsedMaxItems = parsedSelectedItemIds ? null : selectedTaskUsesMaxItems && maxItemsInput.trim() ? Math.max(1, Math.floor(numeric(maxItemsInput))) : null;
+  const selectedTaskEvalLimitUnitLabel = selectedTask?.eval_limit_unit_label ?? (selectedTaskIsCoding ? "problems" : "items");
+  const selectedTaskRuntimeSplitHelp = selectedTask?.runtime_split_help ?? null;
+  const parsedMaxItems = selectedTaskUsesMaxItems && maxItemsInput.trim() ? Math.max(1, Math.floor(numeric(maxItemsInput))) : null;
   const parsedMaxEpisodes = selectedTaskUsesMaxEpisodes && maxEpisodesInput.trim() ? Math.max(1, Math.floor(numeric(maxEpisodesInput))) : null;
   const parsedMaxTurns = selectedTaskUsesMaxEpisodes && maxTurnsInput.trim() ? Math.max(1, Math.floor(numeric(maxTurnsInput))) : null;
   const parsedBranchingFactor = branchingFactorInput.trim() ? Math.max(1, Math.floor(numeric(branchingFactorInput))) : null;
@@ -3955,13 +3941,11 @@ export function App() {
   const effectiveEvalModel = selectedTaskSupportsEvalModel
     ? selectedEvalModel || selectedTaskDefaultEvalModel || selectedModel || runtimeInfo.active_model
     : null;
-  const requestedEvalCount = parsedSelectedItemIds
-    ? parsedSelectedItemIds.length
-    : selectedTaskUsesMaxEpisodes
-      ? parsedMaxEpisodes ?? selectedTaskDefaultMaxEpisodes ?? selectedTaskEpisodeDatasetSize ?? null
-      : selectedTaskUsesMaxItems
-        ? parsedMaxItems ?? selectedTaskVisibleDatasetSize ?? selectedTaskDefaultMaxItems ?? null
-        : null;
+  const requestedEvalCount = selectedTaskUsesMaxEpisodes
+    ? parsedMaxEpisodes ?? selectedTaskDefaultMaxEpisodes ?? selectedTaskEpisodeDatasetSize ?? null
+    : selectedTaskUsesMaxItems
+      ? parsedMaxItems ?? selectedTaskVisibleDatasetSize ?? selectedTaskDefaultMaxItems ?? null
+      : null;
   const showDemoCodingWarning = Boolean(selectedTaskIsCoding && requestedEvalCount && requestedEvalCount > 50);
   const evalLimitLabel = "Eval Limit";
   const maxItemsLabel = selectedTaskUsesMaxItems && selectedTaskVisibleDatasetSize
@@ -3973,8 +3957,8 @@ export function App() {
       : evalLimitLabel;
   const maxItemsHelper = selectedTaskUsesMaxItems && selectedTaskVisibleDatasetSize
     ? parsedMaxItems
-      ? `The first ${parsedMaxItems} ${selectedTaskIsCoding ? "problems" : "items"} will be used for eval.`
-      : `Blank uses the full dataset. The first ${selectedTaskVisibleDatasetSize} ${selectedTaskIsCoding ? "problems" : "items"} will be used for eval.`
+      ? `The first ${parsedMaxItems} ${selectedTaskEvalLimitUnitLabel} will be used for eval.`
+      : `Blank uses the full dataset. The first ${selectedTaskVisibleDatasetSize} ${selectedTaskEvalLimitUnitLabel} will be used for eval.`
     : selectedTaskUsesMaxItems
       ? parsedMaxItems
         ? `The first ${parsedMaxItems} tasks will be used for eval.`
@@ -4028,21 +4012,19 @@ export function App() {
     ? effectiveEvalModel || (selectedTaskRequiresEvalModel ? "required" : "optional")
     : "Not used";
   const frontierParentsSummary = `${effectiveBranchingFactor} frontier parents`;
-  const evalScopeSummary = parsedSelectedItemIds
-    ? `Items ${parsedSelectedItemIds.join(", ")}`
-    : selectedTaskUsesMaxEpisodes
-      ? parsedMaxEpisodes
-        ? `First ${parsedMaxEpisodes} episodes`
-        : selectedTaskDefaultMaxEpisodes
-          ? `First ${selectedTaskDefaultMaxEpisodes} episodes`
-          : "Task episodes"
-      : selectedTaskUsesMaxItems
-        ? parsedMaxItems
-          ? `First ${parsedMaxItems} tasks`
-          : selectedTaskDefaultMaxItems
-            ? `First ${selectedTaskDefaultMaxItems} tasks`
-            : "Task subset"
-        : "Single item";
+  const evalScopeSummary = selectedTaskUsesMaxEpisodes
+    ? parsedMaxEpisodes
+      ? `First ${parsedMaxEpisodes} episodes`
+      : selectedTaskDefaultMaxEpisodes
+        ? `First ${selectedTaskDefaultMaxEpisodes} episodes`
+        : "Task episodes"
+    : selectedTaskUsesMaxItems
+      ? parsedMaxItems
+        ? `First ${parsedMaxItems} ${selectedTaskEvalLimitUnitLabel}`
+        : selectedTaskDefaultMaxItems
+          ? `First ${selectedTaskDefaultMaxItems} ${selectedTaskEvalLimitUnitLabel}`
+          : "Task subset"
+      : "Single item";
   const parallelismSummary = selectedTaskSupportsParallelWorkers
     ? `${itemWorkersInput || selectedTaskParallelWorkerDefault} evals`
     : "Backend managed";
@@ -4420,8 +4402,9 @@ export function App() {
                   </select>
                   <span className="small muted">
                     {selectedTaskRuntimeSplitOption?.description ||
+                      selectedTaskRuntimeSplitHelp ||
                       (selectedTaskVisibleDatasetSize
-                        ? `This split exposes ${selectedTaskVisibleDatasetSize} ${selectedTaskIsCoding ? "problems" : "items"} for eval.`
+                        ? `This split exposes ${selectedTaskVisibleDatasetSize} ${selectedTaskEvalLimitUnitLabel} for eval.`
                         : "Choose the dataset slice to evaluate.")}
                   </span>
                 </label>
@@ -4437,11 +4420,9 @@ export function App() {
                   placeholder={selectedTaskUsesMaxItems ? (selectedTaskVisibleDatasetSize ? "all" : "default") : "n/a"}
                   value={maxItemsInput}
                   onChange={(event) => setMaxItemsInput(event.target.value)}
-                  disabled={!selectedTaskUsesMaxItems || Boolean(parsedSelectedItemIds)}
+                  disabled={!selectedTaskUsesMaxItems}
                   />
-                  <span className="small muted">
-                    {parsedSelectedItemIds ? "Specific item ids selected: Eval Limit is ignored for this run." : maxItemsHelper}
-                  </span>
+                  <span className="small muted">{maxItemsHelper}</span>
                 </label>
               ) : null}
               {selectedTaskUsesMaxEpisodes ? (
@@ -4472,19 +4453,6 @@ export function App() {
                     onChange={(event) => setMaxTurnsInput(event.target.value)}
                   />
                   <span className="small muted">{maxTurnsHelper}</span>
-                </label>
-              ) : null}
-              {selectedTaskIsDataset ? (
-                <label className="field">
-                  <span className="field-label">Item IDs (Optional)</span>
-                  <input
-                    className="control"
-                    type="text"
-                    placeholder="1,2,3 or aime-2026-01,aime-2026-10"
-                    value={selectedItemIdsInput}
-                    onChange={(event) => setSelectedItemIdsInput(event.target.value)}
-                  />
-                  <span className="small muted">Comma-separated manifest ids or 1-based question numbers. When set, this overrides Eval Limit.</span>
                 </label>
               ) : null}
               {showDemoCodingWarning ? (

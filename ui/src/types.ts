@@ -86,6 +86,8 @@ export type TaskSummary = {
   dataset_size?: number;
   local_dataset_only?: boolean;
   split?: string | null;
+  eval_limit_unit_label?: string | null;
+  runtime_split_help?: string | null;
   task_mode: string;
   interaction_mode: string;
   task_shape?: string | null;
@@ -291,6 +293,8 @@ export type RunTask = {
   dataset_size?: number;
   local_dataset_only?: boolean;
   split?: string | null;
+  eval_limit_unit_label?: string | null;
+  runtime_split_help?: string | null;
   included_in_main_comparison: boolean;
   task_mode?: string;
   interaction_mode?: string;
